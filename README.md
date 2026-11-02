@@ -36,7 +36,7 @@ npm start                     # http://localhost:3000
 
 **Render'da yayına alma (≈10 dk):** Projeyi GitHub'a yükleyin → Render › New + › **Blueprint** → depoyu seçin.
 `render.yaml` her şeyi ayarlar; sizden `SITE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` ister.
-Görüşlerin kaybolmaması için kalıcı disk gerekir; bu Render'da ücretli Starter planla olur.
+Görüşlerin kaybolmaması için kalıcı disk gerekir; bu Render'da ücretli planla olur.
 Ücretsiz planda disk olmadığından sunucu her yeniden başladığında görüşler silinir.
 Docker kullanan platformlar (Railway, Fly.io) için `Dockerfile` hazırdır; `/data` klasörünü kalıcı diske bağlayın.
 

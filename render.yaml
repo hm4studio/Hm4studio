@@ -1,11 +1,11 @@
 # Render.com tek tıkla kurulum dosyası (Blueprint).
 # Render'da: New + › Blueprint › bu projenin GitHub deposunu seçin.
-# Görüşlerin ve verilerin kaybolmaması için kalıcı disk gerekir; bu da ücretli "Starter" planı ister.
+# Görüşlerin ve verilerin kaybolmaması için kalıcı disk gerekir; bu da ücretli plan ister.
 services:
   - type: web
     name: hm4studio-demo
     runtime: node
-    plan: starter
+    plan: 0.5c-512mb   # en küçük ücretli sunucu (kalıcı disk için gerekli)
     region: frankfurt
     buildCommand: echo "Kurulum gerekmez"
     startCommand: npm start
