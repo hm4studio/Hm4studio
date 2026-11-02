@@ -14,6 +14,8 @@ const appViews = require('../views/app');
 const { requireAdmin, checkCsrf, setFlash, takeFlash, slugify, toId } = require('./guards');
 const demo = require('../demo');
 const { addDays } = require('../jobs');
+const wa = require('../whatsapp');
+const events = require('../events');
 
 const newKey = () => crypto.randomBytes(16).toString('hex');
 
@@ -98,6 +100,8 @@ function register(router) {
     const eventDate = cleanDate(form.eventDate);
     const id = db.createCouple({ name, accessCode: code, hash: auth.hashPassword(password), eventDate });
     if (eventDate) db.setCoupleDue(id, addDays(eventDate, 45)); // varsayılan teslim: çekimden 45 gün sonra
+    const phone = wa.normalizePhone(form.phone);
+    if (phone) db.setCoupleContact(id, phone, true);
     setFlash(req, {
       message: `${name} eklendi.`,
       type: 'success',
@@ -132,6 +136,7 @@ function register(router) {
     const stages = getContent().stages;
     const stage = Math.min(Math.max(Number.parseInt(form.stage, 10) || 0, 0), stages.length - 1);
     db.setCoupleStage(couple.id, stage, String(form.note || '').trim().slice(0, 500));
+    if (stage !== couple.stage) events.stageChanged(couple, stage);
     setFlash(req, { message: `Aşama güncellendi: ${stages[stage]}`, type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
@@ -143,6 +148,13 @@ function register(router) {
     const name = cleanText(form.name, 120) || couple.name;
     const albumLimit = Math.min(Math.max(Number.parseInt(form.albumLimit, 10) || couple.album_limit, 1), 1000);
     db.updateCouple(couple.id, { name, eventDate: cleanDate(form.eventDate), dueDate: cleanDate(form.dueDate), albumLimit });
+    const phone = wa.normalizePhone(form.phone);
+    if (String(form.phone || '').trim() && !phone) {
+      setFlash(req, { message: 'Bilgiler kaydedildi, ancak telefon numarası geçersiz olduğu için kaydedilmedi (örn. 0532 123 45 67).', type: 'error' });
+      db.setCoupleContact(couple.id, couple.phone, form.waOptin === '1');
+      return redirect(res, `/admin/ciftler/${couple.id}`);
+    }
+    db.setCoupleContact(couple.id, phone, form.waOptin === '1');
     setFlash(req, { message: 'Bilgiler güncellendi.', type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
@@ -203,6 +215,7 @@ function register(router) {
     const originalName = cleanText(decodeURIComponent(String(req.headers['x-filename'] || '')), 160);
     media.saveCouplePhoto(couple.id, fileKey, parts);
     const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt });
+    events.photosUploaded(couple.id);
     json(res, { ok: true, id });
   });
 

@@ -22,4 +22,19 @@ function getContent() {
   return cache;
 }
 
-module.exports = { getContent };
+// content/whatsapp.json: WhatsApp mesaj metinleri ve kuralları
+const WA_FILE = path.join(config.ROOT, 'content', 'whatsapp.json');
+let waCache = null;
+let waMtime = 0;
+function getWhatsapp() {
+  try {
+    const mtime = fs.statSync(WA_FILE).mtimeMs;
+    if (!waCache || mtime !== waMtime) { waCache = JSON.parse(fs.readFileSync(WA_FILE, 'utf8')); waMtime = mtime; }
+  } catch (err) {
+    if (!waCache) throw new Error(`content/whatsapp.json okunamadı: ${err.message}`);
+    console.error('content/whatsapp.json okunamadı, son geçerli sürüm kullanılıyor:', err.message);
+  }
+  return waCache;
+}
+
+module.exports = { getContent, getWhatsapp };

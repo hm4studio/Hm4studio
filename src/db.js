@@ -82,6 +82,32 @@ addColumn('couples', 'due_date', 'TEXT');
 addColumn('couples', 'album_limit', 'INTEGER NOT NULL DEFAULT 60');
 addColumn('couples', 'album_locked', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('couples', 'plan_json', "TEXT NOT NULL DEFAULT '{}'");
+addColumn('couples', 'phone', 'TEXT');
+addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
+addColumn('couples', 'stage_changed_at', 'TEXT');
+addColumn('photos', 'uploaded_on', 'TEXT');
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS leads (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  event_date TEXT,
+  place TEXT NOT NULL DEFAULT '',
+  service TEXT NOT NULL DEFAULT '',
+  message TEXT NOT NULL DEFAULT '',
+  source TEXT NOT NULL DEFAULT 'site',
+  status TEXT NOT NULL DEFAULT 'yeni',
+  couple_id INTEGER REFERENCES couples(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS leads_phone ON leads(phone);
+CREATE TABLE IF NOT EXISTS notifications (
+  key TEXT PRIMARY KEY,
+  sent_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+`);
 
 const q = (sql) => db.prepare(sql);
 
@@ -121,7 +147,9 @@ module.exports = {
   setPlan: (id, plan) => q('UPDATE couples SET plan_json = ? WHERE id = ?').run(JSON.stringify(plan), id),
   favoriteCount: (coupleId) => q('SELECT COUNT(*) AS n FROM favorites WHERE couple_id = ?').get(coupleId).n,
   setCouplePassword: (id, hash) => q('UPDATE couples SET password_hash = ? WHERE id = ?').run(hash, id),
-  setCoupleStage: (id, stage, note) => q('UPDATE couples SET stage = ?, stage_note = ? WHERE id = ?').run(stage, note, id),
+  setCoupleStage: (id, stage, note) => q("UPDATE couples SET stage_changed_at = CASE WHEN stage <> ? THEN date('now') ELSE stage_changed_at END, stage = ?, stage_note = ? WHERE id = ?").run(stage, stage, note, id),
+  setCoupleContact: (id, phone, optin) => q('UPDATE couples SET phone = ?, wa_optin = ? WHERE id = ?').run(phone || null, optin ? 1 : 0, id),
+  getCoupleByPhone: (phone) => q('SELECT * FROM couples WHERE phone = ? ORDER BY id DESC LIMIT 1').get(phone),
   deleteCouple: (id) => q('DELETE FROM couples WHERE id = ?').run(id),
 
   // ── Çift fotoğrafları ──
@@ -133,7 +161,7 @@ module.exports = {
     WHERE f.couple_id = ? ORDER BY p.id`).all(coupleId),
   getPhoto: (id) => q('SELECT * FROM photos WHERE id = ?').get(id),
   addPhoto: ({ coupleId, fileKey, originalName, originalExt }) =>
-    Number(q('INSERT INTO photos(couple_id, file_key, original_name, original_ext) VALUES(?, ?, ?, ?)')
+    Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on) VALUES(?, ?, ?, ?, date('now'))")
       .run(coupleId, fileKey, originalName, originalExt || null).lastInsertRowid),
   deletePhoto: (id) => q('DELETE FROM photos WHERE id = ?').run(id),
 
@@ -150,6 +178,25 @@ module.exports = {
   updatePortfolioItem: (id, { category, alt }) => q('UPDATE portfolio SET category = ?, alt = ? WHERE id = ?').run(category, alt, id),
   deletePortfolioItem: (id) => q('DELETE FROM portfolio WHERE id = ?').run(id),
 
+  // ── Talepler (yeni müşteri adayları) ──
+  addLead: (l) => Number(q('INSERT INTO leads(name, phone, event_date, place, service, message, source) VALUES(?, ?, ?, ?, ?, ?, ?)')
+    .run(l.name || '', l.phone || '', l.eventDate || null, l.place || '', l.service || '', l.message || '', l.source || 'site').lastInsertRowid),
+  updateLeadDetails: (id, l) => q("UPDATE leads SET name = COALESCE(NULLIF(?, ''), name), event_date = COALESCE(?, event_date), place = COALESCE(NULLIF(?, ''), place), service = COALESCE(NULLIF(?, ''), service), message = CASE WHEN ? = '' THEN message WHEN message = '' THEN ? ELSE message || char(10) || ? END, updated_at = datetime('now') WHERE id = ?")
+    .run(l.name || '', l.eventDate || null, l.place || '', l.service || '', l.message || '', l.message || '', l.message || '', id),
+  openLeadByPhone: (phone) => q("SELECT * FROM leads WHERE phone = ? AND status IN ('yeni', 'gorusuldu') ORDER BY id DESC LIMIT 1").get(phone),
+  listLeads: () => q("SELECT * FROM leads ORDER BY CASE status WHEN 'yeni' THEN 0 WHEN 'gorusuldu' THEN 1 WHEN 'rezervasyon' THEN 2 ELSE 3 END, id DESC").all(),
+  getLead: (id) => q('SELECT * FROM leads WHERE id = ?').get(id),
+  setLeadStatus: (id, status, coupleId) => q("UPDATE leads SET status = ?, couple_id = COALESCE(?, couple_id), updated_at = datetime('now') WHERE id = ?").run(status, coupleId || null, id),
+  deleteLead: (id) => q('DELETE FROM leads WHERE id = ?').run(id),
+  countNewLeads: () => q("SELECT COUNT(*) AS n FROM leads WHERE status = 'yeni'").get().n,
+
+  // ── Gönderilen bildirimler (aynı mesaj iki kez gitmesin) ──
+  wasNotified: (key) => Boolean(q('SELECT 1 FROM notifications WHERE key = ?').get(key)),
+  markNotified: (key) => q('INSERT OR IGNORE INTO notifications(key) VALUES(?)').run(key),
+  notifiedSince: (key, isoDateTime) => Boolean(q('SELECT 1 FROM notifications WHERE key = ? AND sent_at >= ?').get(key, isoDateTime)),
+  touchNotified: (key) => q("INSERT INTO notifications(key, sent_at) VALUES(?, datetime('now')) ON CONFLICT(key) DO UPDATE SET sent_at = datetime('now')").run(key),
+  lastUploadDay: (coupleId) => q('SELECT MAX(uploaded_on) AS d FROM photos WHERE couple_id = ?').get(coupleId).d,
+
   // ── Görüşler ──
   addFeedback: ({ name, role, area, rating, message, device }) =>
     q('INSERT INTO feedback(name, role, area, rating, message, device) VALUES(?, ?, ?, ?, ?, ?)')
@@ -159,7 +206,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM favorites; DELETE FROM photos; DELETE FROM couples; DELETE FROM portfolio;
+    DELETE FROM favorites; DELETE FROM photos; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

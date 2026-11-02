@@ -7,6 +7,7 @@ const media = require('../media');
 const { getContent } = require('../content');
 const { html, json, redirect, readForm, readJson, sendFile, HttpError } = require('../http');
 const { PLAN_FIELDS, today } = require('../jobs');
+const events = require('../events');
 const views = require('../views/panel');
 const { requireCouple, checkCsrf, toId, setFlash, takeFlash } = require('./guards');
 
@@ -57,6 +58,7 @@ function register(router) {
       setFlash(req, { message: 'Önce albüm için en az bir kare seçin.', type: 'error' });
     } else {
       db.setAlbumLocked(couple.id, true);
+      events.albumLocked(couple);
       setFlash(req, { message: 'Teşekkürler! Albüm seçiminiz HM4 Studio’ya iletildi.', type: 'success' });
     }
     redirect(res, '/panel#fotograflar');
@@ -70,6 +72,7 @@ function register(router) {
     const plan = { saved: today() };
     for (const f of PLAN_FIELDS) plan[f.key] = String(form[f.key] || '').replace(/\r\n/g, '\n').trim().slice(0, f.max);
     db.setPlan(req.session.userId, plan);
+    events.planSaved({ id: req.session.userId });
     setFlash(req, { message: 'Planınız kaydedildi. HM4 Studio ekibi görebilir.', type: 'success' });
     redirect(res, '/panel#plan');
   });

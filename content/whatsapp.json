@@ -1,0 +1,27 @@
+{
+  "_aciklama": "WhatsApp mesaj metinleri. 'otomatikCevap' metinleri serbesttir (müşteri yazdıktan sonraki 24 saatte gönderilir). 'sablonlar' Meta'da onaylatacağınız şablonların ADI ve değişken sırasıdır; metinleri Meta panelinde aynen girersiniz (n8n/SABLONLAR.md). {ad}, {link} gibi alanlar otomatik doldurulur.",
+
+  "dil": "tr",
+  "yorumLinki": "[Google işletme yorum bağlantınız]",
+
+  "otomatikCevap": {
+    "yeniKisi": "Merhaba {ad}, HM4 Studio'ya yazdığınız için teşekkürler! 🤍\nTarihinizin uygunluğunu kontrol edebilmemiz için birkaç kısa bilgiyi buradan iletir misiniz? (1 dakika sürer)\n{link}\n\nEkibimiz en kısa sürede size dönecek.",
+    "mevcutCift": "Merhaba {ad} 🤍 Mesajınızı aldık, ekibimiz en kısa sürede dönecek. Bu arada işinizin durumunu ve fotoğraflarınızı panelinizden görebilirsiniz: {link}",
+    "talepAlindi": "Bilgileriniz bize ulaştı, teşekkürler {ad}! Uygunluğu kontrol edip size buradan yazacağız."
+  },
+
+  "sablonlar": {
+    "asama": { "ad": "hm4_asama_guncellendi", "degiskenler": ["ad", "asama", "link"] },
+    "fotograflar": { "ad": "hm4_fotograflar_hazir", "degiskenler": ["ad", "link"] },
+    "plan": { "ad": "hm4_plan_hatirlatma", "degiskenler": ["ad", "gun", "link"] },
+    "album": { "ad": "hm4_album_hatirlatma", "degiskenler": ["ad", "kare", "link"] },
+    "yorum": { "ad": "hm4_yorum_iste", "degiskenler": ["ad", "link"] }
+  },
+
+  "kurallar": {
+    "planHatirlatmaGunOnce": [7, 2],
+    "albumHatirlatmaGunSonra": 5,
+    "yorumIstemeGunSonra": 7,
+    "fotografBildirimiBekleme": 15
+  }
+}

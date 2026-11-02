@@ -94,8 +94,8 @@ function contactBand(c) {
         <p class="band__text">Uygunluk için bize yazın; gününüzü birlikte planlayalım.</p>
       </div>
       <div class="btn-row">
-        <a class="btn btn--light" href="${links.whatsapp(c)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan Yaz</a>
-        ${button('/iletisim', 'İletişim bilgileri', 'ghost-light')}
+        <a class="btn btn--light" href="/talep">Uygunluk sorun</a>
+        <a class="btn btn--ghost-light" href="${links.whatsapp(c)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan Yaz</a>
       </div>
     </div>
   </section>`;
@@ -197,8 +197,9 @@ function contactPage(c) {
   <section class="section section--flush-top">
     <div class="container">
       <div class="btn-row">
-        <a class="btn btn--primary" href="${links.whatsapp(c)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan Yaz</a>
-        <a class="btn btn--outline" href="${links.instagram(c)}" target="_blank" rel="noopener">${icon('instagram')}Instagram Profilini Aç</a>
+        <a class="btn btn--primary" href="/talep">Uygunluk sorun</a>
+        <a class="btn btn--outline" href="${links.whatsapp(c)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan Yaz</a>
+        <a class="btn btn--outline" href="${links.instagram(c)}" target="_blank" rel="noopener">${icon('instagram')}Instagram</a>
       </div>
       <ul class="contact-grid">
         ${cards.map((k) => h`

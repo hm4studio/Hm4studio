@@ -13,6 +13,8 @@ require('./src/routes/public').register(router);
 require('./src/routes/couple').register(router);
 require('./src/routes/admin').register(router);
 require('./src/routes/feedback').register(router);
+require('./src/routes/leads').register(router);
+require('./src/routes/api').register(router);
 require('./src/demo').start();
 
 // İsteğe bağlı: .env / barındırma panelindeki ADMIN_USERNAME + ADMIN_PASSWORD ile ilk yönetici hesabını oluştur

@@ -4,10 +4,12 @@ const { h, raw } = require('./html');
 const { panelLayout, statusBar, flash, icon } = require('./components');
 const { photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView } = require('./panel');
 const { jobStatus, daysBetween, today } = require('../jobs');
+const { displayPhone } = require('../whatsapp');
 
 function adminNav(active, csrf, demoAdmin = false) {
   const items = [
     { href: '/admin', label: 'Çiftler', key: 'couples', icon: 'users' },
+    { href: '/admin/talepler', label: 'Talepler', key: 'leads', icon: 'whatsapp' },
     { href: '/admin/takvim', label: 'Takvim', key: 'calendar', icon: 'clock' },
     { href: '/admin/portfolyo', label: 'Portfolyo', key: 'portfolio', icon: 'image' },
     // Görüşler ziyaretçilerin özel yorumlarıdır; demo stüdyo hesabına gösterilmez
@@ -24,10 +26,10 @@ function adminNav(active, csrf, demoAdmin = false) {
 function adminTabs(active, demoAdmin = false) {
   return [
     { href: '/admin', label: 'Çiftler', icon: 'users', active: active === 'couples' },
+    { href: '/admin/talepler', label: 'Talepler', icon: 'whatsapp', active: active === 'leads' },
     { href: '/admin/takvim', label: 'Takvim', icon: 'clock', active: active === 'calendar' },
     { href: '/admin/portfolyo', label: 'Portfolyo', icon: 'image', active: active === 'portfolio' },
-    ...(demoAdmin ? [] : [{ href: '/admin/gorusler', label: 'Görüşler', icon: 'star', active: active === 'feedback' }]),
-    { href: '/admin/hesap', label: 'Hesap', icon: 'settings', active: active === 'account' },
+    { href: '/admin/hesap', label: 'Hesap', icon: 'settings', active: active === 'account' || active === 'feedback' },
   ];
 }
 
@@ -74,6 +76,10 @@ function dashboard(c, { couples, csrf, flash: f, demoAdmin }) {
           <div class="field">
             <label for="date">Çekim tarihi</label>
             <input id="date" name="eventDate" type="date">
+          </div>
+          <div class="field">
+            <label for="phone">Telefon (WhatsApp) <span class="muted">(isteğe bağlı)</span></label>
+            <input id="phone" name="phone" type="tel" maxlength="20" inputmode="tel" placeholder="05XX XXX XX XX">
           </div>
           <div class="field">
             <label for="pw">Şifre <span class="muted">(boş bırakırsanız güçlü bir şifre üretilir)</span></label>
@@ -159,6 +165,14 @@ function coupleDetail(c, { couple, photos, totalCount, favCount, view, csrf, fla
             <label for="due">Teslim tarihi</label>
             <input id="due" name="dueDate" type="date" value="${couple.due_date || ''}">
           </div>
+          <div class="field">
+            <label for="cphone">Telefon (WhatsApp)</label>
+            <input id="cphone" name="phone" type="tel" maxlength="20" inputmode="tel" placeholder="05XX XXX XX XX" value="${couple.phone ? displayPhone(couple.phone) : ''}">
+          </div>
+          <label class="check">
+            <input type="checkbox" name="waOptin" value="1"${couple.wa_optin ? raw(' checked') : ''}>
+            <span>WhatsApp bildirimleri gönderilsin</span>
+          </label>
           <div class="field">
             <label for="limit">Albüm kare sayısı</label>
             <input id="limit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${couple.album_limit}">
@@ -345,6 +359,11 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
         <button class="btn btn--primary" type="submit">Şifreyi değiştir</button>
       </form>
     </section>
+    ${demoAdmin ? '' : h`<section class="card account-logout">
+      <h2 class="card__title">Görüşler</h2>
+      <p class="muted">Demo ziyaretçilerinin bıraktığı görüşleri okuyun.</p>
+      <a class="btn btn--outline btn--sm" href="/admin/gorusler">Görüşleri aç ${icon('arrow')}</a>
+    </section>`}
     <section class="card account-logout">
       <h2 class="card__title">Oturum</h2>
       <p class="muted">Bu cihazda yönetim panelinden çıkış yapın.</p>

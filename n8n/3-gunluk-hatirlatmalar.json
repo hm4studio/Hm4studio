@@ -1,0 +1,226 @@
+{
+  "name": "HM4 · 3 · Günlük hatırlatmalar",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "id": "0e30e915-2925-43e9-bc6b-cdd6778360f6",
+      "name": "Her sabah 10:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "523707cd-87fb-4f60-9962-b1e1def06ded",
+              "name": "siteUrl",
+              "value": "https://SITENIZIN-ADRESI.onrender.com",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "29befd23-700c-47d1-8e61-6c66b59418ec",
+      "name": "Ayarlar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "notes": "Sitenizin adresini buraya yazın (sonunda / olmadan)."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.siteUrl }}/api/hatirlatmalar",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "6aabfbd4-dcc4-419f-97ec-043fd1708eac",
+      "name": "Bugünün hatırlatmaları",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Her hatırlatma ayrı bir WhatsApp mesajı olur\nconst siteUrl = $('Ayarlar').first().json.siteUrl;\nconst items = $input.first().json.items || [];\nreturn items.map((it) => ({ json: { url: it.whatsapp.url, body: it.whatsapp.body, keys: it.keys, type: it.type, couple: it.couple, siteUrl } }));"
+      },
+      "id": "32d86a5c-dbd8-4877-8ffa-d6f28a5a0feb",
+      "name": "Hatırlatmaları ayır",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "id": "ac88e79e-d9c0-4597-b7ed-37ee6d523206",
+      "name": "WhatsApp'a gönder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "notes": "Kimlik bilgisi: WhatsApp Cloud API (Header Auth)",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Yalnızca başarıyla gönderilenler 'gönderildi' olarak işaretlenir; hatalı olanlar ertesi gün yeniden denenir\nconst src = $('Hatırlatmaları ayır').all();\nconst keys = [];\n$input.all().forEach((it, i) => {\n  if (it.json && Array.isArray(it.json.messages)) keys.push(...(src[i]?.json.keys || []));\n});\nreturn [{ json: { keys, siteUrl: $('Ayarlar').first().json.siteUrl } }];"
+      },
+      "id": "5e02a163-ed0f-40e7-ac35-d73f9ce0fba9",
+      "name": "Gönderilenleri topla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.siteUrl }}/api/hatirlatmalar/gonderildi",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ keys: $json.keys }) }}"
+      },
+      "id": "69245fc8-b99b-46ec-9bd9-fadec5991c4a",
+      "name": "Siteye bildir",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        0
+      ],
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)"
+    }
+  ],
+  "connections": {
+    "Her sabah 10:30": {
+      "main": [
+        [
+          {
+            "node": "Ayarlar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ayarlar": {
+      "main": [
+        [
+          {
+            "node": "Bugünün hatırlatmaları",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bugünün hatırlatmaları": {
+      "main": [
+        [
+          {
+            "node": "Hatırlatmaları ayır",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hatırlatmaları ayır": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp'a gönder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp'a gönder": {
+      "main": [
+        [
+          {
+            "node": "Gönderilenleri topla",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gönderilenleri topla": {
+      "main": [
+        [
+          {
+            "node": "Siteye bildir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Istanbul",
+    "saveDataErrorExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "tags": [],
+  "staticData": null,
+  "versionId": "eb2b6264-4496-4d76-b9cd-1212296fbc19",
+  "description": "Her sabah plan formu, albüm seçimi ve teslim sonrası yorum hatırlatmalarını gönderir."
+}

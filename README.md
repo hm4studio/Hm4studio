@@ -54,6 +54,13 @@ Uygulama doğrudan çiftin paneline açılır, telefonda alttan sekme menüsü v
 İkonlar: `public/images/icon-*.png`, `apple-touch-icon.png` · Uygulama adı ve renkleri: `public/manifest.webmanifest`.
 Uygulama yalnızca site HTTPS ile yayındayken eklenebilir.
 
+## 1d. WhatsApp otomasyonu (n8n)
+
+Yeni yazanları karşılama, talepleri panele düşürme, çifte durum bildirimleri ve günlük hatırlatmalar.
+Kurulum adımları: **`n8n/BENIOKU.md`** · Meta şablon metinleri: **`n8n/SABLONLAR.md`** ·
+Mesaj metinleri: **`content/whatsapp.json`** · Gelen talepler: **Admin › Talepler**.
+Sitedeki **/talep** formu ("Uygunluk sorun") n8n kurulmasa da çalışır; talepler yine panele düşer.
+
 ## 2. Değiştirmeniz gereken yerler
 
 | Ne | Nerede |

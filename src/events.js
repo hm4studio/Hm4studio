@@ -1,0 +1,90 @@
+'use strict';
+// Sitede olan önemli olayları n8n'e bildirir (aşama değişti, fotoğraflar yüklendi, yeni talep...).
+// N8N_WEBHOOK_URL tanımlı değilse hiçbir şey yapmaz. Gönderim arka planda yapılır; hata siteyi durdurmaz.
+const config = require('./config');
+const db = require('./db');
+const wa = require('./whatsapp');
+const { getContent, getWhatsapp } = require('./content');
+
+async function post(payload) {
+  if (!config.n8nWebhookUrl) return { skipped: true };
+  try {
+    const res = await fetch(config.n8nWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.n8nApiKey}` },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) console.error(`n8n bildirimi başarısız (${payload.event}): HTTP ${res.status}`);
+    return { ok: res.ok };
+  } catch (err) {
+    console.error(`n8n'e ulaşılamadı (${payload.event}):`, err.message);
+    return { ok: false };
+  }
+}
+
+function coupleInfo(c) {
+  return { id: c.id, name: c.name, phone: c.phone || null, phoneDisplay: wa.displayPhone(c.phone), eventDate: c.event_date };
+}
+
+// Çifte WhatsApp mesajı gidebilir mi? (telefon var, izin verilmiş)
+const canMessage = (c) => Boolean(c && c.phone && c.wa_optin);
+
+function stageChanged(couple, stageIndex) {
+  if (!config.n8nWebhookUrl) return;
+  const c = db.getCouple(couple.id);
+  const stages = getContent().stages;
+  const payload = { event: 'asama_degisti', at: new Date().toISOString(), couple: coupleInfo(c), stage: stageIndex, stageName: stages[stageIndex] || '', note: c.stage_note || '' };
+  if (canMessage(c)) {
+    // Teslim edildiğinde de aynı şablon; yorum isteği hatırlatmalardan gider
+    payload.whatsapp = wa.templateMessage(c.phone, 'asama', { ad: c.name, asama: stages[stageIndex] || '', link: wa.panelLink() });
+  }
+  post(payload);
+}
+
+// Fotoğraflar tek tek yüklenir; çifte tek mesaj gitsin diye son yüklemeden sonra bir süre beklenir
+const photoTimers = new Map();
+function photosUploaded(coupleId) {
+  if (!config.n8nWebhookUrl) return;
+  const waitMin = Number(getWhatsapp().kurallar?.fotografBildirimiBekleme) || 15;
+  const waitMs = Number(process.env.HM4_PHOTO_NOTIFY_WAIT_MS) || waitMin * 60 * 1000; // testler için kısaltılabilir
+  clearTimeout(photoTimers.get(coupleId));
+  photoTimers.set(coupleId, setTimeout(() => {
+    photoTimers.delete(coupleId);
+    const c = db.getCouple(coupleId);
+    if (!c) return;
+    const count = db.listPhotos(c.id).length;
+    const payload = { event: 'fotograflar_yuklendi', at: new Date().toISOString(), couple: coupleInfo(c), photoCount: count };
+    // Aynı gün içinde ikinci kez "fotoğraflarınız hazır" mesajı gitmesin
+    const key = `fotograflar:${c.id}:${new Date().toISOString().slice(0, 10)}`;
+    if (canMessage(c) && !db.wasNotified(key)) {
+      payload.whatsapp = wa.templateMessage(c.phone, 'fotograflar', { ad: c.name, link: wa.panelLink() });
+      db.markNotified(key);
+    }
+    post(payload);
+  }, waitMs).unref());
+}
+
+function albumLocked(couple) {
+  if (!config.n8nWebhookUrl) return;
+  const c = db.getCouple(couple.id);
+  post({ event: 'album_tamamlandi', at: new Date().toISOString(), couple: coupleInfo(c), selected: db.favoriteCount(c.id), limit: c.album_limit });
+}
+
+function planSaved(couple) {
+  if (!config.n8nWebhookUrl) return;
+  const c = db.getCouple(couple.id);
+  post({ event: 'plan_kaydedildi', at: new Date().toISOString(), couple: coupleInfo(c) });
+}
+
+function newLead(lead) {
+  if (!config.n8nWebhookUrl) return;
+  post({ event: 'yeni_talep', at: new Date().toISOString(), lead, adminUrl: `${config.siteUrl}/admin/talepler` });
+}
+
+// Testler için: bekleyen fotoğraf bildirimini hemen gönder
+function flushPhotoTimers() {
+  for (const [id, t] of photoTimers) { clearTimeout(t); photoTimers.delete(id); }
+}
+
+module.exports = { post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };

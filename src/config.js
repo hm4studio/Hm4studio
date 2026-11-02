@@ -56,5 +56,11 @@ module.exports = {
   demoResetHours: Number(env.DEMO_RESET_HOURS) || 6,
   demoMaxPhotos: 40,
   instagramToken: env.INSTAGRAM_ACCESS_TOKEN || '',
+  // n8n + WhatsApp (boşsa bu özellikler kapalı kalır)
+  n8nWebhookUrl: env.N8N_WEBHOOK_URL || '',
+  n8nApiKey: env.N8N_API_KEY || '',
+  waPhoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID || '',
+  waVerifyToken: env.WHATSAPP_VERIFY_TOKEN || '',
+  waApiVersion: env.WHATSAPP_API_VERSION || 'v23.0',
   sessionDays: 14,
 };

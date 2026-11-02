@@ -1,0 +1,99 @@
+{
+  "name": "HM4 · 2 · Site olayları → WhatsApp",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hm4-olay",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "19db352f-1beb-4d4b-ab60-52f6af04bb78",
+      "name": "Siteden olay",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "51f12925-0c49-453d-84e6-60d66033102e",
+      "notes": "Bu düğümün Production URL'ini sitedeki N8N_WEBHOOK_URL ayarına yazın. Kimlik bilgisi: HM4 Site (Header Auth)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Site, gönderilecek WhatsApp mesajını 'whatsapp' alanında hazır gönderir.\n// Mesajı olmayan olaylar (ör. plan kaydedildi) burada durur; isterseniz yanlarına e-posta vb. ekleyebilirsiniz.\nreturn $input.all()\n  .map((i) => i.json.body || {})\n  .filter((b) => b.whatsapp && b.whatsapp.url && b.whatsapp.body)\n  .map((b) => ({ json: { url: b.whatsapp.url, body: b.whatsapp.body, event: b.event } }));"
+      },
+      "id": "9a3f3e10-c36d-4589-8313-c2ff622eb710",
+      "name": "Mesaj var mı?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "id": "7abc40d1-6edd-4d29-b017-2c5c95111016",
+      "name": "WhatsApp'a gönder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "notes": "Kimlik bilgisi: WhatsApp Cloud API (Header Auth)",
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Siteden olay": {
+      "main": [
+        [
+          {
+            "node": "Mesaj var mı?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mesaj var mı?": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp'a gönder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Istanbul",
+    "saveDataErrorExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "tags": [],
+  "staticData": null,
+  "versionId": "ba8ec4b8-d54b-4450-9d6b-68cdd545fce7",
+  "description": "Sitede aşama değişince, fotoğraflar yüklenince ve yeni talep gelince sitenin hazırladığı WhatsApp mesajını gönderir."
+}

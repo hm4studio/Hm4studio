@@ -717,3 +717,9 @@ input:focus, select:focus, textarea:focus { border-bottom-color: var(--ink); box
   .app-login__media { flex: 1 1 55%; min-height: 100vh; }
   .app-login__sheet { margin: 0; justify-content: center; flex: 0 0 480px; padding-inline: 56px; }
 }
+
+/* Talepler */
+.lead__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 8px 0 6px; }
+.lead__status { display: inline-flex; align-items: center; gap: 6px; }
+.lead__status select { min-height: 40px; width: auto; padding-right: 8px; font-size: .85rem; }
+.lead .fb__head strong { font-weight: 600; }

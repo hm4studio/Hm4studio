@@ -1,0 +1,281 @@
+{
+  "name": "HM4 · 1 · WhatsApp gelen mesajlar",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "hm4-whatsapp-ee952bb9",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "fd1ea574-36b7-4dd7-b36c-6253c14097c6",
+      "name": "Meta doğrulama (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5a10db6a-ea03-4a01-be09-5543c6179c68",
+      "notes": "Meta'daki Webhook (Callback URL) adresi bu düğümün Production URL'idir."
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fd0b974b-df38-41be-a0a3-bc3bfeaf65ad",
+              "name": "siteUrl",
+              "value": "https://SITENIZIN-ADRESI.onrender.com",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "c0ba1fc2-159e-461d-806a-e5b87fe3b3c4",
+      "name": "Ayarlar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "notes": "Sitenizin adresini buraya yazın (sonunda / olmadan)."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.siteUrl }}/api/whatsapp/dogrula?mode={{ encodeURIComponent($json.query['hub.mode'] || '') }}&token={{ encodeURIComponent($json.query['hub.verify_token'] || '') }}&challenge={{ encodeURIComponent($json.query['hub.challenge'] || '') }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "e4fe9bb5-15f6-466a-b954-43a9193c3e80",
+      "name": "Siteye doğrulat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.challenge }}",
+        "options": {}
+      },
+      "id": "95f1c331-d0fa-4dd7-be9e-3cbe170af989",
+      "name": "Meta'ya cevap",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hm4-whatsapp-ee952bb9",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "26b59daf-fe59-492a-81c7-4894d22de9b7",
+      "name": "Gelen mesaj (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        260
+      ],
+      "webhookId": "e153cbe9-04dd-4640-836e-5f4f9b2ca1d7",
+      "notes": "Meta mesajları buraya gönderir. Hemen 200 döner, sonra işlenir."
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7903d149-a574-4648-8bdb-b1b78bad6231",
+              "name": "siteUrl",
+              "value": "https://SITENIZIN-ADRESI.onrender.com",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "8d3dcadb-e6b4-4c97-95f4-94250a129066",
+      "name": "Ayarlar ",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        260
+      ],
+      "notes": "Sitenizin adresini buraya yazın (sonunda / olmadan)."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.siteUrl }}/api/whatsapp/gelen",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "id": "befe5101-d0eb-403d-9aa0-f710b7cc56a6",
+      "name": "Siteye ilet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        260
+      ],
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth) — Site talebi kaydeder ve gerekirse otomatik cevabı hazırlar."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sitenin hazırladığı otomatik cevapları tek tek WhatsApp'a gönder\nconst replies = $input.first().json.replies || [];\nreturn replies.map((r) => ({ json: r }));"
+      },
+      "id": "f7abdc31-6263-4cac-9b56-03f04ed5e65d",
+      "name": "Cevapları ayır",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}"
+      },
+      "id": "25b09eab-04cd-40b0-b3fd-71bde0420167",
+      "name": "WhatsApp'a gönder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        260
+      ],
+      "notes": "Kimlik bilgisi: WhatsApp Cloud API (Header Auth)",
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Meta doğrulama (GET)": {
+      "main": [
+        [
+          {
+            "node": "Ayarlar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ayarlar": {
+      "main": [
+        [
+          {
+            "node": "Siteye doğrulat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Siteye doğrulat": {
+      "main": [
+        [
+          {
+            "node": "Meta'ya cevap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gelen mesaj (POST)": {
+      "main": [
+        [
+          {
+            "node": "Ayarlar ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ayarlar ": {
+      "main": [
+        [
+          {
+            "node": "Siteye ilet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Siteye ilet": {
+      "main": [
+        [
+          {
+            "node": "Cevapları ayır",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cevapları ayır": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp'a gönder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Istanbul",
+    "saveDataErrorExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "tags": [],
+  "staticData": null,
+  "versionId": "3d7cc578-60af-48a5-8c22-43d1b5e80127",
+  "description": "Yeni gelen WhatsApp mesajlarını siteye iletir; site talebi kaydeder ve otomatik karşılama mesajını hazırlar."
+}
