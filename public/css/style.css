@@ -462,3 +462,47 @@ body:has(.demo-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .fb__meta { font-size: .88rem; color: var(--ink-2); }
 .fb__time { margin-left: auto; font-size: .82rem; color: var(--muted); }
 .fb__msg { white-space: pre-line; margin-bottom: 4px; }
+
+/* ══════════════════ Uygulama (PWA) ══════════════════ */
+/* Telefonda alttaki sekme menüsü */
+.tabbar { display: none; }
+@media (max-width: 699px) {
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    padding: 4px max(8px, env(safe-area-inset-left, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-right, 0px));
+    background: rgba(251, 250, 248, .96); border-top: 1px solid var(--line);
+  }
+  @supports (backdrop-filter: blur(8px)) { .tabbar { background: rgba(251, 250, 248, .85); backdrop-filter: blur(12px); } }
+  .tabbar__form { margin: 0; display: contents; }
+  .tabbar__item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-height: 52px; border: 0; background: none; color: var(--muted);
+    font-size: .68rem; letter-spacing: .04em; text-decoration: none; cursor: pointer;
+  }
+  .tabbar__item .icon { width: 22px; height: 22px; }
+  .tabbar__item[aria-current="page"] { color: var(--ink); }
+  .tabbar__item[aria-current="page"] .icon { stroke-width: 1.8; }
+  .panel-main.has-tabbar { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  /* Sekme menüsü varken üstteki menü sadeleşir */
+  body:has(.tabbar) .panel-nav__link, body:has(.tabbar) .panel-nav .inline-form { display: none; }
+}
+
+/* Uygulama olarak açıldığında (ana ekrandan) üst güvenli alan */
+@media (display-mode: standalone) {
+  .panel-header, .site-header { padding-top: env(safe-area-inset-top, 0px); }
+  .site-header { height: calc(var(--header-h) + env(safe-area-inset-top, 0px)); }
+}
+
+/* "Ana ekrana ekle" kartı */
+.install { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 14px 16px; margin-bottom: 20px; background: var(--bg-tint); border: 1px solid var(--line); }
+.install[hidden] { display: none; }
+.install__icon { width: 48px; height: 48px; border-radius: 11px; flex: none; }
+.install__copy { flex: 1 1 160px; min-width: 0; }
+.install__close { order: 3; }
+@media (max-width: 480px) { .install [data-install-btn] { order: 4; width: 100%; } }
+.install__title { margin: 0; font-weight: 600; font-size: .95rem; }
+.install__text { margin: 2px 0 0; font-size: .88rem; color: var(--ink-2); }
+.install__close { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 0; background: none; color: var(--muted); cursor: pointer; border-radius: var(--radius); }
+.install__close:hover { background: rgba(0, 0, 0, .05); color: var(--ink); }
+.install__close .icon { width: 18px; height: 18px; }

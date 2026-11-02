@@ -43,6 +43,17 @@ Docker kullanan platformlar (Railway, Fly.io) için `Dockerfile` hazırdır; `/d
 **Gerçek kullanıma geçerken:** `DEMO_MODE=false` yapın ve `data/` klasörünü (görüşler dahil) silin
 ya da görüşleri önce CSV olarak indirin.
 
+## 1c. Telefon uygulaması (ana ekrana ekleme)
+
+Site, App Store gerektirmeyen bir uygulama (PWA) olarak telefona eklenebilir:
+- **iPhone / iPad:** Safari'de siteyi açın › Paylaş › **Ana Ekrana Ekle**.
+- **Android:** Çift panelinde çıkan **Ekle** butonuna basın (ya da Chrome menüsü › Uygulamayı yükle).
+
+Uygulama doğrudan çiftin paneline açılır, telefonda alttan sekme menüsü vardır. Tasarım dosyaları telefonda
+önbelleğe alınır; çiftlerin özel fotoğrafları ve panel sayfaları **asla** önbelleğe alınmaz.
+İkonlar: `public/images/icon-*.png`, `apple-touch-icon.png` · Uygulama adı ve renkleri: `public/manifest.webmanifest`.
+Uygulama yalnızca site HTTPS ile yayındayken eklenebilir.
+
 ## 2. Değiştirmeniz gereken yerler
 
 | Ne | Nerede |

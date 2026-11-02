@@ -92,6 +92,12 @@ ${description ? h`<meta property="og:description" content="${description}">` : '
 ${config.demoMode ? raw('<meta name="robots" content="noindex, nofollow">') : ''}
 ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HM4 Studio">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap">
@@ -109,12 +115,23 @@ ${siteHeader(c, active, overlayHeader)}
 <main id="main">${body}</main>
 ${siteFooter(c)}
 <script src="/js/site.js?v=1" defer></script>
+<script src="/js/pwa.js?v=1" defer></script>
 </body>
 </html>`);
 }
 
+// Telefonda panelin altında duran sekme menüsü (uygulama gibi)
+function tabbar(items) {
+  if (!items || !items.length) return '';
+  return h`<nav class="tabbar" aria-label="Uygulama menüsü">
+    ${items.map((t) => t.form
+      ? h`<form method="post" action="${t.form}" class="tabbar__form"><input type="hidden" name="csrf" value="${t.csrf}"><button type="submit" class="tabbar__item">${icon(t.icon)}<span>${t.label}</span></button></form>`
+      : h`<a class="tabbar__item" href="${t.href}"${t.active ? raw(' aria-current="page"') : ''}>${icon(t.icon)}<span>${t.label}</span></a>`)}
+  </nav>`;
+}
+
 // Çift ve admin panelleri için sade iskelet
-function panelLayout(c, { title, csrf, nav, body, scripts = [] }) {
+function panelLayout(c, { title, csrf, nav, body, scripts = [], tabs = [] }) {
   return String(h`${head({ title: `${title} — ${c.brand.name}`, csrf, bodyClass: 'panel-body' })}
 ${demoBanner()}
 <header class="panel-header">
@@ -123,8 +140,10 @@ ${demoBanner()}
     ${nav || ''}
   </div>
 </header>
-<main id="main" class="panel-main">${body}</main>
+<main id="main" class="panel-main${tabs.length ? ' has-tabbar' : ''}">${body}</main>
+${tabbar(tabs)}
 <script src="/js/site.js?v=1" defer></script>
+<script src="/js/pwa.js?v=1" defer></script>
 ${scripts.map((s) => h`<script src="${s}" defer></script>`)}
 </body>
 </html>`);

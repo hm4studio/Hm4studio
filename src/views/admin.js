@@ -18,6 +18,16 @@ function adminNav(active, csrf, demoAdmin = false) {
   </nav>`;
 }
 
+// Telefonda alttaki sekme menüsü
+function adminTabs(active, demoAdmin = false) {
+  return [
+    { href: '/admin', label: 'Çiftler', icon: 'users', active: active === 'couples' },
+    { href: '/admin/portfolyo', label: 'Portfolyo', icon: 'image', active: active === 'portfolio' },
+    ...(demoAdmin ? [] : [{ href: '/admin/gorusler', label: 'Görüşler', icon: 'star', active: active === 'feedback' }]),
+    { href: '/admin/hesap', label: 'Hesap', icon: 'settings', active: active === 'account' },
+  ];
+}
+
 const csrfField = (csrf) => h`<input type="hidden" name="csrf" value="${csrf}">`;
 
 function flashBlock(f) {
@@ -92,7 +102,7 @@ function dashboard(c, { couples, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('couples', csrf, demoAdmin), body, scripts: ['/js/admin.js?v=1'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('couples', csrf, demoAdmin), tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=1'] });
 }
 
 function coupleDetail(c, { couple, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
@@ -197,7 +207,7 @@ function coupleDetail(c, { couple, photos, totalCount, favCount, view, csrf, fla
       </form>
     </section>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), body, scripts: ['/js/panel.js?v=1', '/js/admin.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=1', '/js/admin.js?v=1'] });
 }
 
 function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
@@ -257,7 +267,7 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       </ul>` : h`<div class="empty-box">${icon('image')}<p>Henüz portfolyo fotoğrafı yok.</p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), body, scripts: ['/js/admin.js?v=1'] });
+  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=1'] });
 }
 
 function account(c, { admin, csrf, flash: f, demoAdmin }) {
@@ -276,7 +286,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
       </form>
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Hesap', csrf, nav: adminNav('account', csrf, demoAdmin), body });
+  return panelLayout(c, { title: 'Hesap', csrf, nav: adminNav('account', csrf, demoAdmin), tabs: adminTabs('account', demoAdmin), body });
 }
 
-module.exports = { adminNav, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = { adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

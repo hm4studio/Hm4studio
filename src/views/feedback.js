@@ -2,7 +2,7 @@
 // Görüş formu ve admin görüşler sayfası.
 const { h, raw } = require('./html');
 const { publicLayout, panelLayout, flash, icon } = require('./components');
-const { adminNav } = require('./admin');
+const { adminNav, adminTabs } = require('./admin');
 
 function form(c, { roles, areas, error, values = {}, thanks, preArea }) {
   const sel = (a, b) => (a === b ? raw(' selected') : '');
@@ -108,7 +108,7 @@ function adminList(c, { items, areas, csrf, flash: f }) {
       </li>`)}
     </ul>` : h`<div class="empty-box">${icon('star')}<p>Henüz görüş gelmedi. Demo bağlantısını paylaştığınızda gelen yorumlar burada görünür.</p></div>`}
   </div>`;
-  return panelLayout(c, { title: 'Görüşler', csrf, nav: adminNav('feedback', csrf, false), body });
+  return panelLayout(c, { title: 'Görüşler', csrf, nav: adminNav('feedback', csrf, false), tabs: adminTabs('feedback'), body });
 }
 
 module.exports = { form, adminList };

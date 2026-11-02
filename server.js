@@ -55,6 +55,10 @@ function setSecurityHeaders(res) {
 function serveStatic(req, res, pathname) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return false;
   const rel = decodeURIComponent(pathname);
+  // Uygulama (PWA) dosyaları: servis çalışanı her zaman güncel kontrol edilmeli
+  if (rel === '/sw.js' || rel === '/manifest.webmanifest' || rel === '/offline.html') {
+    return sendFile(req, res, PUBLIC_DIR, rel.slice(1), { cache: 'no-cache' });
+  }
   if (rel.startsWith('/css/') || rel.startsWith('/js/') || rel.startsWith('/images/') || rel === '/robots.txt') {
     return sendFile(req, res, PUBLIC_DIR, rel.slice(1), { cache: config.isProd ? 'public, max-age=604800' : 'no-cache' });
   }

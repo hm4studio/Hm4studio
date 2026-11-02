@@ -126,7 +126,14 @@ function couplePanel(c, { couple, photos, totalCount, favCount, view, csrf }) {
       ${couple.event_date ? h`<p class="muted">${formatDate(couple.event_date)}</p>` : ''}
     </section>
 
-    ${statusBar(c.stages, couple.stage, couple.stage_note)}
+    <div class="install" data-install hidden>
+      <img class="install__icon" src="/images/icon-192.png" alt="" width="48" height="48">
+      <div class="install__copy"><p class="install__title">HM4 Studio’yu telefonunuza ekleyin</p><p class="install__text" data-install-text></p></div>
+      <button type="button" class="btn btn--primary btn--sm" data-install-btn hidden>Ekle</button>
+      <button type="button" class="install__close" data-install-close aria-label="Kapat">${icon('close')}</button>
+    </div>
+
+    <div id="durum">${statusBar(c.stages, couple.stage, couple.stage_note)}</div>
 
     <section class="panel-section" aria-labelledby="gallery-title">
       <div class="panel-section__head">
@@ -142,7 +149,13 @@ function couplePanel(c, { couple, photos, totalCount, favCount, view, csrf }) {
           : 'Fotoğraflarınız hazırlandığında burada görünecek.'}</p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Panelim', csrf, nav, body, scripts: ['/js/panel.js?v=1'] });
+  const tabs = [
+    { href: '/panel#durum', label: 'Durum', icon: 'clock' },
+    { href: '/panel', label: 'Fotoğraflar', icon: 'image', active: view !== 'fav' },
+    { href: '/panel?g=fav', label: 'Favoriler', icon: 'heart', active: view === 'fav' },
+    { form: '/cikis', csrf, label: 'Çıkış', icon: 'logout' },
+  ];
+  return panelLayout(c, { title: 'Panelim', csrf, nav, body, scripts: ['/js/panel.js?v=1'], tabs });
 }
 
 module.exports = { coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate };
