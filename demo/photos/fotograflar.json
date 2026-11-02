@@ -1,0 +1,101 @@
+{
+  "_aciklama": "Demo modunda kullanılan örnek fotoğraflar. Sıra: portfolyodaki sıra (ilk fotoğraf anasayfa kapağı olur). Dosya adlarını değiştirirseniz burayı da güncelleyin.",
+  "portfolio": [
+    {
+      "file": "orman-gunbatimi.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "sehir-yaya-gecidi.jpg",
+      "category": "Şehir"
+    },
+    {
+      "file": "sirt-sirta.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "kemerli-pencere.jpg",
+      "category": "Şehir"
+    },
+    {
+      "file": "beni-takip-et.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "gol-gunbatimi-cift.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "yapraklar-altinda.jpg",
+      "category": "Siyah-Beyaz"
+    },
+    {
+      "file": "deniz-feneri.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "tarihi-kapi.jpg",
+      "category": "Şehir"
+    },
+    {
+      "file": "gol-kiyisi-dantel-duvak.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "siluet.jpg",
+      "category": "Siyah-Beyaz"
+    },
+    {
+      "file": "gol-kiyisi-oturan-gelin.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "siyah-beyaz-duvak.jpg",
+      "category": "Siyah-Beyaz"
+    },
+    {
+      "file": "orman-yolu.jpg",
+      "category": "Siyah-Beyaz"
+    },
+    {
+      "file": "el-ele-gol.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "siyah-beyaz-profil.jpg",
+      "category": "Siyah-Beyaz"
+    },
+    {
+      "file": "cayirda-yuruyus.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "yesillikte-bakis.jpg",
+      "category": "Doğa"
+    },
+    {
+      "file": "cimende-adimlar.jpg",
+      "category": "Doğa"
+    }
+  ],
+  "couples": {
+    "demo": [
+      "orman-gunbatimi.jpg",
+      "deniz-feneri.jpg",
+      "gol-kiyisi-dantel-duvak.jpg",
+      "sirt-sirta.jpg",
+      "el-ele-gol.jpg",
+      "beni-takip-et.jpg",
+      "cayirda-yuruyus.jpg",
+      "yesillikte-bakis.jpg",
+      "siyah-beyaz-duvak.jpg"
+    ],
+    "demo-2": [
+      "gol-gunbatimi-cift.jpg",
+      "gol-kiyisi-oturan-gelin.jpg",
+      "siyah-beyaz-profil.jpg",
+      "orman-yolu.jpg",
+      "yapraklar-altinda.jpg"
+    ]
+  }
+}

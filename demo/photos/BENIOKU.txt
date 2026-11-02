@@ -1,9 +1,8 @@
 Demo modunda sitede görünen örnek fotoğraflar bu klasörden alınır.
 
-Buradaki ornek-XX.jpg dosyaları yalnızca yer tutucudur. Demoyu paylaşmadan önce
-silip yerine kendi 8-12 fotoğrafınızı koyun:
-- Yalnızca JPG
-- Uzun kenarı yaklaşık 1600 piksel (hızlı açılması için)
-- Paylaşmaya izniniz olan kareler (çiftlerin onayı)
-
-Sunucu her açıldığında ve her sıfırlamada bu klasörü yeniden okur.
+- fotograflar.json: hangi fotoğrafın portfolyoda hangi sırada ve hangi kategoride
+  göründüğünü, hangi örnek çiftin galerisinde yer aldığını belirler.
+  Listedeki ilk fotoğraf anasayfa kapağı olur.
+- Yeni fotoğraf eklerken: JPG, uzun kenarı yaklaşık 1600 piksel olsun ve
+  fotograflar.json'a ekleyin.
+- Paylaşmaya izniniz olan kareleri kullanın (çiftlerin onayı).

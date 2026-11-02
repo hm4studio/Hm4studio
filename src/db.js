@@ -73,6 +73,16 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 `);
 
+// Sonradan eklenen alanlar (mevcut veritabanlarını bozmadan eklenir)
+function addColumn(table, column, def) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
+}
+addColumn('couples', 'due_date', 'TEXT');
+addColumn('couples', 'album_limit', 'INTEGER NOT NULL DEFAULT 60');
+addColumn('couples', 'album_locked', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('couples', 'plan_json', "TEXT NOT NULL DEFAULT '{}'");
+
 const q = (sql) => db.prepare(sql);
 
 module.exports = {
@@ -102,8 +112,13 @@ module.exports = {
   createCouple: ({ name, accessCode, hash, eventDate }) =>
     Number(q('INSERT INTO couples(name, access_code, password_hash, event_date) VALUES(?, ?, ?, ?)')
       .run(name, accessCode, hash, eventDate || null).lastInsertRowid),
-  updateCouple: (id, { name, eventDate }) =>
-    q('UPDATE couples SET name = ?, event_date = ? WHERE id = ?').run(name, eventDate || null, id),
+  updateCouple: (id, { name, eventDate, dueDate, albumLimit }) =>
+    q('UPDATE couples SET name = ?, event_date = ?, due_date = ?, album_limit = ? WHERE id = ?').run(name, eventDate || null, dueDate || null, albumLimit, id),
+  setCoupleDue: (id, dueDate) => q('UPDATE couples SET due_date = ? WHERE id = ?').run(dueDate || null, id),
+  setAlbum: (id, { limit, locked }) => q('UPDATE couples SET album_limit = ?, album_locked = ? WHERE id = ?').run(limit, locked ? 1 : 0, id),
+  setAlbumLocked: (id, locked) => q('UPDATE couples SET album_locked = ? WHERE id = ?').run(locked ? 1 : 0, id),
+  setPlan: (id, plan) => q('UPDATE couples SET plan_json = ? WHERE id = ?').run(JSON.stringify(plan), id),
+  favoriteCount: (coupleId) => q('SELECT COUNT(*) AS n FROM favorites WHERE couple_id = ?').get(coupleId).n,
   setCouplePassword: (id, hash) => q('UPDATE couples SET password_hash = ? WHERE id = ?').run(hash, id),
   setCoupleStage: (id, stage, note) => q('UPDATE couples SET stage = ?, stage_note = ? WHERE id = ?').run(stage, note, id),
   deleteCouple: (id) => q('DELETE FROM couples WHERE id = ?').run(id),

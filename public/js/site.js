@@ -28,6 +28,12 @@
   }
 
   // ── Kapak üzerindeki şeffaf menü, kaydırınca dolar ──
+  const plainHeader = document.querySelector('.site-header:not(.site-header--overlay)');
+  if (plainHeader) {
+    const upd = () => plainHeader.classList.toggle('is-scrolled', window.scrollY > 8);
+    upd();
+    window.addEventListener('scroll', upd, { passive: true });
+  }
   const header = document.querySelector('.site-header--overlay');
   if (header) {
     const update = () => header.classList.toggle('is-solid', window.scrollY > window.innerHeight * 0.6);
@@ -36,7 +42,7 @@
   }
 
   // ── Durum çubuğu ──
-  document.querySelectorAll('.status__fill[data-pct]').forEach((el) => {
+  document.querySelectorAll('.status__fill[data-pct], .album-bar__fill[data-pct]').forEach((el) => {
     requestAnimationFrame(() => { el.style.width = `${Number(el.dataset.pct) || 0}%`; });
   });
 

@@ -1,7 +1,6 @@
 'use strict';
 // Demo modu: örnek çiftleri, fotoğrafları ve portfolyoyu oluşturur; belirli aralıklarla sıfırlar.
-// Örnek fotoğraflar demo/photos/ klasöründen alınır (JPG). Kendi örnek fotoğraflarınızı oraya koyabilirsiniz
-// (uzun kenarı ~1600 px olacak şekilde küçültülmüş olmaları yeterli).
+// Örnek fotoğraflar demo/photos/ klasöründen, sıraları ve kategorileri demo/photos/fotograflar.json'dan alınır.
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -10,21 +9,30 @@ const db = require('./db');
 const auth = require('./auth');
 const media = require('./media');
 const { getContent } = require('./content');
+const { today, addDays } = require('./jobs');
 
 const PHOTO_DIR = path.join(config.ROOT, 'demo', 'photos');
 const DEMO_ADMIN = 'demo';
 
 let nextResetAt = 0;
 
-function samplePhotos() {
+function readPhoto(file) {
   try {
-    return fs.readdirSync(PHOTO_DIR)
-      .filter((f) => /\.jpe?g$/i.test(f))
-      .sort()
-      .map((f) => ({ name: f, buf: fs.readFileSync(path.join(PHOTO_DIR, f)) }))
-      .filter((p) => media.detectType(p.buf) === 'jpg');
+    const buf = fs.readFileSync(path.join(PHOTO_DIR, path.basename(file)));
+    return media.detectType(buf) === 'jpg' ? { name: path.basename(file), buf } : null;
   } catch {
-    return [];
+    return null;
+  }
+}
+
+// demo/photos/fotograflar.json varsa sıra, kategori ve çift galerileri oradan; yoksa klasördeki tüm JPG'ler
+function demoManifest() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(PHOTO_DIR, 'fotograflar.json'), 'utf8'));
+  } catch {
+    let files = [];
+    try { files = fs.readdirSync(PHOTO_DIR).filter((f) => /\.jpe?g$/i.test(f)).sort(); } catch { /* klasör yok */ }
+    return { portfolio: files.map((file) => ({ file, category: '' })), couples: { demo: files, 'demo-2': files.slice(0, 5) } };
   }
 }
 
@@ -44,38 +52,56 @@ function seed() {
   fs.rmSync(path.join(config.publicMediaDir, 'portfolio'), { recursive: true, force: true });
   demoAdminId();
 
-  const photos = samplePhotos();
   const c = getContent();
+  const last = c.stages.length - 1;
+  const manifest = demoManifest();
   const unused = auth.hashPassword(crypto.randomBytes(24).toString('hex'));
+  const t = today();
+  const d = (n) => addDays(t, n);
 
   const couples = [
-    { name: 'Elif & Burak', code: 'demo', stage: 2, note: 'Fotoğraflarınızın düzenlenmesi sürüyor; video kurgusuna gelecek hafta başlıyoruz.', favs: [1, 4, 6] },
-    { name: 'Selin & Emre', code: 'demo-2', stage: c.stages.length - 1, note: 'Tüm fotoğraflarınız ve düğün filminiz teslim edildi. Mutluluklar!', favs: [0, 2] },
+    { name: 'Elif & Burak', code: 'demo', date: d(-51), due: d(5), stage: Math.min(2, last), limit: 5, locked: false, favs: [2, 3, 5],
+      note: 'Fotoğraflarınızın düzenlenmesi sürüyor; video kurgusuna gelecek hafta başlıyoruz.',
+      plan: { prep: 'Gelin evi · [adres]', venue: '[Düğün salonu adı ve adresi]', outdoor: 'Göl kıyısı ve çam ormanı, gün batımı', song: 'Klip için yavaş, akustik bir şarkı', flow: '13:00  Gelin hazırlığı\n15:30  Dış çekim\n19:00  Salon girişi\n21:30  Pasta', people: 'Gelinin annesi ve babaannesi, sağdıç Mert', notes: '', saved: d(-58) } },
+    { name: 'Selin & Emre', code: 'demo-2', date: d(-70), due: d(-10), stage: last, limit: 4, locked: true, favs: [0, 1, 4],
+      note: 'Tüm fotoğraflarınız ve düğün filminiz teslim edildi. Mutluluklar!',
+      plan: { venue: '[Mekân adı]', outdoor: 'Göl kıyısı', flow: '16:00  Dış çekim\n20:00  Düğün', saved: d(-75) } },
+    { name: 'Zeynep & Can', code: 'demo-3', date: d(-40), due: d(-3), stage: Math.min(3, last), limit: 60, note: 'Video kurgusu sürüyor.' },
+    { name: 'Ayşe & Mehmet', code: 'demo-4', date: d(12), due: d(42), stage: 0, limit: 60, plan: { venue: 'Kına gecesi · [mekân]', saved: d(-2) } },
+    { name: 'Merve & Onur', code: 'demo-5', date: d(25), due: d(55), stage: 0, limit: 60 },
   ];
 
+  let photoCount = 0;
   for (const k of couples) {
-    const id = db.createCouple({ name: k.name, accessCode: k.code, hash: unused, eventDate: '2026-09-12' });
-    db.setCoupleStage(id, Math.min(k.stage, c.stages.length - 1), k.note);
-    const ids = photos.map((p) => {
+    const id = db.createCouple({ name: k.name, accessCode: k.code, hash: unused, eventDate: k.date });
+    db.setCoupleStage(id, k.stage, k.note || '');
+    db.setCoupleDue(id, k.due);
+    db.setAlbum(id, { limit: k.limit, locked: false });
+    if (k.plan) db.setPlan(id, k.plan);
+    const files = (manifest.couples && manifest.couples[k.code]) || [];
+    const ids = files.map(readPhoto).filter(Boolean).map((p) => {
       const fileKey = crypto.randomBytes(16).toString('hex');
       media.saveCouplePhoto(id, fileKey, { thumb: p.buf, display: p.buf });
+      photoCount++;
       return db.addPhoto({ coupleId: id, fileKey, originalName: p.name, originalExt: null });
     });
-    for (const i of k.favs) if (ids[i]) db.setFavorite(id, ids[i], true);
+    for (const i of k.favs || []) if (ids[i]) db.setFavorite(id, ids[i], true);
+    if (k.locked && ids.length) db.setAlbumLocked(id, true);
   }
 
-  const cats = c.portfolio.categories;
+  // Portfolyo en yeniden eskiye listelenir: listedeki ilk fotoğraf en son eklenir, böylece en üstte ve kapakta olur.
   let heroId = null;
-  photos.forEach((p, i) => {
+  for (const item of [...(manifest.portfolio || [])].reverse()) {
+    const p = readPhoto(item.file);
+    if (!p) continue;
     const fileKey = crypto.randomBytes(16).toString('hex');
     media.savePortfolioPhoto(fileKey, { thumb: p.buf, display: p.buf });
-    const id = db.addPortfolioItem({ fileKey, category: cats[i % cats.length] || '', alt: '' });
-    if (i === 0) heroId = id;
-  });
+    heroId = db.addPortfolioItem({ fileKey, category: c.portfolio.categories.includes(item.category) ? item.category : '', alt: item.alt || '' });
+  }
   if (heroId) db.setSetting('hero_portfolio_id', String(heroId));
 
   nextResetAt = Date.now() + config.demoResetHours * 3600 * 1000;
-  console.log(`Demo verileri hazırlandı (${photos.length} örnek fotoğraf). Sonraki sıfırlama: ${new Date(nextResetAt).toLocaleString('tr-TR')}`);
+  console.log(`Demo verileri hazırlandı (${photoCount} çift fotoğrafı, ${(manifest.portfolio || []).length} portfolyo). Sonraki sıfırlama: ${new Date(nextResetAt).toLocaleString('tr-TR')}`);
 }
 
 function start() {

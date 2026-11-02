@@ -37,7 +37,7 @@
   "portfolio": {
     "title": "Portfolyo",
     "text": "Instagram'da paylaştığımız çalışmalardan bir seçki. Bir fotoğrafa dokunarak büyük hâlini görebilirsiniz.",
-    "categories": ["Düğün", "Nişan", "Kına", "Dış Çekim"],
+    "categories": ["Doğa", "Şehir", "Siyah-Beyaz", "Düğün", "Nişan", "Kına", "Dış Çekim"],
     "emptyText": "Portfolyo yakında burada olacak. Bu arada Instagram'dan çalışmalarımıza göz atabilirsiniz."
   },
 
@@ -48,7 +48,7 @@
       "[ÖRNEK METİN] Yıllardır çiftlerin en özel günlerinde yanlarında oluyoruz. Her düğünün kendine ait bir dili var; biz o dili değiştirmeden, olduğu gibi kaydetmeye çalışıyoruz.",
       "[ÖRNEK METİN] Çekimden önce sizinle tanışır, gününüzün akışını birlikte planlarız. Çekim günü dikkat çekmeden çalışır, size değil anlara odaklanırız. Teslim sürecinin her aşamasını da kendi panelinizden takip edebilirsiniz."
     ],
-    "image": "",
+    "image": "/images/hakkimizda.jpg",
     "approach": [
       { "title": "Tanışma", "text": "Beklentilerinizi, mekânı ve günün akışını birlikte konuşuruz." },
       { "title": "Çekim günü", "text": "Doğal, sakin ve göze batmayan bir çalışma biçimi." },

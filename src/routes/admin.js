@@ -12,6 +12,7 @@ const views = require('../views/admin');
 const { portfolioItems } = require('./public');
 const { requireAdmin, checkCsrf, setFlash, takeFlash, slugify, toId } = require('./guards');
 const demo = require('../demo');
+const { addDays } = require('../jobs');
 
 const newKey = () => crypto.randomBytes(16).toString('hex');
 
@@ -89,7 +90,9 @@ function register(router) {
       return redirect(res, '/admin');
     }
     const password = String(form.password || '').trim().length >= 8 ? String(form.password).trim() : auth.friendlyPassword(10);
-    const id = db.createCouple({ name, accessCode: code, hash: auth.hashPassword(password), eventDate: cleanDate(form.eventDate) });
+    const eventDate = cleanDate(form.eventDate);
+    const id = db.createCouple({ name, accessCode: code, hash: auth.hashPassword(password), eventDate });
+    if (eventDate) db.setCoupleDue(id, addDays(eventDate, 45)); // varsayılan teslim: çekimden 45 gün sonra
     setFlash(req, {
       message: `${name} eklendi.`,
       type: 'success',
@@ -133,9 +136,27 @@ function register(router) {
     if (!form) return;
     const couple = getCoupleOr404(params.id);
     const name = cleanText(form.name, 120) || couple.name;
-    db.updateCouple(couple.id, { name, eventDate: cleanDate(form.eventDate) });
+    const albumLimit = Math.min(Math.max(Number.parseInt(form.albumLimit, 10) || couple.album_limit, 1), 1000);
+    db.updateCouple(couple.id, { name, eventDate: cleanDate(form.eventDate), dueDate: cleanDate(form.dueDate), albumLimit });
     setFlash(req, { message: 'Bilgiler güncellendi.', type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
+  });
+
+  // Albüm seçimi kilidini aç / kapat
+  router.post('/admin/ciftler/:id/album-kilit', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const locked = form.locked === '1';
+    db.setAlbumLocked(couple.id, locked);
+    setFlash(req, { message: locked ? 'Albüm seçimi kilitlendi.' : 'Kilit açıldı; çift yeniden seçim yapabilir.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}`);
+  });
+
+  // İş takvimi
+  router.get('/admin/takvim', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, views.calendar(getContent(), { couples: db.listCouples(), csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.post('/admin/ciftler/:id/sifre', async (req, res, { params }) => {

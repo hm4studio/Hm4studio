@@ -2,11 +2,13 @@
 // Yönetim paneli sayfaları.
 const { h, raw } = require('./html');
 const { panelLayout, statusBar, flash, icon } = require('./components');
-const { photoTile, galleryTabs, logoutForm, formatDate } = require('./panel');
+const { photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView } = require('./panel');
+const { jobStatus, daysBetween, today } = require('../jobs');
 
 function adminNav(active, csrf, demoAdmin = false) {
   const items = [
     { href: '/admin', label: 'Çiftler', key: 'couples', icon: 'users' },
+    { href: '/admin/takvim', label: 'Takvim', key: 'calendar', icon: 'clock' },
     { href: '/admin/portfolyo', label: 'Portfolyo', key: 'portfolio', icon: 'image' },
     // Görüşler ziyaretçilerin özel yorumlarıdır; demo stüdyo hesabına gösterilmez
     ...(demoAdmin ? [] : [{ href: '/admin/gorusler', label: 'Görüşler', key: 'feedback', icon: 'star' }]),
@@ -22,6 +24,7 @@ function adminNav(active, csrf, demoAdmin = false) {
 function adminTabs(active, demoAdmin = false) {
   return [
     { href: '/admin', label: 'Çiftler', icon: 'users', active: active === 'couples' },
+    { href: '/admin/takvim', label: 'Takvim', icon: 'clock', active: active === 'calendar' },
     { href: '/admin/portfolyo', label: 'Portfolyo', icon: 'image', active: active === 'portfolio' },
     ...(demoAdmin ? [] : [{ href: '/admin/gorusler', label: 'Görüşler', icon: 'star', active: active === 'feedback' }]),
     { href: '/admin/hesap', label: 'Hesap', icon: 'settings', active: active === 'account' },
@@ -85,15 +88,16 @@ function dashboard(c, { couples, csrf, flash: f, demoAdmin }) {
         ${couples.length ? h`
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th scope="col">Çift</th><th scope="col">Tarih</th><th scope="col">Aşama</th><th scope="col">Fotoğraf</th><th scope="col">Favori</th><th scope="col"><span class="sr-only">İşlem</span></th></tr></thead>
+            <thead><tr><th scope="col">Çift</th><th scope="col">Tarih</th><th scope="col">Aşama</th><th scope="col">Teslim</th><th scope="col">Fotoğraf</th><th scope="col">Albüm</th><th scope="col"><span class="sr-only">İşlem</span></th></tr></thead>
             <tbody>
               ${couples.map((k) => h`
               <tr>
                 <td><a class="strong-link" href="/admin/ciftler/${k.id}">${k.name}</a><br><code class="muted">${k.access_code}</code></td>
                 <td>${formatDate(k.event_date) || '—'}</td>
                 <td><span class="badge${k.stage >= c.stages.length - 1 ? ' badge--done' : ''}">${c.stages[k.stage] || c.stages[0]}</span></td>
+                <td>${(() => { const st = jobStatus(k, c.stages); return h`<span class="state state--${st[0]}">${st[1]}</span>`; })()}</td>
                 <td>${k.photo_count}</td>
-                <td>${k.fav_count}</td>
+                <td>${k.fav_count} / ${k.album_limit}${k.album_locked ? raw(' ✓') : ''}</td>
                 <td><a class="btn btn--outline btn--sm" href="/admin/ciftler/${k.id}">Aç</a></td>
               </tr>`)}
             </tbody>
@@ -151,6 +155,14 @@ function coupleDetail(c, { couple, photos, totalCount, favCount, view, csrf, fla
             <label for="date">Çekim tarihi</label>
             <input id="date" name="eventDate" type="date" value="${couple.event_date || ''}">
           </div>
+          <div class="field">
+            <label for="due">Teslim tarihi</label>
+            <input id="due" name="dueDate" type="date" value="${couple.due_date || ''}">
+          </div>
+          <div class="field">
+            <label for="limit">Albüm kare sayısı</label>
+            <input id="limit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${couple.album_limit}">
+          </div>
           <button class="btn btn--outline" type="submit">Güncelle</button>
         </form>
       </section>
@@ -165,6 +177,8 @@ function coupleDetail(c, { couple, photos, totalCount, favCount, view, csrf, fla
         </form>
       </section>
     </div>
+
+    ${planView(couple)}
 
     <section class="panel-section" aria-labelledby="upload-title">
       <div class="panel-section__head">
@@ -188,14 +202,15 @@ function coupleDetail(c, { couple, photos, totalCount, favCount, view, csrf, fla
 
     <section class="panel-section" aria-labelledby="gallery-title">
       <div class="panel-section__head">
-        <h2 class="panel-section__title" id="gallery-title">Galeri ve favoriler</h2>
-        <p class="muted">Kalbe dokunarak çiftin favori listesini düzenleyebilirsiniz.</p>
+        <h2 class="panel-section__title" id="gallery-title">Galeri ve albüm seçimi</h2>
+        <p class="muted">Kalbe dokunarak çiftin albüm seçimini düzenleyebilirsiniz.</p>
       </div>
+      ${albumBar(couple, favCount, { admin: true, csrf, base })}
       ${galleryTabs(base, view, totalCount, favCount)}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
         ${photos.map((p) => photoTile(p, { favEndpoint: `${base}/favori`, canDelete: true, csrf, deleteAction: `${base}/fotograflar/${p.id}/sil` }))}
-      </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav' ? 'Bu çift henüz favori seçmedi.' : 'Henüz fotoğraf yüklenmedi.'}</p></div>`}
+      </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav' ? 'Bu çift henüz albüm için kare seçmedi.' : 'Henüz fotoğraf yüklenmedi.'}</p></div>`}
     </section>
 
     <section class="danger-zone" aria-labelledby="danger-title">
@@ -207,7 +222,52 @@ function coupleDetail(c, { couple, photos, totalCount, favCount, view, csrf, fla
       </form>
     </section>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=1', '/js/admin.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=2', '/js/admin.js?v=1'] });
+}
+
+function calendar(c, { couples, csrf, demoAdmin }) {
+  const t = today();
+  const rows = couples.map((k) => ({ k, st: jobStatus(k, c.stages) }));
+  const count = (key) => rows.filter((r) => r.st[0] === key).length;
+  const deliveries = rows.filter((r) => ['late', 'soon', 'ok'].includes(r.st[0])).sort((a, b) => (a.k.due_date || '9').localeCompare(b.k.due_date || '9'));
+  const shoots = rows.filter((r) => r.st[0] === 'upcoming').sort((a, b) => a.k.event_date.localeCompare(b.k.event_date));
+  const done = rows.filter((r) => r.st[0] === 'done');
+  const item = (r, mode) => {
+    const d = mode === 'shoot' ? r.k.event_date : r.k.due_date;
+    const dt = d ? new Date(`${d}T12:00:00`) : null;
+    const n = d ? daysBetween(t, d) : null;
+    const rel = n === null ? 'Teslim tarihi yok' : n === 0 ? 'bugün' : n > 0 ? `${n} gün kaldı` : `${Math.abs(n)} gün geçti`;
+    return h`<li class="job">
+      <div class="job__date" aria-hidden="true">${dt ? h`<span class="job__day">${dt.getDate()}</span><span class="job__mon">${dt.toLocaleDateString('tr-TR', { month: 'short' })}</span>` : h`<span class="job__day">—</span>`}</div>
+      <div class="job__main"><a class="strong-link" href="/admin/ciftler/${r.k.id}">${r.k.name}</a>
+        <span class="muted">${mode === 'shoot' ? `Çekim · ${formatDate(d)}` : `${d ? `Teslim · ${formatDate(d)}` : 'Teslim tarihi girilmedi'} · ${c.stages[r.k.stage] || ''}`}</span></div>
+      <div class="job__side"><span class="state state--${r.st[0]}">${r.st[1]}</span>${mode === 'done' ? '' : h`<span class="muted job__rel">${rel}</span>`}</div>
+    </li>`;
+  };
+  const body = h`
+  <div class="container">
+    <div class="panel-title-row"><h1 class="page-title">İş takvimi</h1></div>
+    <div class="stats stats--4">
+      <div class="stat"><span class="stat__num">${count('late')}</span><span class="stat__label">Geciken teslim</span></div>
+      <div class="stat"><span class="stat__num">${count('soon')}</span><span class="stat__label">Bu hafta teslim</span></div>
+      <div class="stat"><span class="stat__num">${count('ok')}</span><span class="stat__label">Devam eden iş</span></div>
+      <div class="stat"><span class="stat__num">${shoots.length}</span><span class="stat__label">Yaklaşan çekim</span></div>
+    </div>
+    <section class="panel-section">
+      <div class="panel-section__head"><h2 class="panel-section__title">Teslimler</h2>
+        <p class="muted">En yakın teslim en üstte. Teslim tarihini çiftin sayfasındaki Bilgiler kartından değiştirebilirsiniz.</p></div>
+      ${deliveries.length ? h`<ul class="jobs">${deliveries.map((r) => item(r, 'due'))}</ul>` : h`<div class="empty-box"><p>Bekleyen teslim yok.</p></div>`}
+    </section>
+    <section class="panel-section">
+      <div class="panel-section__head"><h2 class="panel-section__title">Yaklaşan çekimler</h2></div>
+      ${shoots.length ? h`<ul class="jobs">${shoots.map((r) => item(r, 'shoot'))}</ul>` : h`<div class="empty-box"><p>Planlanmış çekim yok. Çifte çekim tarihi girdiğinizde burada görünür.</p></div>`}
+    </section>
+    ${done.length ? h`<section class="panel-section">
+      <div class="panel-section__head"><h2 class="panel-section__title">Teslim edilenler</h2></div>
+      <ul class="jobs">${done.map((r) => item(r, 'done'))}</ul>
+    </section>` : ''}
+  </div>`;
+  return panelLayout(c, { title: 'İş takvimi', csrf, nav: adminNav('calendar', csrf, demoAdmin), tabs: adminTabs('calendar', demoAdmin), body });
 }
 
 function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
@@ -285,8 +345,13 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
         <button class="btn btn--primary" type="submit">Şifreyi değiştir</button>
       </form>
     </section>
+    <section class="card account-logout">
+      <h2 class="card__title">Oturum</h2>
+      <p class="muted">Bu cihazda yönetim panelinden çıkış yapın.</p>
+      ${logoutForm(csrf, 'Çıkış yap')}
+    </section>
   </div>`;
   return panelLayout(c, { title: 'Hesap', csrf, nav: adminNav('account', csrf, demoAdmin), tabs: adminTabs('account', demoAdmin), body });
 }
 
-module.exports = { adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = { calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

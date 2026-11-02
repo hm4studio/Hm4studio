@@ -31,7 +31,7 @@ const NAV = [
 function brandMark(c) {
   return c.brand.logo
     ? h`<img class="brand__logo" src="${c.brand.logo}" alt="${c.brand.name}" width="140" height="40">`
-    : h`<span class="brand__name">${c.brand.name}</span>`;
+    : h`<span class="brand__name" lang="en">${c.brand.name}</span>`;
 }
 
 function siteHeader(c, active, overlay) {
@@ -101,7 +101,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=1">
+<link rel="stylesheet" href="/css/style.css?v=2">
 </head>
 <body class="${bodyClass}">
 <a class="skip-link" href="#main">İçeriğe geç</a>`;
@@ -114,7 +114,7 @@ ${demoBanner()}
 ${siteHeader(c, active, overlayHeader)}
 <main id="main">${body}</main>
 ${siteFooter(c)}
-<script src="/js/site.js?v=1" defer></script>
+<script src="/js/site.js?v=2" defer></script>
 <script src="/js/pwa.js?v=1" defer></script>
 </body>
 </html>`);
@@ -142,7 +142,7 @@ ${demoBanner()}
 </header>
 <main id="main" class="panel-main${tabs.length ? ' has-tabbar' : ''}">${body}</main>
 ${tabbar(tabs)}
-<script src="/js/site.js?v=1" defer></script>
+<script src="/js/site.js?v=2" defer></script>
 <script src="/js/pwa.js?v=1" defer></script>
 ${scripts.map((s) => h`<script src="${s}" defer></script>`)}
 </body>
