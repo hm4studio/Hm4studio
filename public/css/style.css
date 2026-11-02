@@ -692,3 +692,31 @@ input:focus, select:focus, textarea:focus { border-bottom-color: var(--ink); box
 .hero__content > :nth-child(4) { animation-delay: .24s; }
 #main { animation: hm4-fade .5s var(--soft) both; }
 .hero ~ * #main, body:has(.hero) #main { animation: none; }
+
+/* ══════════════ Uygulama giriş ekranı (/uygulama) ══════════════ */
+.app-body { min-height: 100vh; min-height: 100svh; background: var(--bg); }
+.app-login { min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; }
+.app-login__media { position: relative; flex: 1 0 38vh; min-height: 38vh; background: #2a2622; color: #fff; overflow: hidden; }
+.app-login__media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; animation: hm4-settle 2.6s var(--soft) both; }
+.app-login__shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(16, 14, 12, .5), rgba(16, 14, 12, .08) 50%, rgba(16, 14, 12, .5)); }
+.app-login__brand { position: absolute; left: 0; right: 0; top: calc(28px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.app-login__brand .brand__name { font-size: 1.05rem; }
+.app-login__tag { font-size: .66rem; letter-spacing: .22em; text-transform: uppercase; opacity: .85; }
+.app-login__sheet {
+  position: relative; margin-top: -20px; background: var(--bg);
+  padding: 28px max(24px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 480px; align-self: center;
+}
+.app-switch { display: flex; gap: 22px; border-bottom: 1px solid var(--hair); margin-bottom: 6px; }
+.app-switch__item { min-height: 44px; display: inline-flex; align-items: center; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; text-decoration: none; color: var(--muted); border-bottom: 1px solid transparent; margin-bottom: -1px; }
+.app-switch__item[aria-current="page"] { color: var(--ink); border-bottom-color: var(--ink); }
+.app-login__title { font-family: var(--serif); font-size: 2rem; line-height: 1.1; letter-spacing: -.01em; }
+.app-login__lead { margin: 0; color: var(--ink-2); font-size: .95rem; }
+.app-login .form { margin-top: 6px; }
+.app-login__demo { margin: 0; }
+.app-login__help { margin: 4px 0 0; font-size: .82rem; color: var(--muted); text-align: center; }
+@media (min-width: 900px) {
+  .app-login { flex-direction: row; }
+  .app-login__media { flex: 1 1 55%; min-height: 100vh; }
+  .app-login__sheet { margin: 0; justify-content: center; flex: 0 0 480px; padding-inline: 56px; }
+}

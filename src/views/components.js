@@ -101,7 +101,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=2">
+<link rel="stylesheet" href="/css/style.css?v=3">
 </head>
 <body class="${bodyClass}">
 <a class="skip-link" href="#main">İçeriğe geç</a>`;
@@ -131,12 +131,12 @@ function tabbar(items) {
 }
 
 // Çift ve admin panelleri için sade iskelet
-function panelLayout(c, { title, csrf, nav, body, scripts = [], tabs = [] }) {
+function panelLayout(c, { title, csrf, nav, body, scripts = [], tabs = [], home = '/' }) {
   return String(h`${head({ title: `${title} — ${c.brand.name}`, csrf, bodyClass: 'panel-body' })}
 ${demoBanner()}
 <header class="panel-header">
   <div class="container panel-header__inner">
-    <a class="brand" href="/">${brandMark(c)}</a>
+    <a class="brand" href="${home}">${brandMark(c)}</a>
     ${nav || ''}
   </div>
 </header>

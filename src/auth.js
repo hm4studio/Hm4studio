@@ -74,6 +74,11 @@ function endSession(req, res) {
   res.setHeader('Set-Cookie', cookieHeader('', 0));
 }
 
+// Uygulamadan (ana ekrana eklenen) açılıp açılmadığı: /uygulama ziyaretinde işaretlenir
+function isApp(req) {
+  return parseCookies(req).hm4_app === '1';
+}
+
 // İsteğe bağlı oturumu yükler: req.session = { kind, userId, csrf } veya null
 function loadSession(req) {
   const sid = parseCookies(req)[COOKIE];
@@ -124,6 +129,6 @@ setInterval(() => {
 
 module.exports = {
   hashPassword, verifyPassword, DUMMY_HASH, randomToken, friendlyPassword,
-  startSession, endSession, loadSession, csrfValid,
+  startSession, endSession, loadSession, csrfValid, parseCookies, isApp,
   isRateLimited, recordFailure, clearFailures,
 };

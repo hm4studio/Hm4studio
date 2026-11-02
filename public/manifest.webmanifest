@@ -5,7 +5,7 @@
   "lang": "tr",
   "dir": "ltr",
   "id": "/panel",
-  "start_url": "/panel?kaynak=uygulama",
+  "start_url": "/uygulama",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

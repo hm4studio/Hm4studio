@@ -1,6 +1,7 @@
 'use strict';
 // Herkese açık sayfalar ve çift girişi.
 const db = require('../db');
+const config = require('../config');
 const auth = require('../auth');
 const media = require('../media');
 const { getContent } = require('../content');
@@ -8,6 +9,7 @@ const { getInstagramPosts } = require('../instagram');
 const { html, redirect, readForm } = require('../http');
 const views = require('../views/public');
 const panelViews = require('../views/panel');
+const appViews = require('../views/app');
 const { checkCsrf, slugify } = require('./guards');
 
 function portfolioItems() {
@@ -39,9 +41,19 @@ function register(router) {
   router.get('/hakkimizda', (req, res) => html(res, views.aboutPage(getContent())));
   router.get('/iletisim', (req, res) => html(res, views.contactPage(getContent())));
 
+  // ── Telefon uygulaması açılış ekranı: yalnızca çift / stüdyo girişi ──
+  router.get('/uygulama', (req, res, { query }) => {
+    if (req.session?.kind === 'couple') return redirect(res, '/panel');
+    if (req.session?.kind === 'admin') return redirect(res, '/admin');
+    const c = getContent();
+    res.setHeader('Set-Cookie', `hm4_app=1; Path=/; Max-Age=31536000; SameSite=Lax${config.isProd ? '; Secure' : ''}`);
+    html(res, appViews.appLogin(c, { mode: query.get('giris') === 'studyo' ? 'studyo' : 'cift', heroUrl: heroUrl(c), noAdmin: db.countAdmins() === 0 }));
+  });
+
   // ── Çift girişi ──
   router.get('/giris', (req, res) => {
     if (req.session?.kind === 'couple') return redirect(res, '/panel');
+    if (auth.isApp(req)) return redirect(res, '/uygulama');
     html(res, panelViews.coupleLogin(getContent()));
   });
 
@@ -49,14 +61,17 @@ function register(router) {
     const c = getContent();
     const form = await readForm(req);
     const code = slugify(form.code || '');
+    const view = (opts) => (form.app === '1'
+      ? appViews.appLogin(c, { mode: 'cift', heroUrl: heroUrl(c), ...opts })
+      : panelViews.coupleLogin(c, opts));
     if (auth.isRateLimited(req)) {
-      return html(res, panelViews.coupleLogin(c, { error: 'Çok fazla hatalı deneme. Lütfen 15 dakika sonra tekrar deneyin.', values: { code } }), 429);
+      return html(res, view({ error: 'Çok fazla hatalı deneme. Lütfen 15 dakika sonra tekrar deneyin.', values: { code } }), 429);
     }
     const couple = code ? db.getCoupleByCode(code) : null;
     const ok = auth.verifyPassword(form.password || '', couple ? couple.password_hash : auth.DUMMY_HASH);
     if (!couple || !ok) {
       auth.recordFailure(req);
-      return html(res, panelViews.coupleLogin(c, { error: 'Erişim kodu veya şifre hatalı.', values: { code } }), 401);
+      return html(res, view({ error: 'Erişim kodu veya şifre hatalı.', values: { code } }), 401);
     }
     auth.clearFailures(req);
     auth.startSession(res, 'couple', couple.id);
@@ -69,8 +84,9 @@ function register(router) {
     if (req.session) checkCsrf(req, form.csrf);
     const wasAdmin = req.session?.kind === 'admin';
     auth.endSession(req, res);
+    if (auth.isApp(req)) return redirect(res, wasAdmin ? '/uygulama?giris=studyo' : '/uygulama');
     redirect(res, wasAdmin ? '/admin/giris' : '/');
   });
 }
 
-module.exports = { register, portfolioItems };
+module.exports = { register, portfolioItems, heroUrl };

@@ -108,7 +108,7 @@ function adminList(c, { items, areas, csrf, flash: f }) {
       </li>`)}
     </ul>` : h`<div class="empty-box">${icon('star')}<p>Henüz görüş gelmedi. Demo bağlantısını paylaştığınızda gelen yorumlar burada görünür.</p></div>`}
   </div>`;
-  return panelLayout(c, { title: 'Görüşler', csrf, nav: adminNav('feedback', csrf, false), tabs: adminTabs('feedback'), body });
+  return panelLayout(c, { title: 'Görüşler', csrf, nav: adminNav('feedback', csrf, false), home: '/admin', tabs: adminTabs('feedback'), body });
 }
 
 module.exports = { form, adminList };

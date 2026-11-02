@@ -9,7 +9,8 @@ const { getContent } = require('../content');
 const { html, json, redirect, readForm, readJson, readBody, HttpError } = require('../http');
 const panelViews = require('../views/panel');
 const views = require('../views/admin');
-const { portfolioItems } = require('./public');
+const { portfolioItems, heroUrl } = require('./public');
+const appViews = require('../views/app');
 const { requireAdmin, checkCsrf, setFlash, takeFlash, slugify, toId } = require('./guards');
 const demo = require('../demo');
 const { addDays } = require('../jobs');
@@ -47,6 +48,7 @@ function register(router) {
   // ── Giriş ──
   router.get('/admin/giris', (req, res) => {
     if (req.session?.kind === 'admin') return redirect(res, '/admin');
+    if (auth.isApp(req)) return redirect(res, '/uygulama?giris=studyo');
     html(res, panelViews.adminLogin(getContent(), { noAdmin: db.countAdmins() === 0 }));
   });
 
@@ -54,14 +56,17 @@ function register(router) {
     const c = getContent();
     const form = await readForm(req);
     const username = cleanText(form.username, 60);
+    const view = (opts) => (form.app === '1'
+      ? appViews.appLogin(c, { mode: 'studyo', heroUrl: heroUrl(c), ...opts })
+      : panelViews.adminLogin(c, opts));
     if (auth.isRateLimited(req)) {
-      return html(res, panelViews.adminLogin(c, { error: 'Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.', values: { code: username } }), 429);
+      return html(res, view({ error: 'Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.', values: { code: username } }), 429);
     }
     const admin = db.getAdminByUsername(username);
     const ok = auth.verifyPassword(form.password || '', admin ? admin.password_hash : auth.DUMMY_HASH);
     if (!admin || !ok) {
       auth.recordFailure(req);
-      return html(res, panelViews.adminLogin(c, { error: 'Kullanıcı adı veya şifre hatalı.', values: { code: username } }), 401);
+      return html(res, view({ error: 'Kullanıcı adı veya şifre hatalı.', values: { code: username } }), 401);
     }
     auth.clearFailures(req);
     auth.startSession(res, 'admin', admin.id);

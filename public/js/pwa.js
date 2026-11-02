@@ -9,8 +9,16 @@
     });
   }
 
+  // Ana ekrandaki uygulamadan açıldıysa sitenin sayfaları yerine uygulamanın giriş ekranına git
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isStandalone) {
+    const p = location.pathname;
+    if (p === '/' || p === '/giris') { location.replace('/uygulama'); return; }
+    if (p === '/admin/giris') { location.replace('/uygulama?giris=studyo'); return; }
+  }
+
   // Çevrimdışı sayfasındayken bağlantı gelince yenile
-  if (location.pathname === '/offline.html') window.addEventListener('online', () => location.replace('/panel'));
+  if (location.pathname === '/offline.html') window.addEventListener('online', () => location.replace('/uygulama'));
 
   const card = document.querySelector('[data-install]');
   if (!card) return;

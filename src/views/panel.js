@@ -240,7 +240,7 @@ function couplePanel(c, { couple, photos, totalCount, favCount, view, csrf, flas
     { href: '/panel#plan', label: 'Plan', icon: 'pin' },
     { form: '/cikis', csrf, label: 'Çıkış', icon: 'logout' },
   ];
-  return panelLayout(c, { title: 'Panelim', csrf, nav, body, scripts: ['/js/panel.js?v=2'], tabs });
+  return panelLayout(c, { title: 'Panelim', csrf, nav, body, scripts: ['/js/panel.js?v=2'], tabs, home: '/panel' });
 }
 
 module.exports = { coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };
