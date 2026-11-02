@@ -18,7 +18,7 @@ require('./src/demo').start();
 // İsteğe bağlı: .env / barındırma panelindeki ADMIN_USERNAME + ADMIN_PASSWORD ile ilk yönetici hesabını oluştur
 (function bootstrapAdmin() {
   const db = require('./src/db');
-  const u = process.env.ADMIN_USERNAME, p = process.env.ADMIN_PASSWORD;
+  const u = (process.env.ADMIN_USERNAME || 'hm4studio').trim(), p = process.env.ADMIN_PASSWORD;
   if (!u || !p || u === 'demo' || db.getAdminByUsername(u)) return;
   if (p.length < 10) { console.warn('ADMIN_PASSWORD en az 10 karakter olmalı; yönetici oluşturulmadı.'); return; }
   db.upsertAdmin(u, auth.hashPassword(p));

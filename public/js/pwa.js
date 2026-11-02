@@ -14,7 +14,7 @@
   if (isStandalone) {
     const p = location.pathname;
     if (p === '/' || p === '/giris') { location.replace('/uygulama'); return; }
-    if (p === '/admin/giris') { location.replace('/uygulama?giris=studyo'); return; }
+    if (p === '/admin/giris') { location.replace('/uygulama'); return; }
   }
 
   // Çevrimdışı sayfasındayken bağlantı gelince yenile

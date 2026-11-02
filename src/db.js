@@ -96,6 +96,7 @@ module.exports = {
   // ── Admin ──
   countAdmins: () => q('SELECT COUNT(*) AS n FROM admins').get().n,
   getAdminByUsername: (u) => q('SELECT * FROM admins WHERE username = ?').get(u),
+  findAdminLogin: (u) => q("SELECT * FROM admins WHERE lower(username) = lower(?) AND username <> 'demo'").get(u),
   getAdmin: (id) => q('SELECT id, username FROM admins WHERE id = ?').get(id),
   upsertAdmin: (username, hash) =>
     q('INSERT INTO admins(username, password_hash) VALUES(?, ?) ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash').run(username, hash),

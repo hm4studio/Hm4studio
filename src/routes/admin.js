@@ -48,7 +48,7 @@ function register(router) {
   // ── Giriş ──
   router.get('/admin/giris', (req, res) => {
     if (req.session?.kind === 'admin') return redirect(res, '/admin');
-    if (auth.isApp(req)) return redirect(res, '/uygulama?giris=studyo');
+    if (auth.isApp(req)) return redirect(res, '/uygulama');
     html(res, panelViews.adminLogin(getContent(), { noAdmin: db.countAdmins() === 0 }));
   });
 
@@ -57,7 +57,7 @@ function register(router) {
     const form = await readForm(req);
     const username = cleanText(form.username, 60);
     const view = (opts) => (form.app === '1'
-      ? appViews.appLogin(c, { mode: 'studyo', heroUrl: heroUrl(c), ...opts })
+      ? appViews.appLogin(c, { heroUrl: heroUrl(c), ...opts })
       : panelViews.adminLogin(c, opts));
     if (auth.isRateLimited(req)) {
       return html(res, view({ error: 'Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.', values: { code: username } }), 429);
@@ -90,7 +90,7 @@ function register(router) {
     let code = slugify(form.code || '');
     if (code && code.length < 3) code = '';
     if (!code) code = `${slugify(name) || 'cift'}-${crypto.randomInt(1000, 9999)}`;
-    if (db.getCoupleByCode(code)) {
+    if (db.getCoupleByCode(code) || db.findAdminLogin(code)) {
       setFlash(req, { message: `"${code}" erişim kodu zaten kullanılıyor. Başka bir kod deneyin.`, type: 'error' });
       return redirect(res, '/admin');
     }

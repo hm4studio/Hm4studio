@@ -707,9 +707,6 @@ input:focus, select:focus, textarea:focus { border-bottom-color: var(--ink); box
   padding: 28px max(24px, env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
   display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 480px; align-self: center;
 }
-.app-switch { display: flex; gap: 22px; border-bottom: 1px solid var(--hair); margin-bottom: 6px; }
-.app-switch__item { min-height: 44px; display: inline-flex; align-items: center; font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; text-decoration: none; color: var(--muted); border-bottom: 1px solid transparent; margin-bottom: -1px; }
-.app-switch__item[aria-current="page"] { color: var(--ink); border-bottom-color: var(--ink); }
 .app-login__title { font-family: var(--serif); font-size: 2rem; line-height: 1.1; letter-spacing: -.01em; }
 .app-login__lead { margin: 0; color: var(--ink-2); font-size: .95rem; }
 .app-login .form { margin-top: 6px; }
