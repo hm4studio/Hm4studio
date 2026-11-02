@@ -1,0 +1,85 @@
+{
+  "_aciklama": "Sitedeki TÜM metinler ve iletişim bilgileri bu dosyadadır. Değiştirip kaydedin, sunucuyu yeniden başlatın. Köşeli parantezli [ÖRNEK] değerler gerçek bilgilerle değiştirilmelidir.",
+
+  "brand": {
+    "name": "HM4 Studio",
+    "tagline": "Düğün & Nişan Fotoğrafçılığı",
+    "logo": ""
+  },
+
+  "seo": {
+    "title": "HM4 Studio — Düğün ve Nişan Fotoğrafçısı",
+    "description": "HM4 Studio; düğün, nişan, kına ve dış çekimlerde fotoğraf ve video ile gününüzün gerçek hâlini kaydeder."
+  },
+
+  "hero": {
+    "eyebrow": "Düğün & Nişan Fotoğrafçılığı · Film",
+    "title": "Gününüz, olduğu gibi.",
+    "text": "Düğün, nişan ve kına gecelerinizi sade, doğal ve zamansız karelerle kayda alıyoruz. Yıllar sonra baktığınızda o anı yeniden yaşayın diye.",
+    "image": "",
+    "video": "",
+    "primaryButton": "Portfolyoyu Gör",
+    "secondaryButton": "İletişime Geç"
+  },
+
+  "intro": {
+    "title": "Poz değil, an.",
+    "text": "Bizim için iyi bir düğün fotoğrafı; kimsenin bakmadığı bir anda yakalanan gülüş, annenin gözündeki yaş, el ele tutuşurken titreyen parmaklardır. Sizi yönlendirmek yerine yanınızda oluruz."
+  },
+
+  "services": [
+    { "title": "Düğün", "text": "Hazırlıktan son dansa kadar günün tamamı; fotoğraf ve film." },
+    { "title": "Nişan & Söz", "text": "Ailelerin buluştuğu o ilk resmî günün samimi kayıtları." },
+    { "title": "Kına Gecesi", "text": "Duygusu en yoğun gecenin ışığını ve ritmini bozmadan çekim." },
+    { "title": "Dış Çekim", "text": "Düğün öncesi veya sonrası, size özel bir mekânda sakin bir çekim." }
+  ],
+
+  "portfolio": {
+    "title": "Portfolyo",
+    "text": "Instagram'da paylaştığımız çalışmalardan bir seçki. Bir fotoğrafa dokunarak büyük hâlini görebilirsiniz.",
+    "categories": ["Düğün", "Nişan", "Kına", "Dış Çekim"],
+    "emptyText": "Portfolyo yakında burada olacak. Bu arada Instagram'dan çalışmalarımıza göz atabilirsiniz."
+  },
+
+  "about": {
+    "title": "Hakkımızda",
+    "lead": "HM4 Studio, düğün ve nişan hikâyelerini fotoğraf ve videoyla anlatan küçük bir ekip.",
+    "paragraphs": [
+      "[ÖRNEK METİN] Yıllardır çiftlerin en özel günlerinde yanlarında oluyoruz. Her düğünün kendine ait bir dili var; biz o dili değiştirmeden, olduğu gibi kaydetmeye çalışıyoruz.",
+      "[ÖRNEK METİN] Çekimden önce sizinle tanışır, gününüzün akışını birlikte planlarız. Çekim günü dikkat çekmeden çalışır, size değil anlara odaklanırız. Teslim sürecinin her aşamasını da kendi panelinizden takip edebilirsiniz."
+    ],
+    "image": "",
+    "approach": [
+      { "title": "Tanışma", "text": "Beklentilerinizi, mekânı ve günün akışını birlikte konuşuruz." },
+      { "title": "Çekim günü", "text": "Doğal, sakin ve göze batmayan bir çalışma biçimi." },
+      { "title": "Seçim", "text": "Fotoğraflarınızı size özel panelden görür, favorilerinizi işaretlersiniz." },
+      { "title": "Teslim", "text": "Düzenlenmiş fotoğraflarınız ve filminiz özenle hazırlanıp teslim edilir." }
+    ]
+  },
+
+  "contact": {
+    "title": "İletişim",
+    "text": "Tarihiniz için uygunluk sormak ya da tanışmak isterseniz bize yazın. Genellikle aynı gün dönüş yapıyoruz.",
+    "phone": "+905XXXXXXXXX",
+    "phoneDisplay": "[0 5XX XXX XX XX]",
+    "whatsapp": "905XXXXXXXXX",
+    "whatsappMessage": "Merhaba HM4 Studio, düğün/nişan çekimi için bilgi almak istiyorum.",
+    "email": "[ornek@hm4studio.com]",
+    "instagram": "hm4studio",
+    "regions": ["[Şehriniz] ve çevre ilçeler", "[Yakın şehirler]", "Türkiye geneli (yol ve konaklama ayrıca)"],
+    "hours": "[Hafta içi 10:00 – 19:00]"
+  },
+
+  "stages": [
+    "Çekim tamamlandı",
+    "Fotoğraf seçimi",
+    "Düzenleme",
+    "Video kurgusu",
+    "Onay",
+    "Teslim edildi"
+  ],
+
+  "footer": {
+    "note": "Düğün, nişan ve kına fotoğrafçılığı · Film"
+  }
+}

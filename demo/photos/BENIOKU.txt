@@ -1,0 +1,9 @@
+Demo modunda sitede görünen örnek fotoğraflar bu klasörden alınır.
+
+Buradaki ornek-XX.jpg dosyaları yalnızca yer tutucudur. Demoyu paylaşmadan önce
+silip yerine kendi 8-12 fotoğrafınızı koyun:
+- Yalnızca JPG
+- Uzun kenarı yaklaşık 1600 piksel (hızlı açılması için)
+- Paylaşmaya izniniz olan kareler (çiftlerin onayı)
+
+Sunucu her açıldığında ve her sıfırlamada bu klasörü yeniden okur.

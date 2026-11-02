@@ -1,0 +1,6 @@
+# Gizli ayarlar ve çalışma verileri — asla paylaşılmamalı
+.env
+data/
+node_modules/
+*.log
+.DS_Store

@@ -1,0 +1,35 @@
+# Render.com tek tıkla kurulum dosyası (Blueprint).
+# Render'da: New + › Blueprint › bu projenin GitHub deposunu seçin.
+# Görüşlerin ve verilerin kaybolmaması için kalıcı disk gerekir; bu da ücretli "Starter" planı ister.
+services:
+  - type: web
+    name: hm4studio-demo
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: echo "Kurulum gerekmez"
+    startCommand: npm start
+    healthCheckPath: /
+    disk:
+      name: hm4-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: DEMO_MODE
+        value: "true"
+      - key: DEMO_RESET_HOURS
+        value: "6"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_USERNAME
+        sync: false   # görüşleri okuyacağınız gerçek yönetici kullanıcı adı
+      - key: ADMIN_PASSWORD
+        sync: false   # en az 10 karakter; ilk açılışta hesap oluşturulur
+      - key: SITE_URL
+        sync: false   # Render size soracak: ör. https://hm4studio-demo.onrender.com
