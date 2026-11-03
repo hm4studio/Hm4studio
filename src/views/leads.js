@@ -87,10 +87,7 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin }) {
             <button class="btn btn--text btn--sm" type="submit">Kaydet</button>
           </form>
           ${l.couple_id ? h`<a class="btn btn--text btn--sm" href="/admin/ciftler/${l.couple_id}">Çifti aç ${icon('arrow')}</a>` : h`
-          <form method="post" action="/admin/talepler/${l.id}/cift" class="inline-form" data-confirm="Bu talepten çift oluşturulsun mu? Giriş bilgileri sonraki ekranda gösterilir.">
-            <input type="hidden" name="csrf" value="${csrf}">
-            <button class="btn btn--primary btn--sm" type="submit">Çift oluştur</button>
-          </form>`}
+          <a class="btn btn--primary btn--sm" href="/admin/randevu/yeni?talep=${l.id}">Randevu oluştur</a>`}
           <form method="post" action="/admin/talepler/${l.id}/sil" class="inline-form" data-confirm="Bu talep silinsin mi?">
             <input type="hidden" name="csrf" value="${csrf}">
             <button class="btn btn--text btn--sm btn--danger-text" type="submit" aria-label="Talebi sil">${icon('trash')}</button>

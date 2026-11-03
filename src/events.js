@@ -59,6 +59,7 @@ function photosUploaded(coupleId) {
     const key = `fotograflar:${c.id}:${new Date().toISOString().slice(0, 10)}`;
     if (canMessage(c) && !db.wasNotified(key)) {
       payload.whatsapp = wa.templateMessage(c.phone, 'fotograflar', { ad: c.name, link: wa.panelLink() });
+      db.markAlbumInfoSent(c.id);
       db.markNotified(key);
     }
     post(payload);

@@ -13,7 +13,8 @@ const { portfolioItems, heroUrl } = require('./public');
 const appViews = require('../views/app');
 const { requireAdmin, checkCsrf, setFlash, takeFlash, slugify, toId } = require('./guards');
 const demo = require('../demo');
-const { addDays } = require('../jobs');
+const { addDays, today } = require('../jobs');
+const appt = require('../appointments');
 const wa = require('../whatsapp');
 const events = require('../events');
 
@@ -75,39 +76,109 @@ function register(router) {
     redirect(res, '/admin');
   });
 
-  // ── Çiftler ──
-  router.get('/admin', (req, res) => {
+  // ── Panel: takvim, yaklaşanlar, çift kartları ──
+  router.get('/admin', (req, res, { query }) => {
     if (!requireAdmin(req, res)) return;
-    html(res, views.dashboard(getContent(), { couples: db.listCouples(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const ay = query.get('ay');
+    const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ay || '') ? ay : today().slice(0, 7);
+    html(res, views.dashboard(getContent(), { couples: db.listCouples(), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
+  // Yeni randevu formu (takvimden tarih, talepten bilgiler gelebilir)
+  router.get('/admin/randevu/yeni', (req, res, { query }) => {
+    if (!requireAdmin(req, res)) return;
+    const values = { waOptin: 1, albumLimit: 60, eventDate: cleanDate(query.get('tarih')) || '' };
+    let talepId = null;
+    const lead = query.get('talep') ? db.getLead(Number(query.get('talep')) || 0) : null;
+    if (lead && !lead.couple_id) {
+      talepId = lead.id;
+      Object.assign(values, {
+        fullName: lead.name, phone: lead.phone ? wa.displayPhone(lead.phone) : '', eventDate: lead.event_date || values.eventDate,
+        venue: lead.place, source: lead.source === 'whatsapp' ? 'WhatsApp' : 'Site formu',
+        eventType: (getContent().appointments?.eventTypes || []).find((t) => lead.service && lead.service.includes(t)) || '',
+        notes: lead.message,
+      });
+    }
+    html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true }));
   });
 
   router.post('/admin/ciftler', async (req, res) => {
     const form = await formGuard(req, res);
     if (!form) return;
-    const name = cleanText(form.name, 120);
-    if (!name) {
-      setFlash(req, { message: 'Çiftin adını yazın.', type: 'error' });
-      return redirect(res, '/admin');
+    const c = getContent();
+    const { a, errors } = appt.readForm(form, c);
+    if (errors.length) {
+      return html(res, views.appointmentPage(c, { values: form, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, errors, talepId: form.talep, back: '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true }), 400);
     }
-    let code = slugify(form.code || '');
-    if (code && code.length < 3) code = '';
-    if (!code) code = `${slugify(name) || 'cift'}-${crypto.randomInt(1000, 9999)}`;
-    if (db.getCoupleByCode(code) || db.findAdminLogin(code)) {
-      setFlash(req, { message: `"${code}" erişim kodu zaten kullanılıyor. Başka bir kod deneyin.`, type: 'error' });
-      return redirect(res, '/admin');
-    }
-    const password = String(form.password || '').trim().length >= 8 ? String(form.password).trim() : auth.friendlyPassword(10);
-    const eventDate = cleanDate(form.eventDate);
-    const id = db.createCouple({ name, accessCode: code, hash: auth.hashPassword(password), eventDate });
-    if (eventDate) db.setCoupleDue(id, addDays(eventDate, 45)); // varsayılan teslim: çekimden 45 gün sonra
-    const phone = wa.normalizePhone(form.phone);
-    if (phone) db.setCoupleContact(id, phone, true);
+    // Çiftin panel girişi: kod ve şifre otomatik
+    const base = slugify(a.name) || 'cift';
+    let code = `${base}-${crypto.randomInt(1000, 9999)}`;
+    while (db.getCoupleByCode(code) || db.findAdminLogin(code)) code = `${base}-${crypto.randomInt(1000, 9999)}`;
+    const password = auth.friendlyPassword(10);
+    const id = db.createCouple({ name: a.name, accessCode: code, hash: auth.hashPassword(password), eventDate: a.eventDate });
+    if (!a.dueDate && a.eventDate) a.dueDate = addDays(a.eventDate, Number(c.appointments?.defaultDeliveryDays) || 45);
+    db.updateAppointment(id, a);
+    db.setRefNo(id, db.nextRefNo((a.eventDate || today()).slice(0, 4)));
+    const lead = form.talep ? db.getLead(Number(form.talep) || 0) : null;
+    if (lead && !lead.couple_id) db.setLeadStatus(lead.id, 'rezervasyon', id);
     setFlash(req, {
-      message: `${name} eklendi.`,
+      message: `${a.name} için randevu oluşturuldu.`,
       type: 'success',
-      credentials: { url: `${config.siteUrl}/giris`, code, password },
+      credentials: { url: `${config.siteUrl}/uygulama`, code, password },
     });
     redirect(res, `/admin/ciftler/${id}`);
+  });
+
+  // Randevu bilgilerini düzenle
+  router.get('/admin/ciftler/:id/duzenle', (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    const couple = getCoupleOr404(params.id);
+    html(res, views.appointmentPage(getContent(), { values: appt.formValues(couple), action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
+  router.post('/admin/ciftler/:id/bilgi', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const c = getContent();
+    const { a, errors } = appt.readForm(form, c);
+    if (errors.length) {
+      return html(res, views.appointmentPage(c, { values: form, action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, errors, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req) }), 400);
+    }
+    if (!a.dueDate && a.eventDate) a.dueDate = addDays(a.eventDate, Number(c.appointments?.defaultDeliveryDays) || 45);
+    db.updateAppointment(couple.id, a);
+    if (!couple.ref_no) db.setRefNo(couple.id, db.nextRefNo((a.eventDate || today()).slice(0, 4)));
+    setFlash(req, { message: 'Randevu bilgileri kaydedildi.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}`);
+  });
+
+  // Tüm randevular: Excel'de açılan CSV
+  router.get('/admin/randevular.csv', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const stages = getContent().stages;
+    const cols = [
+      ['Randevu No', (k) => k.ref_no], ['Ad Soyad', (k) => k.full_name], ['Eş Adı', (k) => k.partner_name],
+      ['Telefon', (k) => (k.phone ? wa.displayPhone(k.phone) : '')], ['Etkinlik Türü', (k) => k.event_type],
+      ['Etkinlik Tarihi', (k) => (k.event_date ? k.event_date.split('-').reverse().join('.') : '')], ['Başlangıç Saati', (k) => k.start_time],
+      ['Şehir', (k) => k.city], ['Mekân', (k) => k.venue], ['Paket', (k) => k.package], ['Paket Detayı', (k) => k.package_detail],
+      ['Toplam Tutar', (k) => k.total_amount], ['Kapora', (k) => k.deposit], ['Kalan Bakiye', (k) => appt.payment(k)[2]],
+      ['Ödeme Durumu', (k) => appt.payment(k)[1]], ['Aşama', (k) => stages[k.stage] || ''],
+      ['Fotoğraf Hazır', (k) => (k.photo_ready ? 'Evet' : 'Hayır')], ['Video Hazır', (k) => (k.video_ready ? 'Evet' : 'Hayır')],
+      ['Albüm Hazır', (k) => (k.album_ready ? 'Evet' : 'Hayır')], ['Yüklenen Fotoğraf', (k) => k.photo_count],
+      ['Teslim Tarihi', (k) => (k.due_date ? k.due_date.split('-').reverse().join('.') : '')], ['Müşteri Kaynağı', (k) => k.source], ['Notlar', (k) => k.notes],
+    ];
+    const cell = (v) => {
+      let s = String(v ?? '');
+      if (/^[=+\-@]/.test(s)) s = `'${s}`; // Excel formül enjeksiyonuna karşı
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [cols.map((x) => x[0]).join(';'), ...db.listCouples().map((k) => cols.map((x) => cell(x[1](k))).join(';'))];
+    res.writeHead(200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="hm4-randevular-${today()}.csv"`,
+      'Cache-Control': 'no-store',
+    });
+    res.end(`﻿${lines.join('\r\n')}`);
   });
 
   router.get('/admin/ciftler/:id', (req, res, { params, query }) => {
@@ -124,7 +195,7 @@ function register(router) {
       view,
       csrf: req.session.csrf,
       flash: takeFlash(req),
-      loginUrl: `${config.siteUrl}/giris`,
+      loginUrl: `${config.siteUrl}/uygulama`,
       demoAdmin: demo.isDemoAdmin(req),
     }));
   });
@@ -138,24 +209,6 @@ function register(router) {
     db.setCoupleStage(couple.id, stage, String(form.note || '').trim().slice(0, 500));
     if (stage !== couple.stage) events.stageChanged(couple, stage);
     setFlash(req, { message: `Aşama güncellendi: ${stages[stage]}`, type: 'success' });
-    redirect(res, `/admin/ciftler/${couple.id}`);
-  });
-
-  router.post('/admin/ciftler/:id/bilgi', async (req, res, { params }) => {
-    const form = await formGuard(req, res);
-    if (!form) return;
-    const couple = getCoupleOr404(params.id);
-    const name = cleanText(form.name, 120) || couple.name;
-    const albumLimit = Math.min(Math.max(Number.parseInt(form.albumLimit, 10) || couple.album_limit, 1), 1000);
-    db.updateCouple(couple.id, { name, eventDate: cleanDate(form.eventDate), dueDate: cleanDate(form.dueDate), albumLimit });
-    const phone = wa.normalizePhone(form.phone);
-    if (String(form.phone || '').trim() && !phone) {
-      setFlash(req, { message: 'Bilgiler kaydedildi, ancak telefon numarası geçersiz olduğu için kaydedilmedi (örn. 0532 123 45 67).', type: 'error' });
-      db.setCoupleContact(couple.id, couple.phone, form.waOptin === '1');
-      return redirect(res, `/admin/ciftler/${couple.id}`);
-    }
-    db.setCoupleContact(couple.id, phone, form.waOptin === '1');
-    setFlash(req, { message: 'Bilgiler güncellendi.', type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
 

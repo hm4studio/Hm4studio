@@ -5,10 +5,11 @@ const { panelLayout, statusBar, flash, icon } = require('./components');
 const { photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView } = require('./panel');
 const { jobStatus, daysBetween, today } = require('../jobs');
 const { displayPhone } = require('../whatsapp');
+const { payment, tl } = require('../appointments');
 
 function adminNav(active, csrf, demoAdmin = false) {
   const items = [
-    { href: '/admin', label: 'Çiftler', key: 'couples', icon: 'users' },
+    { href: '/admin', label: 'Panel', key: 'couples', icon: 'users' },
     { href: '/admin/talepler', label: 'Talepler', key: 'leads', icon: 'whatsapp' },
     { href: '/admin/takvim', label: 'Takvim', key: 'calendar', icon: 'clock' },
     { href: '/admin/portfolyo', label: 'Portfolyo', key: 'portfolio', icon: 'image' },
@@ -25,7 +26,7 @@ function adminNav(active, csrf, demoAdmin = false) {
 // Telefonda alttaki sekme menüsü
 function adminTabs(active, demoAdmin = false) {
   return [
-    { href: '/admin', label: 'Çiftler', icon: 'users', active: active === 'couples' },
+    { href: '/admin', label: 'Panel', icon: 'users', active: active === 'couples' },
     { href: '/admin/talepler', label: 'Talepler', icon: 'whatsapp', active: active === 'leads' },
     { href: '/admin/takvim', label: 'Takvim', icon: 'clock', active: active === 'calendar' },
     { href: '/admin/portfolyo', label: 'Portfolyo', icon: 'image', active: active === 'portfolio' },
@@ -51,79 +52,269 @@ function flashBlock(f) {
   </div>` : ''}`;
 }
 
-function dashboard(c, { couples, csrf, flash: f, demoAdmin }) {
+const MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const DAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const shortDate = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
+
+// Ay takvimi: her günde o günün etkinlikleri
+function monthCalendar(couples, ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const first = new Date(Date.UTC(y, m - 1, 1));
+  const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const lead = (first.getUTCDay() + 6) % 7; // pazartesi başlangıç
+  const t = today();
+  const byDay = new Map();
+  for (const k of couples) {
+    if (!k.event_date || !k.event_date.startsWith(ym)) continue;
+    const d = Number(k.event_date.slice(8));
+    if (!byDay.has(d)) byDay.set(d, []);
+    byDay.get(d).push(k);
+  }
+  for (const list of byDay.values()) list.sort((a, b) => (a.start_time || '99').localeCompare(b.start_time || '99'));
+  const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push(null);
+  for (let d = 1; d <= daysIn; d++) cells.push(d);
+  while (cells.length % 7) cells.push(null);
+  return h`
+  <section class="cal" aria-labelledby="cal-title">
+    <div class="cal__head">
+      <h2 class="cal__title" id="cal-title">${MONTHS[m - 1]} ${y}</h2>
+      <div class="cal__nav">
+        <a class="cal__btn" href="/admin?ay=${prev}" aria-label="Önceki ay">${icon('left')}</a>
+        <a class="cal__today" href="/admin">Bugün</a>
+        <a class="cal__btn" href="/admin?ay=${next}" aria-label="Sonraki ay">${icon('right')}</a>
+      </div>
+    </div>
+    <div class="cal__grid" role="grid">
+      ${DAYS.map((d) => h`<div class="cal__dow" role="columnheader">${d}</div>`)}
+      ${cells.map((d) => {
+        if (!d) return h`<div class="cal__cell cal__cell--empty"></div>`;
+        const iso = `${ym}-${String(d).padStart(2, '0')}`;
+        const list = byDay.get(d) || [];
+        return h`<div class="cal__cell${iso === t ? ' is-today' : ''}${list.length ? ' has-events' : ''}" role="gridcell">
+          <a class="cal__day" href="/admin/randevu/yeni?tarih=${iso}" title="${shortDate(iso)} için randevu oluştur">${d}</a>
+          ${list.map((k) => h`<a class="cal__ev cal__ev--${k.stage === 0 ? 'new' : 'go'}" href="/admin/ciftler/${k.id}" title="${k.name} · ${k.event_type || 'Etkinlik'}${k.start_time ? ' · ' + k.start_time : ''}">
+            <span class="cal__ev-time">${k.start_time || ''}</span><span class="cal__ev-name">${k.name}</span></a>`)}
+        </div>`;
+      })}
+    </div>
+    <p class="cal__hint muted">Boş bir güne dokunarak o tarihe randevu oluşturabilirsiniz.</p>
+  </section>`;
+}
+
+// Çift kartı (panelde arama ve süzgeçle)
+function coupleCard(c, k) {
+  const pay = payment(k);
+  const last = c.stages.length - 1;
+  const pct = Math.round((Math.min(k.stage, last) / last) * 100);
+  const search = [k.name, k.full_name, k.partner_name, k.ref_no, k.city, k.venue, k.phone, k.package].join(' ').toLocaleLowerCase('tr-TR');
+  return h`<li class="ccard" data-card data-search="${search}" data-stage="${k.stage}" data-type="${k.event_type}" data-pay="${pay[0]}" data-date="${k.event_date || ''}">
+    <a class="ccard__link" href="/admin/ciftler/${k.id}">
+      <div class="ccard__top">
+        <span class="ccard__ref">${k.ref_no || '—'}</span>
+        ${k.event_type ? h`<span class="ccard__type">${k.event_type}</span>` : ''}
+      </div>
+      <h3 class="ccard__name">${k.name}</h3>
+      <p class="ccard__meta">${k.event_date ? shortDate(k.event_date) : 'Tarih yok'}${k.start_time ? ` · ${k.start_time}` : ''}${k.city || k.venue ? ` · ${[k.venue, k.city].filter(Boolean).join(', ')}` : ''}</p>
+      <div class="ccard__stage">
+        <span class="ccard__track"><span class="ccard__fill" data-pct="${pct}"></span></span>
+        <span class="ccard__stage-label">${c.stages[k.stage] || c.stages[0]}</span>
+      </div>
+      <div class="ccard__foot">
+        <span class="pay pay--${pay[0]}">${pay[1]}${pay[2] ? ` · ${tl(pay[2])}` : ''}</span>
+        <span class="ccard__ready" aria-label="Hazır olanlar">
+          <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span>
+        </span>
+      </div>
+    </a>
+  </li>`;
+}
+
+function dashboard(c, { couples, ym, csrf, flash: f, demoAdmin }) {
+  const t = today();
+  const in30 = couples.filter((k) => k.event_date && k.event_date >= t && daysBetween(t, k.event_date) <= 30)
+    .sort((a, b) => (a.event_date + (a.start_time || '')).localeCompare(b.event_date + (b.start_time || '')));
+  const thisMonth = couples.filter((k) => k.event_date && k.event_date.startsWith(t.slice(0, 7))).length;
+  const balance = couples.reduce((s, k) => s + payment(k)[2], 0);
+  const late = couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').length;
+  const o = c.appointments || {};
   const body = h`
   <div class="container">
     <div class="panel-title-row">
-      <h1 class="page-title">Çiftler</h1>
+      <div>
+        <p class="eyebrow">${new Date(`${t}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+        <h1 class="page-title">Panel</h1>
+      </div>
+      <a class="btn btn--primary" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a>
     </div>
     ${flashBlock(f)}
 
-    <div class="admin-grid">
-      <section class="card" aria-labelledby="new-couple">
-        <h2 class="card__title" id="new-couple">Yeni çift ekle</h2>
-        <form class="form" method="post" action="/admin/ciftler">
-          ${csrfField(csrf)}
-          <div class="field">
-            <label for="name">Çiftin adı</label>
-            <input id="name" name="name" type="text" required maxlength="120" placeholder="Ayşe & Mehmet">
-          </div>
-          <div class="field">
-            <label for="code">Erişim kodu <span class="muted">(boş bırakırsanız otomatik)</span></label>
-            <input id="code" name="code" type="text" maxlength="40" pattern="[a-z0-9-]{3,40}" placeholder="ayse-mehmet" autocapitalize="none" spellcheck="false">
-            <p class="hint">Küçük harf, rakam ve tire. Çift bu kodla giriş yapar.</p>
-          </div>
-          <div class="field">
-            <label for="date">Çekim tarihi</label>
-            <input id="date" name="eventDate" type="date">
-          </div>
-          <div class="field">
-            <label for="phone">Telefon (WhatsApp) <span class="muted">(isteğe bağlı)</span></label>
-            <input id="phone" name="phone" type="tel" maxlength="20" inputmode="tel" placeholder="05XX XXX XX XX">
-          </div>
-          <div class="field">
-            <label for="pw">Şifre <span class="muted">(boş bırakırsanız güçlü bir şifre üretilir)</span></label>
-            <input id="pw" name="password" type="text" minlength="8" maxlength="100" autocomplete="off">
-          </div>
-          <button class="btn btn--primary" type="submit">Çifti ekle</button>
-        </form>
-      </section>
+    <div class="stats stats--4">
+      <div class="stat"><span class="stat__num">${thisMonth}</span><span class="stat__label">Bu ay etkinlik</span></div>
+      <div class="stat"><span class="stat__num">${in30.length}</span><span class="stat__label">Önümüzdeki 30 gün</span></div>
+      <div class="stat"><span class="stat__num stat__num--sm">${tl(balance)}</span><span class="stat__label">Bekleyen bakiye</span></div>
+      <a class="stat stat--link" href="/admin/takvim"><span class="stat__num">${late}</span><span class="stat__label">Geciken teslim ${icon('arrow')}</span></a>
+    </div>
 
-      <section class="card card--wide" aria-labelledby="couple-list">
-        <h2 class="card__title" id="couple-list">Tüm çiftler <span class="muted">(${couples.length})</span></h2>
-        ${couples.length ? h`
-        <div class="table-wrap">
-          <table class="table">
-            <thead><tr><th scope="col">Çift</th><th scope="col">Tarih</th><th scope="col">Aşama</th><th scope="col">Teslim</th><th scope="col">Fotoğraf</th><th scope="col">Albüm</th><th scope="col"><span class="sr-only">İşlem</span></th></tr></thead>
-            <tbody>
-              ${couples.map((k) => h`
-              <tr>
-                <td><a class="strong-link" href="/admin/ciftler/${k.id}">${k.name}</a><br><code class="muted">${k.access_code}</code></td>
-                <td>${formatDate(k.event_date) || '—'}</td>
-                <td><span class="badge${k.stage >= c.stages.length - 1 ? ' badge--done' : ''}">${c.stages[k.stage] || c.stages[0]}</span></td>
-                <td>${(() => { const st = jobStatus(k, c.stages); return h`<span class="state state--${st[0]}">${st[1]}</span>`; })()}</td>
-                <td>${k.photo_count}</td>
-                <td>${k.fav_count} / ${k.album_limit}${k.album_locked ? raw(' ✓') : ''}</td>
-                <td><a class="btn btn--outline btn--sm" href="/admin/ciftler/${k.id}">Aç</a></td>
-              </tr>`)}
-            </tbody>
-          </table>
-        </div>` : h`<p class="muted">Henüz çift eklenmedi. Soldaki formdan ilk çifti ekleyin.</p>`}
+    <div class="dash">
+      ${monthCalendar(couples, ym)}
+      <section class="dash__side" aria-labelledby="up-title">
+        <h2 class="panel-section__title" id="up-title">Yaklaşan</h2>
+        ${in30.length ? h`<ul class="jobs">${in30.slice(0, 8).map((k) => {
+          const dt = new Date(`${k.event_date}T12:00:00`);
+          const n = daysBetween(t, k.event_date);
+          return h`<li class="job">
+            <div class="job__date" aria-hidden="true"><span class="job__day">${dt.getDate()}</span><span class="job__mon">${dt.toLocaleDateString('tr-TR', { month: 'short' })}</span></div>
+            <div class="job__main"><a class="strong-link" href="/admin/ciftler/${k.id}">${k.name}</a>
+              <span class="muted">${[k.event_type, k.start_time, k.venue || k.city].filter(Boolean).join(' · ') || 'Ayrıntı girilmedi'}</span></div>
+            <div class="job__side"><span class="muted job__rel">${n === 0 ? 'bugün' : n === 1 ? 'yarın' : `${n} gün`}</span></div>
+          </li>`;
+        })}</ul>` : h`<p class="muted">Önümüzdeki 30 günde randevu yok.</p>`}
       </section>
     </div>
+
+    <section class="panel-section" aria-labelledby="cards-title">
+      <div class="panel-section__head cards-head">
+        <h2 class="panel-section__title" id="cards-title">Çift kartları <span class="muted" data-card-count>(${couples.length})</span></h2>
+        <a class="btn btn--text btn--sm" href="/admin/randevular.csv">${icon('download')}Excel'e aktar</a>
+      </div>
+      <div class="card-filters" data-card-filters>
+        <label class="sr-only" for="q">Ara</label>
+        <input id="q" type="search" placeholder="İsim, telefon, mekân, randevu no…" data-f-q autocomplete="off">
+        <label class="sr-only" for="f-stage">Aşama</label>
+        <select id="f-stage" data-f-stage><option value="">Tüm aşamalar</option>${c.stages.map((s, i) => h`<option value="${i}">${s}</option>`)}</select>
+        <label class="sr-only" for="f-type">Tür</label>
+        <select id="f-type" data-f-type><option value="">Tüm türler</option>${(o.eventTypes || []).map((x) => h`<option>${x}</option>`)}</select>
+        <label class="sr-only" for="f-pay">Ödeme</label>
+        <select id="f-pay" data-f-pay><option value="">Tüm ödemeler</option><option value="unpaid">Ödeme bekleniyor</option><option value="deposit">Kapora alındı</option><option value="paid">Ödendi</option><option value="none">Tutar girilmedi</option></select>
+        <label class="sr-only" for="f-sort">Sıralama</label>
+        <select id="f-sort" data-f-sort><option value="new">En yeni kayıt</option><option value="date">Etkinlik tarihine göre</option></select>
+      </div>
+      ${couples.length ? h`<ul class="ccards" data-cards>${couples.map((k) => coupleCard(c, k))}</ul>
+        <p class="muted" data-cards-empty hidden>Aramaya uyan çift yok.</p>`
+        : h`<div class="empty-box"><p>Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p></div>`}
+    </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=1'] });
+  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=1'] });
+}
+
+// Randevu formu (yeni ve düzenleme ortak)
+function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, errors = [], talepId, back, demoAdmin, isNew }) {
+  const o = c.appointments || {};
+  const v = (k) => values[k] ?? '';
+  const sel = (name, list, placeholder) => h`<select id="${name}" name="${name}"><option value="">${placeholder}</option>${(list || []).map((x) => h`<option${x === v(name) ? raw(' selected') : ''}>${x}</option>`)}</select>`;
+  const chk = (name, label) => h`<label class="check"><input type="checkbox" name="${name}" value="1"${values[name] ? raw(' checked') : ''}><span>${label}</span></label>`;
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="${back}">${icon('left')}Geri</a>
+    <h1 class="page-title">${title}</h1>
+    ${errors.length ? h`<div class="flash flash--error" role="alert">${errors.map((e) => h`<div>${e}</div>`)}</div>` : ''}
+    <form class="form appt-form" method="post" action="${action}">
+      ${csrfField(csrf)}
+      ${talepId ? h`<input type="hidden" name="talep" value="${talepId}">` : ''}
+
+      <fieldset class="appt-group">
+        <legend>Kişi</legend>
+        <div class="appt-row">
+          <div class="field"><label for="fullName">Ad soyad</label><input id="fullName" name="fullName" type="text" required maxlength="80" value="${v('fullName')}" autocomplete="off"></div>
+          <div class="field"><label for="partnerName">Eş adı</label><input id="partnerName" name="partnerName" type="text" maxlength="80" value="${v('partnerName')}" autocomplete="off"></div>
+        </div>
+        <div class="appt-row">
+          <div class="field"><label for="phone">Telefon</label><input id="phone" name="phone" type="tel" inputmode="tel" maxlength="20" placeholder="05XX XXX XX XX" value="${v('phone')}"></div>
+          <div class="field"><label for="source">Müşteri kaynağı</label>${sel('source', o.sources, 'Seçin')}</div>
+        </div>
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>Etkinlik</legend>
+        <div class="appt-row">
+          <div class="field"><label for="eventType">Etkinlik türü</label>${sel('eventType', o.eventTypes, 'Seçin')}</div>
+          <div class="field"><label for="eventDate">Tarih</label><input id="eventDate" name="eventDate" type="date" value="${v('eventDate')}"></div>
+          <div class="field"><label for="startTime">Başlangıç saati</label><input id="startTime" name="startTime" type="time" value="${v('startTime')}"></div>
+        </div>
+        <div class="appt-row">
+          <div class="field"><label for="city">Şehir</label><input id="city" name="city" type="text" maxlength="60" value="${v('city')}"></div>
+          <div class="field"><label for="venue">Mekân</label><input id="venue" name="venue" type="text" maxlength="160" value="${v('venue')}"></div>
+        </div>
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>Paket ve ödeme</legend>
+        <div class="appt-row">
+          <div class="field"><label for="package">Paket</label><input id="package" name="package" type="text" maxlength="80" list="pkg-list" value="${v('package')}">
+            <datalist id="pkg-list">${(o.packages || []).map((x) => h`<option value="${x}">`)}</datalist></div>
+          <div class="field"><label for="total">Toplam tutar (₺)</label><input id="total" name="total" type="text" inputmode="numeric" placeholder="0" value="${v('total')}" data-money></div>
+          <div class="field"><label for="deposit">Kapora (₺)</label><input id="deposit" name="deposit" type="text" inputmode="numeric" placeholder="0" value="${v('deposit')}" data-money></div>
+        </div>
+        <div class="field"><label for="packageDetail">Paket detayı</label><textarea id="packageDetail" name="packageDetail" rows="3" maxlength="1000">${v('packageDetail')}</textarea></div>
+        <div class="appt-balance" data-balance aria-live="polite"></div>
+        ${chk('paidFull', 'Kalan bakiye tahsil edildi')}
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>Teslim</legend>
+        <div class="appt-row">
+          <div class="field"><label for="dueDate">Teslim tarihi <span class="muted">(boşsa etkinlikten ${o.defaultDeliveryDays || 45} gün sonra)</span></label><input id="dueDate" name="dueDate" type="date" value="${v('dueDate')}"></div>
+          <div class="field"><label for="albumLimit">Albüm kare sayısı</label><input id="albumLimit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${v('albumLimit') || 60}"></div>
+        </div>
+        ${isNew ? '' : h`<div class="appt-checks">${chk('photoReady', 'Fotoğraflar hazır')}${chk('videoReady', 'Video hazır')}${chk('albumReady', 'Albüm hazır')}</div>`}
+        ${chk('waOptin', 'WhatsApp bildirimleri gönderilsin')}
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>Notlar</legend>
+        <div class="field"><label for="notes" class="sr-only">Notlar</label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Yalnızca siz görürsünüz.">${v('notes')}</textarea></div>
+      </fieldset>
+
+      <div class="appt-actions">
+        <button class="btn btn--primary" type="submit">${submitLabel}</button>
+        <a class="btn btn--text" href="${back}">Vazgeç</a>
+      </div>
+    </form>
+  </div>`;
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=1'] });
+}
+
+// Çift sayfasındaki randevu özeti
+function appointmentSummary(c, k) {
+  const pay = payment(k);
+  const row = (label, value) => (value ? h`<div><dt>${label}</dt><dd>${value}</dd></div>` : '');
+  return h`
+  <section class="card appt-card" aria-labelledby="appt-title">
+    <div class="appt-card__head">
+      <h2 class="card__title" id="appt-title">Randevu</h2>
+      <a class="btn btn--outline btn--sm" href="/admin/ciftler/${k.id}/duzenle">Düzenle</a>
+    </div>
+    <dl class="appt-dl">
+      ${row('Randevu no', k.ref_no)}
+      ${row('Ad soyad', k.full_name)}
+      ${row('Eş adı', k.partner_name)}
+      ${k.phone ? h`<div><dt>Telefon</dt><dd><a href="tel:+${k.phone}">${displayPhone(k.phone)}</a> · <a href="https://wa.me/${k.phone}" target="_blank" rel="noopener">WhatsApp</a></dd></div>` : ''}
+      ${row('Etkinlik', [k.event_type, k.event_date ? shortDate(k.event_date) : '', k.start_time].filter(Boolean).join(' · '))}
+      ${row('Yer', [k.venue, k.city].filter(Boolean).join(', '))}
+      ${row('Paket', k.package)}
+      ${row('Paket detayı', k.package_detail)}
+      ${k.total_amount ? h`<div><dt>Ödeme</dt><dd>${tl(k.total_amount)} · kapora ${tl(k.deposit)} · <span class="pay pay--${pay[0]}">${pay[1]}${pay[2] ? ` · kalan ${tl(pay[2])}` : ''}</span></dd></div>` : ''}
+      ${row('Teslim', k.due_date ? shortDate(k.due_date) : '')}
+      <div><dt>Hazır</dt><dd>${[k.photo_ready && 'Fotoğraf', k.video_ready && 'Video', k.album_ready && 'Albüm'].filter(Boolean).join(', ') || 'Henüz yok'}</dd></div>
+      ${row('Albüm bilgisi gönderildi', k.album_info_sent_at ? shortDate(k.album_info_sent_at) : '')}
+      ${row('Kaynak', k.source)}
+      ${row('Notlar', k.notes)}
+    </dl>
+  </section>`;
 }
 
 function coupleDetail(c, { couple, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
-    <a class="back-link" href="/admin">${icon('left')}Tüm çiftler</a>
+    <a class="back-link" href="/admin">${icon('left')}Panel</a>
     <div class="panel-title-row">
       <div>
         <h1 class="page-title">${couple.name}</h1>
-        <p class="muted">${couple.event_date ? formatDate(couple.event_date) + ' · ' : ''}Erişim kodu: <code>${couple.access_code}</code></p>
+        <p class="muted">${couple.ref_no ? couple.ref_no + ' · ' : ''}${couple.event_date ? formatDate(couple.event_date) + ' · ' : ''}Erişim kodu: <code>${couple.access_code}</code></p>
       </div>
     </div>
     ${flashBlock(f)}
@@ -149,37 +340,7 @@ function coupleDetail(c, { couple, photos, totalCount, favCount, view, csrf, fla
         </form>
       </section>
 
-      <section class="card" aria-labelledby="info-title">
-        <h2 class="card__title" id="info-title">Bilgiler</h2>
-        <form class="form" method="post" action="${base}/bilgi">
-          ${csrfField(csrf)}
-          <div class="field">
-            <label for="name">Çiftin adı</label>
-            <input id="name" name="name" type="text" required maxlength="120" value="${couple.name}">
-          </div>
-          <div class="field">
-            <label for="date">Çekim tarihi</label>
-            <input id="date" name="eventDate" type="date" value="${couple.event_date || ''}">
-          </div>
-          <div class="field">
-            <label for="due">Teslim tarihi</label>
-            <input id="due" name="dueDate" type="date" value="${couple.due_date || ''}">
-          </div>
-          <div class="field">
-            <label for="cphone">Telefon (WhatsApp)</label>
-            <input id="cphone" name="phone" type="tel" maxlength="20" inputmode="tel" placeholder="05XX XXX XX XX" value="${couple.phone ? displayPhone(couple.phone) : ''}">
-          </div>
-          <label class="check">
-            <input type="checkbox" name="waOptin" value="1"${couple.wa_optin ? raw(' checked') : ''}>
-            <span>WhatsApp bildirimleri gönderilsin</span>
-          </label>
-          <div class="field">
-            <label for="limit">Albüm kare sayısı</label>
-            <input id="limit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${couple.album_limit}">
-          </div>
-          <button class="btn btn--outline" type="submit">Güncelle</button>
-        </form>
-      </section>
+      ${appointmentSummary(c, couple)}
 
       <section class="card" aria-labelledby="access-title">
         <h2 class="card__title" id="access-title">Giriş</h2>
@@ -373,4 +534,4 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Hesap', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
 }
 
-module.exports = { calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = { appointmentPage, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

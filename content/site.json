@@ -70,14 +70,14 @@
     "hours": "[Hafta içi 10:00 – 19:00]"
   },
 
-  "stages": [
-    "Çekim tamamlandı",
-    "Fotoğraf seçimi",
-    "Düzenleme",
-    "Video kurgusu",
-    "Onay",
-    "Teslim edildi"
-  ],
+  "stages": ["Randevu", "Çekim", "Düzenleme", "Seçim", "Albüm", "Teslim"],
+
+  "appointments": {
+    "eventTypes": ["Düğün", "Nişan", "Kına", "Söz", "Dış Çekim", "Diğer"],
+    "sources": ["Instagram", "WhatsApp", "Tavsiye", "Google", "Site formu", "Diğer"],
+    "packages": ["[ÖRNEK] Fotoğraf", "[ÖRNEK] Fotoğraf + Video", "[ÖRNEK] Fotoğraf + Video + Albüm"],
+    "defaultDeliveryDays": 45
+  },
 
   "footer": {
     "note": "Düğün, nişan ve kına fotoğrafçılığı · Film"

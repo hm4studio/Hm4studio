@@ -86,6 +86,16 @@ addColumn('couples', 'phone', 'TEXT');
 addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
+// Randevu kartı alanları
+for (const [col, def] of [
+  ['ref_no', 'TEXT'], ['full_name', "TEXT NOT NULL DEFAULT ''"], ['partner_name', "TEXT NOT NULL DEFAULT ''"],
+  ['event_type', "TEXT NOT NULL DEFAULT ''"], ['start_time', "TEXT NOT NULL DEFAULT ''"], ['city', "TEXT NOT NULL DEFAULT ''"],
+  ['venue', "TEXT NOT NULL DEFAULT ''"], ['package', "TEXT NOT NULL DEFAULT ''"], ['package_detail', "TEXT NOT NULL DEFAULT ''"],
+  ['total_amount', 'INTEGER NOT NULL DEFAULT 0'], ['deposit', 'INTEGER NOT NULL DEFAULT 0'], ['paid_full', 'INTEGER NOT NULL DEFAULT 0'],
+  ['source', "TEXT NOT NULL DEFAULT ''"], ['notes', "TEXT NOT NULL DEFAULT ''"],
+  ['photo_ready', 'INTEGER NOT NULL DEFAULT 0'], ['video_ready', 'INTEGER NOT NULL DEFAULT 0'], ['album_ready', 'INTEGER NOT NULL DEFAULT 0'],
+  ['album_info_sent_at', 'TEXT'],
+]) addColumn('couples', col, def);
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS leads (
@@ -150,6 +160,22 @@ module.exports = {
   setCoupleStage: (id, stage, note) => q("UPDATE couples SET stage_changed_at = CASE WHEN stage <> ? THEN date('now') ELSE stage_changed_at END, stage = ?, stage_note = ? WHERE id = ?").run(stage, stage, note, id),
   setCoupleContact: (id, phone, optin) => q('UPDATE couples SET phone = ?, wa_optin = ? WHERE id = ?').run(phone || null, optin ? 1 : 0, id),
   getCoupleByPhone: (phone) => q('SELECT * FROM couples WHERE phone = ? ORDER BY id DESC LIMIT 1').get(phone),
+  // Randevu kartı: otomatik numara (HM4-2026-001) ve tüm alanların güncellenmesi
+  nextRefNo: (year) => {
+    const prefix = `HM4-${year}-`;
+    const last = q("SELECT ref_no FROM couples WHERE ref_no LIKE ? ORDER BY ref_no DESC LIMIT 1").get(`${prefix}%`)?.ref_no;
+    const n = last ? Number(last.slice(prefix.length)) + 1 : 1;
+    return `${prefix}${String(n).padStart(3, '0')}`;
+  },
+  setRefNo: (id, ref) => q('UPDATE couples SET ref_no = ? WHERE id = ?').run(ref, id),
+  updateAppointment: (id, a) => q(`UPDATE couples SET name = ?, full_name = ?, partner_name = ?, phone = ?, source = ?,
+      event_type = ?, event_date = ?, start_time = ?, city = ?, venue = ?, due_date = ?,
+      package = ?, package_detail = ?, total_amount = ?, deposit = ?, paid_full = ?,
+      photo_ready = ?, video_ready = ?, album_ready = ?, album_limit = ?, wa_optin = ?, notes = ? WHERE id = ?`)
+    .run(a.name, a.fullName, a.partnerName, a.phone || null, a.source, a.eventType, a.eventDate || null, a.startTime, a.city, a.venue,
+      a.dueDate || null, a.package, a.packageDetail, a.total, a.deposit, a.paidFull ? 1 : 0,
+      a.photoReady ? 1 : 0, a.videoReady ? 1 : 0, a.albumReady ? 1 : 0, a.albumLimit, a.waOptin ? 1 : 0, a.notes, id),
+  markAlbumInfoSent: (id) => q("UPDATE couples SET album_info_sent_at = date('now') WHERE id = ?").run(id),
   deleteCouple: (id) => q('DELETE FROM couples WHERE id = ?').run(id),
 
   // ── Çift fotoğrafları ──
