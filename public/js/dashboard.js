@@ -28,26 +28,41 @@
       for (const [sel, v] of Object.entries(saved)) if ($(sel)) $(sel).value = v;
     } catch { /* depolama kapalı olabilir */ }
 
+    const bcards = [...document.querySelectorAll('[data-bcard]')];
     function apply() {
       const q = $('[data-f-q]').value.trim().toLocaleLowerCase('tr-TR');
       const st = $('[data-f-stage]').value, ty = $('[data-f-type]').value, pay = $('[data-f-pay]').value, sort = $('[data-f-sort]').value;
+      const match = (c) => (!q || c.dataset.search.includes(q)) && (!st || c.dataset.stage === st)
+        && (!ty || c.dataset.type.split(', ').includes(ty)) && (!pay || c.dataset.pay === pay);
       let shown = 0;
       for (const c of cards) {
-        const ok = (!q || c.dataset.search.includes(q)) && (!st || c.dataset.stage === st)
-          && (!ty || c.dataset.type.split(', ').includes(ty)) && (!pay || c.dataset.pay === pay);
+        const ok = match(c);
         c.hidden = !ok;
         if (ok) shown++;
       }
+      for (const c of bcards) c.hidden = !match(c);
       const order = sort === 'date'
         ? cards.slice().sort((a, b) => (a.dataset.date || '9999').localeCompare(b.dataset.date || '9999'))
         : original;
       order.forEach((c) => list.appendChild(c));
-      if (count) count.textContent = `(${shown})`;
+      if (count) count.textContent = String(shown);
       if (empty) empty.hidden = shown > 0;
       try {
         sessionStorage.setItem(key, JSON.stringify({ '[data-f-q]': $('[data-f-q]').value, '[data-f-stage]': st, '[data-f-type]': ty, '[data-f-pay]': pay, '[data-f-sort]': sort }));
       } catch { /* yok say */ }
     }
+    // Görünüm: kartlar / aşama panosu
+    const board = document.querySelector('[data-board]');
+    const btns = [...document.querySelectorAll('[data-view]')];
+    function setView(v) {
+      btns.forEach((b) => { const on = b.dataset.view === v; b.classList.toggle('is-on', on); b.setAttribute('aria-selected', String(on)); });
+      list.hidden = v === 'board';
+      if (board) board.hidden = v !== 'board';
+      try { localStorage.setItem('hm4-view', v); } catch { /* yok say */ }
+    }
+    btns.forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+    try { if (localStorage.getItem('hm4-view') === 'board') setView('board'); } catch { /* yok say */ }
+
     box.addEventListener('input', apply);
     box.addEventListener('change', apply);
     apply();
