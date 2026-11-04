@@ -86,6 +86,9 @@ addColumn('couples', 'phone', 'TEXT');
 addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
+addColumn('couples', 'archived_at', 'TEXT');
+addColumn('couples', 'archived_selection', "TEXT NOT NULL DEFAULT ''");
+addColumn('couples', 'archived_photos', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('couples', 'video_status', "TEXT NOT NULL DEFAULT ''");
 // Randevu kartı alanları
 for (const [col, def] of [
@@ -324,6 +327,13 @@ module.exports = {
   addVideo: (v) => Number(q('INSERT INTO videos(couple_id, title, kind, file_key, ext, size, link) VALUES(?, ?, ?, ?, ?, ?, ?)').run(v.coupleId, v.title, v.kind, v.fileKey || null, v.ext || null, v.size || 0, v.link || null).lastInsertRowid),
   deleteVideo: (id) => q('DELETE FROM videos WHERE id = ?').run(id),
   videoCount: (coupleId) => q('SELECT COUNT(*) AS n FROM videos WHERE couple_id = ?').get(coupleId).n,
+  // Dosyaları temizlenmiş çift: seçim listesi ve sayı saklanır, fotoğraf/video kayıtları silinir
+  archiveCoupleFiles: (id, { selection, photoCount, withVideos }) => {
+    q("UPDATE couples SET archived_at = date('now'), archived_selection = ?, archived_photos = archived_photos + ? WHERE id = ?").run(selection, photoCount, id);
+    q('DELETE FROM favorites WHERE couple_id = ?').run(id);
+    q('DELETE FROM photos WHERE couple_id = ?').run(id);
+    if (withVideos) q('DELETE FROM videos WHERE couple_id = ? AND file_key IS NOT NULL').run(id);
+  },
   clampStages: (n) => q('UPDATE couples SET stage = ? WHERE stage > ?').run(n - 1, n - 1),
   markAlbumInfoSent: (id) => q("UPDATE couples SET album_info_sent_at = date('now') WHERE id = ?").run(id),
   deleteCouple: (id) => q('DELETE FROM couples WHERE id = ?').run(id),

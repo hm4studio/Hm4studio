@@ -64,6 +64,36 @@ function removeCoupleFolder(coupleId) {
   fs.rmSync(path.join(config.privateDir, 'couples', String(coupleId)), { recursive: true, force: true });
 }
 
+// Klasör boyutu (bayt)
+function dirSize(dir) {
+  let total = 0;
+  let entries = [];
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return 0; }
+  for (const e of entries) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) total += dirSize(p);
+    else { try { total += fs.statSync(p).size; } catch { /* yok say */ } }
+  }
+  return total;
+}
+const coupleRoot = (coupleId) => path.join(config.privateDir, 'couples', String(coupleId));
+// Çiftin fotoğraf ve video dosyalarının kapladığı alan
+function coupleUsage(coupleId) {
+  const root = coupleRoot(coupleId);
+  const videos = dirSize(path.join(root, 'videos'));
+  return { photos: Math.max(dirSize(root) - videos, 0), videos };
+}
+// Yalnızca dosyaları sil (kayıtlar veritabanında ayrıca temizlenir)
+function clearCoupleFiles(coupleId, withVideos) {
+  const root = coupleRoot(coupleId);
+  let entries = [];
+  try { entries = fs.readdirSync(root, { withFileTypes: true }); } catch { return; }
+  for (const e of entries) {
+    if (e.name === 'videos' && !withVideos) continue;
+    fs.rmSync(path.join(root, e.name), { recursive: true, force: true });
+  }
+}
+
 // ── Portfolyo (herkese açık klasör) ──
 const portfolioDir = path.join(config.publicMediaDir, 'portfolio');
 
@@ -141,6 +171,7 @@ const discardVideoUpload = (uploadId) => fs.rmSync(tmpVideo(uploadId), { force: 
 const removeVideo = (coupleId, fileKey, ext) => fs.rmSync(path.join(videoDir(coupleId), `${fileKey}.${ext}`), { force: true });
 
 module.exports = {
+  dirSize, coupleUsage, clearCoupleFiles,
   videoDir, appendVideoChunk, finishVideo, discardVideoUpload, removeVideo,
   couplePhotoEntries,
   saveSiteImage,

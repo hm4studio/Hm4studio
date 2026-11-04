@@ -550,7 +550,8 @@ function register(router) {
   router.get('/admin/ciftler/:id/secim.txt', (req, res, { params }) => {
     if (!requireAdmin(req, res)) return;
     const couple = getCoupleOr404(params.id);
-    const names = appt.selectionNames(db.listFavoritePhotos(couple.id));
+    const favs = db.listFavoritePhotos(couple.id);
+    const names = favs.length ? appt.selectionNames(favs) : (couple.archived_selection ? couple.archived_selection.split('\n').filter(Boolean) : []);
     const file = `${couple.ref_no ? couple.ref_no + ' ' : ''}${couple.name} - secim.txt`.replace(/[\\/:*?"<>|]+/g, '-');
     res.writeHead(200, {
       'Content-Type': 'text/plain; charset=utf-8',
@@ -576,10 +577,53 @@ function register(router) {
     res.end('\uFEFF' + lines.join('\r\n'));
   });
 
+  // ── Sunucu alanı: teslim edilen çiftlerin dosyalarını sil (kart, randevu, ödeme ve seçim listesi kalır) ──
+  function clearFiles(couple, withVideos) {
+    const favs = db.listFavoritePhotos(couple.id);
+    const prev = couple.archived_selection ? couple.archived_selection.split('\n').filter(Boolean) : [];
+    const selection = [...prev, ...appt.selectionNames(favs)].join('\n');
+    const photoCount = db.listPhotos(couple.id).length;
+    media.clearCoupleFiles(couple.id, withVideos);
+    db.archiveCoupleFiles(couple.id, { selection, photoCount, withVideos });
+  }
+  const gb = (n) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1).replace('.', ',')} GB` : `${Math.max(1, Math.round(n / 1024 ** 2))} MB`);
+
+  router.post('/admin/ciftler/:id/dosyalari-sil', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const before = media.coupleUsage(couple.id);
+    const withVideos = form.videolar === '1';
+    const freed = before.photos + (withVideos ? before.videos : 0);
+    clearFiles(couple, withVideos);
+    setFlash(req, { message: freed ? `${couple.name}: ${gb(freed)} yer açıldı. Kart, randevular, ödemeler ve seçim listesi duruyor.` : `${couple.name}: silinecek dosya yoktu.`, type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}`);
+  });
+
+  router.post('/admin/veriler/temizle', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const ids = [].concat(form.cift || []).map(Number).filter((n) => Number.isInteger(n) && n > 0);
+    const withVideos = form.videolar === '1';
+    let freed = 0, n = 0;
+    for (const id of ids) {
+      const couple = db.getCouple(id);
+      if (!couple) continue;
+      const u = media.coupleUsage(id);
+      clearFiles(couple, withVideos);
+      freed += u.photos + (withVideos ? u.videos : 0); n++;
+    }
+    setFlash(req, { message: n ? `${n} çiftin dosyaları silindi, ${gb(freed)} yer açıldı.` : 'Çift seçmediniz.', type: n ? 'success' : 'error' });
+    redirect(res, '/admin/veriler#alan');
+  });
+
   // ── Veriler: yedekler ve sezon arşivleri ──
   router.get('/admin/veriler', (req, res) => {
     if (!requireAdmin(req, res)) return;
-    html(res, views.dataPage(getContent(), { backups: backup.listBackups(), seasons: backup.seasonSummary(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const last = getContent().stages.length - 1;
+    const storage = db.listCouples().map((k) => ({ k, u: media.coupleUsage(k.id), done: k.stage >= last })).filter((x) => x.u.photos + x.u.videos > 0)
+      .sort((a, b) => (b.done - a.done) || ((b.u.photos + b.u.videos) - (a.u.photos + a.u.videos)));
+    html(res, views.dataPage(getContent(), { storage, diskTotal: media.dirSize(config.privateDir) + media.dirSize(config.publicMediaDir), backups: backup.listBackups(), seasons: backup.seasonSummary(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.post('/admin/veriler/yedek', async (req, res) => {

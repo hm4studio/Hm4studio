@@ -780,6 +780,17 @@ function coupleDetail(c, { couple, card, selection = [], videos = [], events: ev
       </details>
     </section>
 
+    <section class="danger-zone" aria-labelledby="files-title">
+      <h2 class="card__title" id="files-title">Sunucudan dosyaları sil</h2>
+      ${couple.archived_at ? h`<p class="muted">Dosyalar ${shortDate(couple.archived_at)} tarihinde temizlendi (${couple.archived_photos} fotoğraf). Seçim listesi hâlâ indirilebilir: <a href="${base}/secim.txt">Listeyi indir</a></p>` : ''}
+      <p class="muted">Teslim bittiyse yer açmak için yalnızca fotoğraf ve video dosyalarını silin. Çift kartı, randevular, ödemeler ve albüm seçim listesi kalır.</p>
+      <form method="post" action="${base}/dosyalari-sil" class="form form--compact" data-confirm="${couple.name} için dosyalar sunucudan kalıcı olarak silinsin mi? Arşivi indirdiniz mi?">
+        ${csrfField(csrf)}
+        <label class="check"><input type="checkbox" name="videolar" value="1"><span>Videoları da sil</span></label>
+        <button class="btn btn--outline btn--sm btn--danger-text" type="submit">Sadece dosyaları sil</button>
+      </form>
+    </section>
+
     <section class="danger-zone" aria-labelledby="danger-title">
       <h2 class="card__title" id="danger-title">Çifti sil</h2>
       <p class="muted">Çift, tüm fotoğrafları ve favorileri kalıcı olarak silinir.</p>
@@ -984,8 +995,8 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
 }
 
 // Veriler: sezon arşivleri ve veritabanı yedekleri
-function dataPage(c, { backups, seasons, csrf, flash: f, demoAdmin }) {
-  const mb = (n) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+function dataPage(c, { storage = [], diskTotal = 0, backups, seasons, csrf, flash: f, demoAdmin }) {
+  const mb = (n) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1).replace('.', ',')} GB` : n > 1024 * 1024 ? `${Math.round(n / 1024 / 1024)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
   const body = h`
   <div class="container container--form">
     <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
@@ -1003,6 +1014,27 @@ function dataPage(c, { backups, seasons, csrf, flash: f, demoAdmin }) {
           <a class="btn btn--outline btn--sm" href="/admin/veriler/sezon/${x.year}" download>${icon('download')}Arşivi indir</a>
         </li>`)}</ul>` : h`<p class="sec-empty">Henüz etkinlik yok.</p>`}
       <p class="hint">Arşiv .tar biçimindedir; Mac'te çift tıklayınca, Windows'ta "Tümünü ayıkla" ile açılır. Fotoğraf sayısına göre indirme birkaç dakika sürebilir.</p>
+    </section>
+
+    <section class="panel-section" id="alan">
+      <div class="panel-section__head">
+        <h2 class="panel-section__title">Sunucu alanı <span class="sec-count">${mb(diskTotal)}</span></h2>
+        <p class="muted">Teslimi biten çiftlerin fotoğraf (ve isterseniz video) dosyalarını sunucudan silin. Çift kartı, randevular, ödemeler ve albüm seçim listesi (seri numaraları) silinmez. Silmeden önce sezon arşivini indirmeyi unutmayın.</p>
+      </div>
+      ${storage.length ? h`<form method="post" action="/admin/veriler/temizle" data-confirm="Seçilen çiftlerin dosyaları sunucudan kalıcı olarak silinsin mi? Sezon arşivini indirdiniz mi?">
+        ${csrfField(csrf)}
+        <ul class="data-list store-list">${storage.map(({ k, u, done }) => h`
+          <li>
+            <label class="store-row">
+              <input type="checkbox" name="cift[]" value="${k.id}"${done ? raw(' checked') : ''}>
+              <span class="data-list__main"><span class="data-list__title">${k.name}</span><span class="data-list__meta">${c.stages[k.stage] || ''}${k.event_date ? `, ${shortDate(k.event_date)}` : ''}</span></span>
+            </label>
+            <span class="store-size">${mb(u.photos)} fotoğraf${u.videos ? h`<br>${mb(u.videos)} video` : ''}</span>
+          </li>`)}</ul>
+        <label class="check"><input type="checkbox" name="videolar" value="1"><span>Videoları da sil</span></label>
+        <button class="btn btn--outline btn--sm btn--danger-text" type="submit">Seçilenlerin dosyalarını sil</button>
+        <p class="hint">"Teslim" aşamasındaki çiftler önceden işaretli gelir.</p>
+      </form>` : h`<p class="sec-empty">Sunucuda çift dosyası yok.</p>`}
     </section>
 
     <section class="panel-section">
