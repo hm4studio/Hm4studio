@@ -86,7 +86,7 @@ function register(router) {
       return redirect(res, '/admin');
     }
     const couple = code ? db.getCoupleByCode(code) : null;
-    const ok = auth.verifyPassword(form.password || '', couple ? couple.password_hash : auth.DUMMY_HASH);
+    const ok = auth.verifyPassword(auth.normalizeCouplePassword(form.password), couple ? couple.password_hash : auth.DUMMY_HASH);
     if (!couple || !ok) {
       auth.recordFailure(req);
       return html(res, view({ error: 'Erişim kodu veya şifre hatalı.', values: { code: typed } }), 401);

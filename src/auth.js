@@ -37,7 +37,7 @@ function friendlyPassword(len = 10) {
   return out;
 }
 
-// Çiftlerin akılda tutabileceği şifre: iki kelime + üç rakam (örn. papatya-deniz-472).
+// (Eski biçim: iki kelime + üç rakam. Yeni şifreler HM4-XXX-XXX biçiminde üretilir; aşağıya bakın.)
 // Türkçe karakter yok (her klavyede kolay yazılsın). Hatalı girişler IP başına sınırlandığı için yeterince güçlü.
 const WORDS = ('papatya lale gul zambak orkide mimoza manolya lavanta nergis menekse sumbul yasemin kamelya leylak '
   + 'deniz ada koy liman kumsal dalga ruzgar bulut yildiz ay gunes safak seher aksam gece bahar yaz kis '
@@ -47,12 +47,14 @@ const WORDS = ('papatya lale gul zambak orkide mimoza manolya lavanta nergis men
   + 'kelebek serce martı kugu turna leylek bulbul kartal sahin guvercin yunus'.replace('ı', 'i') + ' '
   + 'melodi sarki dans vals tango ritim nota piyano keman gitar ney kanun ud saz '
   + 'yuzuk duvak gelin damat kina davul zurna halay sofra hediye cicek buket kurdele').split(/\s+/).filter(Boolean);
+// Çift şifresi: HM4-K7P-3XM (karışan harfler yok: 0/O, 1/I/L)
+const PW_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function memorablePassword() {
-  const w = () => WORDS[crypto.randomInt(WORDS.length)];
-  let a = w(), b = w();
-  while (b === a) b = w();
-  return `${a}-${b}-${crypto.randomInt(100, 1000)}`;
+  const part = () => Array.from({ length: 3 }, () => PW_CHARS[crypto.randomInt(PW_CHARS.length)]).join('');
+  return `HM4-${part()}-${part()}`;
 }
+// Girişte büyük/küçük harf ve boşluk farkı sorun olmasın
+const normalizeCouplePassword = (p) => { const s = String(p || '').trim(); return /^hm4-/i.test(s) ? s.toUpperCase() : s; };
 
 // Çerezdeki oturum anahtarı veritabanına doğrudan yazılmaz; HMAC'i saklanır.
 function hashSid(sid) {
@@ -145,7 +147,7 @@ setInterval(() => {
 }, 60 * 60 * 1000).unref();
 
 module.exports = {
-  hashPassword, verifyPassword, DUMMY_HASH, randomToken, friendlyPassword, memorablePassword,
+  hashPassword, verifyPassword, DUMMY_HASH, randomToken, friendlyPassword, memorablePassword, normalizeCouplePassword,
   startSession, endSession, loadSession, csrfValid, parseCookies, isApp,
   isRateLimited, recordFailure, clearFailures,
 };
