@@ -95,7 +95,10 @@ function register(router) {
     const couplesAll = db.listCouples();
     const selections = couplesAll.filter((k) => k.album_locked && k.fav_count > 0)
       .map((k) => ({ k, names: appt.selectionNames(db.listFavoritePhotos(k.id)) }));
-    html(res, views.dashboard(getContent(), { selections, couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const dow = (new Date(`${t}T12:00:00Z`).getUTCDay() + 6) % 7; // pazartesi = 0
+    const monday = addDays(t, -dow);
+    const weekEvents = db.eventsBetween(monday, addDays(monday, 6));
+    html(res, views.dashboard(getContent(), { weekEvents, monday, selections, couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   // Yeni kişi kartı formu (takvimden tarih, talepten bilgiler gelebilir)

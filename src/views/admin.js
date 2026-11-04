@@ -131,6 +131,35 @@ function tomorrowBlock(c, tomorrowEvents, tomorrowDue) {
   </section>`;
 }
 
+// Bu haftanın çekim programı (pazartesi–pazar)
+function weekBlock(weekEvents, monday) {
+  if (!monday) return '';
+  const t = today();
+  const tm = addDays(t, 1);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  const sunday = days[6];
+  const fmt = (iso, o) => new Date(`${iso}T12:00:00`).toLocaleDateString('tr-TR', o);
+  return h`
+  <section class="week" aria-labelledby="week-title">
+    <header class="sec-head">
+      <h2 class="sec-title" id="week-title">Bu hafta</h2>
+      <span class="sec-note">${fmt(monday, { day: 'numeric', month: 'long' })} – ${fmt(sunday, { day: 'numeric', month: 'long' })}, ${weekEvents.length} çekim</span>
+    </header>
+    <ol class="week__days">${days.map((d) => {
+      const list = weekEvents.filter((e) => e.event_date === d);
+      const state = d < t ? 'is-past' : d === t ? 'is-today' : d === tm ? 'is-tomorrow' : '';
+      return h`<li class="week__day ${state}${list.length ? '' : ' is-empty'}">
+        <span class="week__date"><span class="week__dow">${fmt(d, { weekday: 'short' })}</span><span class="week__num">${Number(d.slice(8))}</span></span>
+        <span class="week__events">${list.length ? list.map((e) => h`<a class="week__ev" href="/admin/ciftler/${e.couple_id}">
+          <span class="week__time">${e.start_time || '—'}</span>
+          <span class="week__name">${e.couple_name}</span>
+          <span class="week__meta">${e.event_type || 'Etkinlik'}${e.venue || e.city ? `, ${e.venue || e.city}` : ''}${e.team ? ` · ${e.team}` : ''}</span>
+        </a>`) : h`<span class="week__none">${d === t ? 'Bugün çekim yok' : '—'}</span>`}</span>
+      </li>`;
+    })}</ol>
+  </section>`;
+}
+
 // Takip listesi: dikkat isteyen işler (en acil üstte)
 function attentionItems(c, couples) {
   const t = today();
@@ -198,7 +227,7 @@ function stageBoard(c, couples) {
   </div>`;
 }
 
-function dashboard(c, { selections = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+function dashboard(c, { weekEvents = [], monday, selections = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowEvents = upcoming.filter((e) => e.event_date === tm);
@@ -227,7 +256,10 @@ function dashboard(c, { selections = [], couples, monthEvents, upcoming, ym, csr
     </dl>
 
     <div class="dash-top">
+      <div class="dash-left">
       ${tomorrowBlock(c, tomorrowEvents, tomorrowDue)}
+      ${weekBlock(weekEvents, monday)}
+      </div>
       <section class="todo" aria-labelledby="todo-title">
         <header class="sec-head">
           <h2 class="sec-title" id="todo-title">Bekleyenler</h2>
@@ -492,7 +524,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=14">
+<link rel="stylesheet" href="/css/style.css?v=15">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>

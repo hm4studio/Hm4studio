@@ -1365,3 +1365,21 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .sel-box__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
 .sel-box__names { margin: 10px 0 0; font-size: .85rem; color: var(--pencil, #6e6e6b); line-height: 1.7; word-break: break-word; font-variant-numeric: tabular-nums; }
 .sel-box__warn { margin: 8px 0 0; font-size: .85rem; color: var(--mark, #cf2a1f); }
+/* Bu hafta */
+.dash-left { display: grid; gap: 40px; min-width: 0; }
+.week__days { list-style: none; margin: 0; padding: 0; }
+.week__day { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--rule); align-items: start; }
+.week__date { display: flex; align-items: baseline; gap: 6px; padding-top: 1px; }
+.week__dow { font-size: .78rem; color: var(--pencil); width: 26px; }
+.week__num { font-size: 1.05rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.week__events { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.week__ev { display: grid; grid-template-columns: 48px minmax(0, auto) minmax(0, 1fr); gap: 10px; align-items: baseline; text-decoration: none; color: var(--graphite); }
+.week__ev:hover .week__name { text-decoration: underline; text-underline-offset: 3px; }
+.week__time { font-variant-numeric: tabular-nums; font-size: .9rem; color: var(--pencil); }
+.week__name { font-weight: 600; font-size: .92rem; white-space: nowrap; }
+.week__meta { font-size: .85rem; color: var(--pencil); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.week__none { font-size: .85rem; color: var(--faint); }
+.week__day.is-past { opacity: .45; }
+.week__day.is-today .week__num { background: var(--graphite); color: #fff; border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: .85rem; }
+.week__day.is-tomorrow .week__dow, .week__day.is-tomorrow .week__num { color: var(--mark); }
+@media (max-width: 599px) { .week__ev { grid-template-columns: 44px minmax(0, 1fr); } .week__meta { grid-column: 2; white-space: normal; } }
