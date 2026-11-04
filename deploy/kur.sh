@@ -23,6 +23,24 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 systemctl enable --now docker >/dev/null
 
+# Hostinger'ın hazır n8n şablonu gibi 80/443 portlarını tutan eski kurulumlar varsa kaldır
+OLD="$(docker ps -a --format '{{.ID}} {{.Names}} {{.Ports}}' | grep -E ':(80|443)->|n8n|traefik' | grep -v -E 'deploy-(site|n8n|caddy)' || true)"
+if [ -n "$OLD" ]; then
+  echo "Sunucuda 80/443 portlarını kullanan eski bir kurulum bulundu (ör. Hostinger n8n şablonu):"
+  echo "$OLD" | awk '{print "  - " $2}'
+  CONFIRM="$(ask 'Bunlar kaldırılsın mı? İçlerindeki veriler silinir. (evet/hayır)' 'evet')"
+  if [ "$CONFIRM" = "evet" ]; then
+    for f in /root/docker-compose.yml /root/n8n/docker-compose.yml /opt/n8n/docker-compose.yml; do
+      [ -f "$f" ] && docker compose -f "$f" down -v >/dev/null 2>&1 || true
+    done
+    echo "$OLD" | awk '{print $1}' | xargs -r docker rm -f >/dev/null 2>&1 || true
+    echo "Eski kurulum kaldırıldı."
+  else
+    echo "Kurulum durduruldu. 80/443 portları boşalmadan devam edilemez."; exit 1
+  fi
+fi
+for svc in nginx apache2; do systemctl is-active --quiet "$svc" 2>/dev/null && { systemctl disable --now "$svc" >/dev/null 2>&1 || true; echo "$svc durduruldu (80 portunu kullanıyordu)."; }; done
+
 say "2/6 · Kod GitHub'dan indiriliyor"
 if [ -d "$DIR/.git" ]; then git -C "$DIR" pull --ff-only -q; else git clone -q "$REPO" "$DIR"; fi
 
