@@ -4,7 +4,7 @@ const { h, raw } = require('./html');
 const { panelLayout, statusBar, flash, icon } = require('./components');
 const { photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView } = require('./panel');
 const { jobStatus, daysBetween, today, addDays } = require('../jobs');
-const { displayPhone } = require('../whatsapp');
+const { displayPhone, taskText } = require('../whatsapp');
 const { payment, tl, shortDate, eventIndexes } = require('../appointments');
 
 function adminNav(active, csrf, demoAdmin = false) {
@@ -12,6 +12,7 @@ function adminNav(active, csrf, demoAdmin = false) {
     { href: '/admin', label: 'Panel', key: 'couples', icon: 'users' },
     { href: '/admin/talepler', label: 'Talepler', key: 'leads', icon: 'whatsapp' },
     { href: '/admin/takvim', label: 'Takvim', key: 'calendar', icon: 'clock' },
+    { href: '/admin/ekip', label: 'Ekip', key: 'team', icon: 'users' },
     { href: '/admin/rapor', label: 'Rapor', key: 'report', icon: 'chart' },
     { href: '/admin/portfolyo', label: 'Portfolyo', key: 'portfolio', icon: 'image' },
     // Görüşler ziyaretçilerin özel yorumlarıdır; demo stüdyo hesabına gösterilmez
@@ -30,7 +31,7 @@ function adminTabs(active, demoAdmin = false) {
     { href: '/admin', label: 'Panel', icon: 'users', active: active === 'couples' },
     { href: '/admin/talepler', label: 'Talepler', icon: 'whatsapp', active: active === 'leads' },
     { href: '/admin/takvim', label: 'Takvim', icon: 'clock', active: active === 'calendar' },
-    { href: '/admin/hesap', label: 'Daha', icon: 'settings', active: ['account', 'feedback', 'portfolio', 'report'].includes(active) },
+    { href: '/admin/hesap', label: 'Daha', icon: 'settings', active: ['account', 'feedback', 'portfolio', 'report', 'team'].includes(active) },
   ];
 }
 
@@ -223,11 +224,11 @@ function dashboard(c, { couples, monthEvents, upcoming, ym, csrf, flash: f, demo
         : h`<div class="empty-box"><p>Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=2'] });
+  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=3'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
-function eventBlock(c, values, i, n) {
+function eventBlock(c, values, i, n, team = []) {
   const o = c.appointments || {};
   const v = (k) => values[`ev${i}_${k}`] ?? '';
   const id = (k) => `ev${i}_${k}`;
@@ -251,14 +252,24 @@ function eventBlock(c, values, i, n) {
     <div class="appt-row">
       <div class="field"><label for="${id('package')}">Paket</label><input id="${id('package')}" name="${id('package')}" type="text" maxlength="80" list="pkg-list" value="${v('package')}"></div>
       <div class="field"><label for="${id('price')}">Tutar (₺)</label><input id="${id('price')}" name="${id('price')}" type="text" inputmode="numeric" placeholder="0" value="${v('price')}" data-money data-ev-price></div>
-      <div class="field"><label for="${id('team')}">Ekip</label><input id="${id('team')}" name="${id('team')}" type="text" maxlength="120" list="team-list" placeholder="Kim gidecek?" value="${v('team')}"></div>
     </div>
+    ${(() => {
+      const chosen = new Set([].concat(values[`ev${i}_team`] || []).map(Number));
+      const list = team.filter((m) => m.active || chosen.has(m.id));
+      return h`<div class="field ev-team">
+        <span class="ev-team__label">Ekip <span class="muted">(seçilen kişiye görev mesajı gider)</span></span>
+        ${list.length ? h`<div class="ev-team__list">${list.map((m) => h`<label class="ev-team__item">
+          <input type="checkbox" name="${id('team')}[]" value="${m.id}"${chosen.has(m.id) ? raw(' checked') : ''}>
+          <span>${m.name}${m.role ? h` <span class="muted">· ${m.role}</span>` : ''}${m.phone ? '' : h` <span class="muted">· telefon yok</span>`}</span>
+        </label>`)}</div>` : h`<p class="muted ev-team__empty">Ekip listeniz boş. <a href="/admin/ekip" target="_blank" rel="noopener">Ekip sayfasından</a> personel ekleyin.</p>`}
+      </div>`;
+    })()}
     <div class="field"><label for="${id('detail')}">Paket detayı ve istekler</label><textarea id="${id('detail')}" name="${id('detail')}" rows="3" maxlength="1500" placeholder="Bu gün için özel istekler, çekim süresi, ek hizmetler…">${v('detail')}</textarea></div>
   </div>`;
 }
 
 // Kişi kartı formu (yeni ve düzenleme ortak)
-function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, errors = [], talepId, back, demoAdmin, isNew, teamNames = [] }) {
+function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, errors = [], talepId, back, demoAdmin, isNew, team = [], packages = [] }) {
   const o = c.appointments || {};
   const v = (k) => values[k] ?? '';
   const sel = (name, list, placeholder) => h`<select id="${name}" name="${name}"><option value="">${placeholder}</option>${(list || []).map((x) => h`<option${x === v(name) ? raw(' selected') : ''}>${x}</option>`)}</select>`;
@@ -273,8 +284,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
     <form class="form appt-form" method="post" action="${action}" data-appt-form data-couple="${coupleId}">
       ${csrfField(csrf)}
       ${talepId ? h`<input type="hidden" name="talep" value="${talepId}">` : ''}
-      <datalist id="pkg-list">${(o.packages || []).map((x) => h`<option value="${x}">`)}</datalist>
-      <datalist id="team-list">${[...new Set([...(o.team || []), ...teamNames])].map((x) => h`<option value="${x}">`)}</datalist>
+      <datalist id="pkg-list">${packages.map((x) => h`<option value="${x}">`)}</datalist>
 
       <fieldset class="appt-group">
         <legend>Kişi</legend>
@@ -292,9 +302,9 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
         <legend>Etkinlikler</legend>
         <p class="muted appt-help">Aynı kişi farklı günlerde farklı etkinlikler için randevu alabilir (örn. dış çekim, kına, düğün). Her tarih için ayrı paket ve istek girin.</p>
         <div class="ev-list" data-ev-list>
-          ${idx.map((i, n) => eventBlock(c, values, i, n + 1))}
+          ${idx.map((i, n) => eventBlock(c, values, i, n + 1, team))}
         </div>
-        <template data-ev-template>${eventBlock(c, {}, '__i__', '__n__')}</template>
+        <template data-ev-template>${eventBlock(c, {}, '__i__', '__n__', team)}</template>
         <button type="button" class="btn btn--outline btn--sm ev-add" data-ev-add>${icon('plus')}Tarih ekle</button>
       </fieldset>
 
@@ -328,7 +338,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=2'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=3'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -367,8 +377,8 @@ function appointmentSummary(c, k, events, payments, csrf) {
               <span><strong>${e.event_type || 'Etkinlik'}</strong>${e.start_time ? h` · ${e.start_time}` : ''}</span>
               <span class="muted">${[e.venue, e.city].filter(Boolean).join(', ')}</span>
               ${e.package ? h`<span>${e.package}${e.price ? h` · ${tl(e.price)}` : ''}</span>` : e.price ? h`<span>${tl(e.price)}</span>` : ''}
-              ${e.team ? h`<span class="muted">Ekip: ${e.team}</span>` : ''}
               ${e.package_detail ? h`<span class="ev-view__note">${e.package_detail}</span>` : ''}
+              ${(e.members || []).length ? h`<span class="ev-view__team">${e.members.map((m) => h`<span class="ev-view__member">${m.name}${m.phone ? h` <a href="https://wa.me/${m.phone}?text=${encodeURIComponent(taskText(m, e, k.name))}" target="_blank" rel="noopener" title="Görev mesajını WhatsApp'tan gönder">${icon('whatsapp')}</a>` : ''}</span>`)}</span>` : ''}
             </div>
           </li>`)}</ol>` : h`<p class="muted">Etkinlik girilmedi.</p>`}
       </div>
@@ -408,7 +418,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=6">
+<link rel="stylesheet" href="/css/style.css?v=7">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -444,7 +454,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
     ${[contact.phone, contact.email, contact.instagram ? '@' + String(contact.instagram).replace(/^@/, '') : ''].filter(Boolean).join(' · ')}
   </footer>
 </main>
-<script src="/js/dashboard.js?v=2" defer></script>
+<script src="/js/dashboard.js?v=3" defer></script>
 </body></html>`);
 }
 
@@ -715,6 +725,56 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=1'] });
 }
 
+// Ekip: personel ekle, düzenle, sil; her kişinin görevleri
+function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) {
+  const roles = c.appointments?.teamRoles || [];
+  const t = today();
+  const form = (m, action, submit) => h`
+    <form class="form" method="post" action="${action}">
+      ${csrfField(csrf)}
+      <div class="appt-row">
+        <div class="field"><label for="m-name">Ad soyad</label><input id="m-name" name="name" type="text" required maxlength="60" value="${m.name || ''}"></div>
+        <div class="field"><label for="m-role">Görevi</label><select id="m-role" name="role"><option value="">Seçin</option>${roles.map((r) => h`<option${r === m.role ? raw(' selected') : ''}>${r}</option>`)}</select></div>
+      </div>
+      <div class="field"><label for="m-phone">Telefon (WhatsApp)</label><input id="m-phone" name="phone" type="tel" inputmode="tel" maxlength="20" placeholder="05XX XXX XX XX" value="${m.phone ? displayPhone(m.phone) : ''}"></div>
+      <div class="field"><label for="m-notes">Bilgiler / notlar</label><textarea id="m-notes" name="notes" rows="3" maxlength="1000" placeholder="Ekipman, ücret, IBAN, beden, uygun olmadığı günler…">${m.notes || ''}</textarea></div>
+      <label class="check"><input type="checkbox" name="active" value="1"${m.active === 0 ? '' : raw(' checked')}><span>Aktif (görev verilebilir)</span></label>
+      <label class="check"><input type="checkbox" name="waOptin" value="1"${m.wa_optin === 0 ? '' : raw(' checked')}><span>Görev verilince WhatsApp mesajı gönderilsin</span></label>
+      <div class="appt-actions"><button class="btn btn--primary" type="submit">${submit}</button>${member ? h`<a class="btn btn--text" href="/admin/ekip">Vazgeç</a>` : ''}</div>
+    </form>`;
+  const body = h`
+  <div class="container">
+    <div class="panel-title-row"><h1 class="page-title">Ekip</h1></div>
+    ${flashBlock(f)}
+    <div class="team-grid">
+      <section aria-labelledby="team-list">
+        <h2 class="panel-section__title" id="team-list">Personel <span class="muted">(${team.length})</span></h2>
+        ${team.length ? h`<ul class="team-list">${team.map((m) => h`
+          <li class="team-row${m.active ? '' : ' is-off'}${member && member.id === m.id ? ' is-current' : ''}">
+            <div class="team-row__main">
+              <strong>${m.name}</strong>
+              <span class="muted">${[m.role, m.phone ? displayPhone(m.phone) : 'telefon yok', m.active ? '' : 'pasif'].filter(Boolean).join(' · ')}</span>
+              ${m.upcoming ? h`<span class="team-row__up">${m.upcoming} yaklaşan görev</span>` : ''}
+            </div>
+            <div class="team-row__actions">
+              <a class="btn btn--text btn--sm" href="/admin/ekip?duzenle=${m.id}">Düzenle</a>
+              <form method="post" action="/admin/ekip/${m.id}/sil" data-confirm="${m.name} ekipten silinsin mi? Verilmiş görevlerden de çıkarılır.">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit" aria-label="Sil">${icon('trash')}</button></form>
+            </div>
+          </li>`)}</ul>` : h`<p class="muted">Henüz personel eklenmedi.</p>`}
+      </section>
+      <section class="card" aria-labelledby="team-form">
+        <h2 class="card__title" id="team-form">${member ? `${member.name} · düzenle` : 'Personel ekle'}</h2>
+        ${member ? form(member, `/admin/ekip/${member.id}`, 'Kaydet') : form({}, '/admin/ekip', 'Ekibe ekle')}
+        ${member ? h`<div class="team-tasks">
+          <h3 class="appt-sub">Görevleri</h3>
+          ${memberEvents.length ? h`<ul class="plain-stats">${memberEvents.map((e) => h`<li><span><a href="/admin/ciftler/${e.couple_id}">${e.couple_name}</a> · ${e.event_type || 'Etkinlik'}</span><span class="${e.event_date >= t ? '' : 'muted'}">${shortDate(e.event_date)}${e.start_time ? ' ' + e.start_time : ''}</span></li>`)}</ul>` : h`<p class="muted">Görev verilmedi.</p>`}
+        </div>` : ''}
+      </section>
+    </div>
+  </div>`;
+  return panelLayout(c, { title: 'Ekip', csrf, nav: adminNav('team', csrf, demoAdmin), home: '/admin', tabs: adminTabs('team', demoAdmin), body });
+}
+
 function account(c, { admin, csrf, flash: f, demoAdmin }) {
   const body = h`
   <div class="container container--narrow">
@@ -733,6 +793,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
     <section class="card account-logout">
       <h2 class="card__title">Diğer bölümler</h2>
       <div class="account-links">
+        <a class="btn btn--outline btn--sm" href="/admin/ekip">${icon('users')}Ekip</a>
         <a class="btn btn--outline btn--sm" href="/admin/rapor">${icon('chart')}Aylık rapor</a>
         <a class="btn btn--outline btn--sm" href="/admin/portfolyo">${icon('image')}Portfolyo</a>
       </div>
@@ -751,4 +812,4 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Hesap', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
 }
 
-module.exports = { appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = { teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

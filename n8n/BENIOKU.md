@@ -19,7 +19,7 @@
 | Akış | Dosya | Ne yapar |
 |---|---|---|
 | 1 | `1-gelen-mesajlar.json` | Yeni yazan kişiyi karşılar, form bağlantısı gönderir, talebi panele düşürür. Kayıtlı çifte panel bağlantısı verir. |
-| 2 | `2-site-olaylari.json` | Aşama değişince, fotoğraflar yüklenince ve formdan talep gelince mesaj gönderir. |
+| 2 | `2-site-olaylari.json` | Aşama değişince, fotoğraflar yüklenince, formdan talep gelince ve ekipten birine görev verilince mesaj gönderir. |
 | 3 | `3-gunluk-hatirlatmalar.json` | Her sabah plan formu, albüm seçimi ve teslim sonrası yorum hatırlatmalarını gönderir. |
 
 ---
@@ -45,7 +45,7 @@
    Ardından **Varlık ata** ile uygulamayı ve WhatsApp hesabını verin › **Anahtar oluştur**.
    İzinler: `whatsapp_business_messaging`, `whatsapp_business_management`. Anahtarı güvenli bir yere kaydedin.
 6. **Ödeme yöntemi** ekleyin. Şablon mesajları ücretlidir; müşteri yazdıktan sonraki 24 saat içinde verilen cevaplar ücretsizdir.
-7. `n8n/SABLONLAR.md`'deki 5 şablonu oluşturup onaya gönderin.
+7. `n8n/SABLONLAR.md`'deki 6 şablonu oluşturup onaya gönderin.
 
 ## Adım 3 · n8n'de kimlik bilgileri
 

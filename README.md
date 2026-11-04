@@ -94,7 +94,12 @@ Aynı gün başka çekim varsa form uyarır. Randevu numarası, çiftin erişim 
 
 **Rapor:** Ay ay etkinlik sayısı, ciro, tahsilat; müşteri kaynakları ve etkinlik türleri.
 
-Etkinlik türleri, müşteri kaynakları, paket önerileri ve ekip isimleri: `content/site.json` › `appointments`.
+**Ekip:** Admin › Ekip'te personel eklenir/düzenlenir (görev, telefon, notlar, aktif/pasif). Randevu formunda her
+etkinliğe ekipten kişiler seçilir; yeni görev verilen kişiye WhatsApp mesajı gider (n8n kuruluysa otomatik,
+değilse kişi kartında kişinin yanındaki WhatsApp simgesiyle elle). Şablon: `n8n/SABLONLAR.md` › 6.
+
+Paket önerileri daha önce yazdığınız paket adlarından gelir. Etkinlik türleri, müşteri kaynakları ve ekip görevleri:
+`content/site.json` › `appointments`.
 Şifre kaybolursa çiftin sayfasında **Şifre yenile**.
 
 **Fotoğraf yükleme:** Çiftin sayfasında fotoğrafları seçin. Tarayıcı her fotoğrafın küçük (ızgara) ve

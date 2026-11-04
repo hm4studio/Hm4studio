@@ -74,6 +74,14 @@ function seed() {
     { name: 'Gizem & Arda', code: 'demo-7', appt: { fullName: 'Gizem Tunç', partnerName: 'Arda Erdem', eventType: 'Düğün', startTime: '14:00', city: 'Burdur', venue: '[Düğün salonu]', package: 'Fotoğraf + Video + Albüm', total: 50000, deposit: 20000, source: 'Tavsiye', team: 'Hasan, Mert', extra: [{ offset: -4, eventType: 'Dış Çekim', startTime: '16:00', venue: 'Salda Gölü', package: 'Dış çekim', price: 10000, team: 'Hasan' }, { offset: -1, eventType: 'Kına', startTime: '19:30', venue: '[Kına evi]', package: 'Fotoğraf', price: 9000 }] }, date: d(8), due: d(53), stage: 0, limit: 80 },
   ];
 
+  // Örnek ekip (telefonlar boş: demoda kimseye mesaj gitmez)
+  const crew = {
+    Hasan: db.addMember({ name: 'Hasan Yıldırım', role: 'Fotoğrafçı', phone: null, notes: 'Canon R5, 2 flaş. Hafta içi akşamları uygun.', active: true, waOptin: true }),
+    Mert: db.addMember({ name: 'Mert Aksoy', role: 'Videocu', phone: null, notes: 'Sony FX3, gimbal. Drone lisansı var.', active: true, waOptin: true }),
+    Ece: db.addMember({ name: 'Ece Kara', role: 'Asistan', phone: null, notes: 'Işık ve gelin hazırlığı yardımı.', active: true, waOptin: true }),
+  };
+  const crewIds = (names) => String(names || '').split(',').map((n) => crew[n.trim()]).filter(Boolean);
+
   let photoCount = 0;
   for (const k of couples) {
     const id = db.createCouple({ name: k.name, accessCode: k.code, hash: unused, eventDate: k.date });
@@ -84,7 +92,10 @@ function seed() {
     // Ana etkinlik + varsa önceki günlerdeki ek etkinlikler (dış çekim, kına…)
     const evs = [...(x.extra || []).map((e) => ({ ...e, eventDate: d(e.offset + (k.date === t ? 0 : daysFrom(k.date))) })),
       { eventType: x.eventType, eventDate: k.date, startTime: x.startTime, city: x.city, venue: x.venue, package: x.package, packageDetail: x.detail || '', price: x.total, team: x.team || '' }];
-    for (const e of evs) db.addEvent(id, { eventType: '', startTime: '', city: x.city, venue: '', package: '', packageDetail: '', price: 0, team: '', ...e });
+    for (const e of evs) {
+      const evId = db.addEvent(id, { eventType: '', startTime: '', city: x.city, venue: '', package: '', packageDetail: '', price: 0, ...e, team: '' });
+      db.setEventTeam(evId, crewIds(e.team));
+    }
     db.syncCoupleDate(id);
     if (x.deposit) db.addPayment(id, { amount: x.deposit, paidOn: addDays(k.date, -60), method: 'IBAN', note: 'Kapora' });
     if (x.paidFull) db.addPayment(id, { amount: evs.reduce((s2, e) => s2 + (e.price || 0), 0) - x.deposit, paidOn: addDays(k.date, 20), method: 'IBAN', note: 'Kalan bakiye' });

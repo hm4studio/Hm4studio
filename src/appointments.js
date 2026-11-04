@@ -43,7 +43,8 @@ function readEvents(form, content) {
       package: clean(f('package'), 80),
       packageDetail: cleanArea(f('detail'), 1500),
       price: money(f('price')),
-      team: clean(f('team'), 120),
+      team: '',
+      teamIds: [].concat(f('team') || []).map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 20),
     };
     const empty = !e.eventType && !e.eventDate && !e.venue && !e.package && !e.price && !e.packageDetail;
     if (!empty) list.push(e);
@@ -96,7 +97,7 @@ function payment(k) {
 const tl = (n) => `${Number(n || 0).toLocaleString('tr-TR')} ₺`;
 
 // Kayıttaki değerleri forma geri doldurmak için
-function formValues(k, events = []) {
+function formValues(k, events = [], teamOf = () => []) {
   if (!k) return {};
   const v = {
     fullName: k.full_name || k.name, partnerName: k.partner_name, phone: k.phone ? wa.displayPhone(k.phone) : '',
@@ -106,7 +107,7 @@ function formValues(k, events = []) {
   events.forEach((e, i) => Object.assign(v, {
     [`ev${i}_id`]: e.id, [`ev${i}_type`]: e.event_type, [`ev${i}_date`]: e.event_date || '', [`ev${i}_time`]: e.start_time,
     [`ev${i}_city`]: e.city, [`ev${i}_venue`]: e.venue, [`ev${i}_package`]: e.package, [`ev${i}_detail`]: e.package_detail,
-    [`ev${i}_price`]: e.price || '', [`ev${i}_team`]: e.team,
+    [`ev${i}_price`]: e.price || '', [`ev${i}_team`]: teamOf(e.id),
   }));
   return v;
 }

@@ -926,3 +926,27 @@ input[type="tel"]:focus, input[type="time"]:focus, input[type="search"]:focus { 
   .doc { padding: 0; max-width: none; }
 }
 #odemeler { margin-bottom: 40px; }
+
+/* ── Ekip ── */
+.ev-team__label { font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 500; color: var(--ink-2); }
+.ev-team__label .muted { text-transform: none; letter-spacing: 0; font-size: .78rem; }
+.ev-team__list { display: flex; flex-wrap: wrap; gap: 8px; }
+.ev-team__item { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-size: .9rem; }
+.ev-team__item:has(input:checked) { border-color: var(--ink); }
+.ev-team__item input { width: 18px; height: 18px; accent-color: var(--ink); }
+.ev-team__empty { margin: 0; font-size: .88rem; }
+.ev-view__team { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }
+.ev-view__member { display: inline-flex; align-items: center; gap: 4px; }
+.ev-view__member a { display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; color: var(--success); }
+.ev-view__member .icon { width: 16px; height: 16px; }
+.team-grid { display: grid; gap: 32px; align-items: start; }
+@media (min-width: 960px) { .team-grid { grid-template-columns: minmax(0, 1fr) 420px; gap: 48px; } }
+.team-list { list-style: none; margin: 12px 0 0; padding: 0; border-top: 1px solid var(--hair); }
+.team-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--hair); }
+.team-row.is-off { opacity: .55; }
+.team-row.is-current strong { color: var(--accent); }
+.team-row__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.team-row__main .muted { font-size: .86rem; }
+.team-row__up { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); }
+.team-row__actions { display: flex; align-items: center; gap: 4px; }
+.team-tasks { margin-top: 24px; }

@@ -66,6 +66,26 @@ function photosUploaded(coupleId) {
   }, waitMs).unref());
 }
 
+// Ekipten birine etkinlik görevi verildi: o kişiye WhatsApp mesajı (aynı görev için tarih değişmedikçe bir kez)
+function teamAssigned(eventId, memberIds) {
+  if (!config.n8nWebhookUrl || !memberIds.length) return;
+  const ev = db.getEvent(eventId);
+  if (!ev) return;
+  const couple = db.getCouple(ev.couple_id);
+  for (const id of memberIds) {
+    const m = db.getMember(id);
+    if (!m || !m.phone || !m.active || !m.wa_optin) continue;
+    const key = `gorev:${ev.id}:${m.id}:${ev.event_date || ''}`;
+    if (db.wasNotified(key)) continue;
+    db.markNotified(key);
+    post({
+      event: 'ekip_gorev', at: new Date().toISOString(), member: { id: m.id, name: m.name, phone: m.phone },
+      couple: couple ? coupleInfo(couple) : null, eventInfo: { id: ev.id, type: ev.event_type, date: ev.event_date, time: ev.start_time },
+      whatsapp: wa.templateMessage(m.phone, 'gorev', wa.taskVars(m, ev, couple?.name)),
+    });
+  }
+}
+
 function albumLocked(couple) {
   if (!config.n8nWebhookUrl) return;
   const c = db.getCouple(couple.id);
@@ -88,4 +108,4 @@ function flushPhotoTimers() {
   for (const [id, t] of photoTimers) { clearTimeout(t); photoTimers.delete(id); }
 }
 
-module.exports = { post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };
+module.exports = { teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };

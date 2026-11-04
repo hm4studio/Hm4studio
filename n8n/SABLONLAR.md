@@ -1,7 +1,7 @@
 # WhatsApp mesaj şablonları (Meta onayı için)
 
 Müşteri size son 24 saat içinde yazmadıysa WhatsApp yalnızca **Meta'nın onayladığı şablonlarla**
-mesaj göndermenize izin verir. Bildirimler ve hatırlatmalar bu yüzden şablonla gider.
+mesaj göndermenize izin verir. Bildirimler, hatırlatmalar ve ekip görev mesajları bu yüzden şablonla gider.
 
 Nerede oluşturulur: **Meta Business Suite › WhatsApp Manager › Mesaj şablonları › Şablon oluştur**
 
@@ -56,6 +56,21 @@ Ne zaman: "Teslim edildi" aşamasından 7 gün sonra, bir kez. Meta yorum istekl
 Merhaba {{1}}, sizinle çalışmak bizim için çok keyifliydi 🤍 Deneyiminizi birkaç cümleyle paylaşırsanız çok seviniriz: {{2}}
 ```
 Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` https://g.page/r/…/review
+
+### 6. `hm4_ekip_gorev` — Kategori: **Yardımcı (Utility)**
+Ne zaman: Randevu oluştururken veya düzenlerken bir etkinliğe ekipten birini seçtiğinizde (o kişiye, bir kez).
+Ekip telefonları **Admin › Ekip** sayfasından girilir.
+
+```
+Merhaba {{1}}, yeni görev: {{2}} · {{3}}
+Tarih: {{4}} {{5}}
+Yer: {{6}}
+Not: {{7}}
+```
+Örnekler: `{{1}}` Hasan · `{{2}}` Düğün · `{{3}}` Ayşe & Mehmet · `{{4}}` 17 Temmuz Cumartesi · `{{5}}` 14:00 · `{{6}}` Salon adı, Antalya · `{{7}}` Gelin hazırlığından başlanacak
+
+WhatsApp API kurulmadan önce de kişi kartındaki etkinliğin altında, ekipteki kişinin yanında çıkan
+WhatsApp simgesine dokunarak aynı mesajı elle gönderebilirsiniz.
 
 ---
 

@@ -100,18 +100,24 @@ function register(router) {
         notes: lead.message,
       });
     }
-    html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, teamNames: db.teamNames() }));
+    html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.packageNames() }));
   });
 
   // Etkinlikleri kaydet: gönderilenleri güncelle/ekle, formdan kaldırılanları sil
+  // Ekibine yeni eklenen kişilere görev mesajı gider
   function saveEvents(coupleId, list) {
     const existing = new Map(db.listEvents(coupleId).map((e) => [e.id, e]));
     const kept = new Set();
+    let notified = 0;
     for (const e of list) {
-      if (e.id && existing.has(e.id)) { db.updateEvent(e.id, e); kept.add(e.id); } else db.addEvent(coupleId, e);
+      let id;
+      if (e.id && existing.has(e.id)) { db.updateEvent(e.id, e); id = e.id; kept.add(id); } else id = db.addEvent(coupleId, e);
+      const added = db.setEventTeam(id, e.teamIds);
+      if (added.length) { events.teamAssigned(id, added); notified += added.length; }
     }
     for (const id of existing.keys()) if (!kept.has(id)) db.deleteEvent(id);
     db.syncCoupleDate(coupleId);
+    return notified;
   }
 
   // Aynı gün başka çekim var mı?
@@ -136,7 +142,7 @@ function register(router) {
     const c = getContent();
     const { a, events: list, errors } = appt.readForm(form, c);
     if (errors.length) {
-      return html(res, views.appointmentPage(c, { values: form, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, errors, talepId: form.talep, back: '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true }), 400);
+      return html(res, views.appointmentPage(c, { values: form, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, errors, talepId: form.talep, back: '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.packageNames() }), 400);
     }
     // Çiftin panel girişi: kod ve şifre otomatik
     const base = slugify(a.name) || 'cift';
@@ -146,7 +152,7 @@ function register(router) {
     const id = db.createCouple({ name: a.name, accessCode: code, hash: auth.hashPassword(password), eventDate: null });
     a.dueDate = defaultDue(a, list, c);
     db.updateCard(id, a);
-    saveEvents(id, list);
+    const assigned = saveEvents(id, list);
     if (a.deposit > 0) db.addPayment(id, { amount: a.deposit, paidOn: a.depositDate || today(), note: 'Kapora' });
     const first = list.map((e) => e.eventDate).filter(Boolean).sort()[0];
     db.setRefNo(id, db.nextRefNo((first || today()).slice(0, 4)));
@@ -154,7 +160,7 @@ function register(router) {
     if (lead && !lead.couple_id) db.setLeadStatus(lead.id, 'rezervasyon', id);
     const warn = conflictText(id, list);
     setFlash(req, {
-      message: `${a.name} için randevu oluşturuldu.${warn ? ' ' + warn : ''}`,
+      message: `${a.name} için randevu oluşturuldu.${assigned ? ` ${assigned} ekip görevi verildi${config.n8nWebhookUrl ? ' ve WhatsApp mesajı gönderildi' : ''}.` : ''}${warn ? ' ' + warn : ''}`,
       type: warn ? 'error' : 'success',
       credentials: { url: `${config.siteUrl}/uygulama`, code, password },
     });
@@ -165,7 +171,7 @@ function register(router) {
   router.get('/admin/ciftler/:id/duzenle', (req, res, { params }) => {
     if (!requireAdmin(req, res)) return;
     const couple = getCoupleOr404(params.id);
-    html(res, views.appointmentPage(getContent(), { values: appt.formValues(couple, db.listEvents(couple.id)), action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), teamNames: db.teamNames() }));
+    html(res, views.appointmentPage(getContent(), { values: appt.formValues(couple, db.listEvents(couple.id), db.eventMemberIds), action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), team: db.listTeam(), packages: db.packageNames() }));
   });
 
   router.post('/admin/ciftler/:id/bilgi', async (req, res, { params }) => {
@@ -178,14 +184,14 @@ function register(router) {
     const total = list.reduce((s, e) => s + e.price, 0);
     if (total > 0 && paidSoFar > total) errors.push(`Alınan ödemeler (${appt.tl(paidSoFar)}) toplam tutarı aşıyor.`);
     if (errors.length) {
-      return html(res, views.appointmentPage(c, { values: form, action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, errors, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req) }), 400);
+      return html(res, views.appointmentPage(c, { values: form, action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, errors, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), team: db.listTeam(), packages: db.packageNames() }), 400);
     }
     a.dueDate = a.dueDate || couple.due_date || defaultDue(a, list, c);
     db.updateCard(couple.id, a);
-    saveEvents(couple.id, list);
+    const assigned = saveEvents(couple.id, list);
     if (!couple.ref_no) db.setRefNo(couple.id, db.nextRefNo(today().slice(0, 4)));
     const warn = conflictText(couple.id, list);
-    setFlash(req, { message: `Kaydedildi.${warn ? ' ' + warn : ''}`, type: warn ? 'error' : 'success' });
+    setFlash(req, { message: `Kaydedildi.${assigned ? ` ${assigned} yeni ekip görevi${config.n8nWebhookUrl ? ', WhatsApp mesajı gönderildi' : ''}.` : ''}${warn ? ' ' + warn : ''}`, type: warn ? 'error' : 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
 
@@ -195,6 +201,56 @@ function register(router) {
     const date = appt.cleanDate(query.get('tarih'));
     const list = date ? db.eventsOn(date, Number(query.get('haric')) || 0) : [];
     json(res, { ok: true, items: list.map((e) => ({ name: e.couple_name, type: e.event_type, time: e.start_time })) });
+  });
+
+  // ── Ekip ──
+  function readMember(form) {
+    const roles = getContent().appointments?.teamRoles || [];
+    const phoneRaw = cleanText(form.phone, 20);
+    return {
+      name: cleanText(form.name, 60), role: roles.includes(form.role) ? form.role : '', phoneRaw, phone: wa.normalizePhone(phoneRaw),
+      notes: String(form.notes || '').trim().slice(0, 1000), active: form.active === '1', waOptin: form.waOptin === '1',
+    };
+  }
+
+  router.get('/admin/ekip', (req, res, { query }) => {
+    if (!requireAdmin(req, res)) return;
+    const editId = Number(query.get('duzenle')) || null;
+    const member = editId ? db.getMember(editId) : null;
+    html(res, views.teamPage(getContent(), { team: db.listTeam(), member, memberEvents: member ? db.memberEvents(member.id) : [], csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
+  router.post('/admin/ekip', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const m = readMember(form);
+    if (!m.name) setFlash(req, { message: 'İsim yazın.', type: 'error' });
+    else if (m.phoneRaw && !m.phone) setFlash(req, { message: 'Telefon numarası geçersiz (örn. 0532 123 45 67).', type: 'error' });
+    else { db.addMember(m); setFlash(req, { message: `${m.name} ekibe eklendi.`, type: 'success' }); }
+    redirect(res, '/admin/ekip');
+  });
+
+  router.post('/admin/ekip/:id', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const member = db.getMember(toId(params.id));
+    if (!member) throw new HttpError(404, 'Bulunamadı');
+    const m = readMember(form);
+    if (!m.name) { setFlash(req, { message: 'İsim yazın.', type: 'error' }); return redirect(res, `/admin/ekip?duzenle=${member.id}`); }
+    if (m.phoneRaw && !m.phone) { setFlash(req, { message: 'Telefon numarası geçersiz (örn. 0532 123 45 67).', type: 'error' }); return redirect(res, `/admin/ekip?duzenle=${member.id}`); }
+    db.updateMember(member.id, m);
+    setFlash(req, { message: `${m.name} güncellendi.`, type: 'success' });
+    redirect(res, '/admin/ekip');
+  });
+
+  router.post('/admin/ekip/:id/sil', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const member = db.getMember(toId(params.id));
+    if (!member) throw new HttpError(404, 'Bulunamadı');
+    db.deleteMember(member.id);
+    setFlash(req, { message: `${member.name} ekipten silindi.`, type: 'success' });
+    redirect(res, '/admin/ekip');
   });
 
   // ── Ödemeler ──
@@ -288,7 +344,7 @@ function register(router) {
       flash: takeFlash(req),
       loginUrl: `${config.siteUrl}/uygulama`,
       card: db.getCoupleCard(couple.id),
-      events: db.listEvents(couple.id),
+      events: db.listEvents(couple.id).map((e) => ({ ...e, members: db.eventMembers(e.id) })),
       payments: db.listPayments(couple.id),
       demoAdmin: demo.isDemoAdmin(req),
     }));
@@ -304,6 +360,56 @@ function register(router) {
     if (stage !== couple.stage) events.stageChanged(couple, stage);
     setFlash(req, { message: `Aşama güncellendi: ${stages[stage]}`, type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
+  });
+
+  // ── Ekip ──
+  function readMember(form) {
+    const roles = getContent().appointments?.teamRoles || [];
+    const phoneRaw = cleanText(form.phone, 20);
+    return {
+      name: cleanText(form.name, 60), role: roles.includes(form.role) ? form.role : '', phoneRaw, phone: wa.normalizePhone(phoneRaw),
+      notes: String(form.notes || '').trim().slice(0, 1000), active: form.active === '1', waOptin: form.waOptin === '1',
+    };
+  }
+
+  router.get('/admin/ekip', (req, res, { query }) => {
+    if (!requireAdmin(req, res)) return;
+    const editId = Number(query.get('duzenle')) || null;
+    const member = editId ? db.getMember(editId) : null;
+    html(res, views.teamPage(getContent(), { team: db.listTeam(), member, memberEvents: member ? db.memberEvents(member.id) : [], csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
+  router.post('/admin/ekip', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const m = readMember(form);
+    if (!m.name) setFlash(req, { message: 'İsim yazın.', type: 'error' });
+    else if (m.phoneRaw && !m.phone) setFlash(req, { message: 'Telefon numarası geçersiz (örn. 0532 123 45 67).', type: 'error' });
+    else { db.addMember(m); setFlash(req, { message: `${m.name} ekibe eklendi.`, type: 'success' }); }
+    redirect(res, '/admin/ekip');
+  });
+
+  router.post('/admin/ekip/:id', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const member = db.getMember(toId(params.id));
+    if (!member) throw new HttpError(404, 'Bulunamadı');
+    const m = readMember(form);
+    if (!m.name) { setFlash(req, { message: 'İsim yazın.', type: 'error' }); return redirect(res, `/admin/ekip?duzenle=${member.id}`); }
+    if (m.phoneRaw && !m.phone) { setFlash(req, { message: 'Telefon numarası geçersiz (örn. 0532 123 45 67).', type: 'error' }); return redirect(res, `/admin/ekip?duzenle=${member.id}`); }
+    db.updateMember(member.id, m);
+    setFlash(req, { message: `${m.name} güncellendi.`, type: 'success' });
+    redirect(res, '/admin/ekip');
+  });
+
+  router.post('/admin/ekip/:id/sil', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const member = db.getMember(toId(params.id));
+    if (!member) throw new HttpError(404, 'Bulunamadı');
+    db.deleteMember(member.id);
+    setFlash(req, { message: `${member.name} ekipten silindi.`, type: 'success' });
+    redirect(res, '/admin/ekip');
   });
 
   // ── Ödemeler ──

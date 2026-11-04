@@ -7,6 +7,7 @@
   "otomatikCevap": {
     "yeniKisi": "Merhaba {ad}, HM4 Studio'ya yazdığınız için teşekkürler! 🤍\nTarihinizin uygunluğunu kontrol edebilmemiz için birkaç kısa bilgiyi buradan iletir misiniz? (1 dakika sürer)\n{link}\n\nEkibimiz en kısa sürede size dönecek.",
     "mevcutCift": "Merhaba {ad} 🤍 Mesajınızı aldık, ekibimiz en kısa sürede dönecek. Bu arada işinizin durumunu ve fotoğraflarınızı panelinizden görebilirsiniz: {link}",
+    "ekipGorev": "Merhaba {ad}, yeni görev: {etkinlik} · {cift}\n{tarih} {saat}\n{yer}\n{not}\n\nHM4 Studio",
     "talepAlindi": "Bilgileriniz bize ulaştı, teşekkürler {ad}! Uygunluğu kontrol edip size buradan yazacağız."
   },
 
@@ -15,7 +16,8 @@
     "fotograflar": { "ad": "hm4_fotograflar_hazir", "degiskenler": ["ad", "link"] },
     "plan": { "ad": "hm4_plan_hatirlatma", "degiskenler": ["ad", "gun", "link"] },
     "album": { "ad": "hm4_album_hatirlatma", "degiskenler": ["ad", "kare", "link"] },
-    "yorum": { "ad": "hm4_yorum_iste", "degiskenler": ["ad", "link"] }
+    "yorum": { "ad": "hm4_yorum_iste", "degiskenler": ["ad", "link"] },
+    "gorev": { "ad": "hm4_ekip_gorev", "degiskenler": ["ad", "etkinlik", "cift", "tarih", "saat", "yer", "not"] }
   },
 
   "kurallar": {

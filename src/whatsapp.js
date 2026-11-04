@@ -54,7 +54,18 @@ function templateMessage(to, key, vars) {
   };
 }
 
+// Ekip görev mesajının değişkenleri (şablon ve elle gönderilen metin ortak)
+function taskVars(member, ev, coupleName) {
+  const date = ev.event_date ? new Date(`${ev.event_date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' }) : '';
+  return {
+    ad: String(member.name || '').split(/\s+/)[0], etkinlik: ev.event_type || 'Etkinlik', cift: coupleName || '', tarih: date,
+    saat: ev.start_time || '', yer: [ev.venue, ev.city].filter(Boolean).join(', '), not: (ev.package_detail || '').slice(0, 400),
+  };
+}
+// wa.me bağlantısı için hazır metin (WhatsApp API kurulmadan da elle gönderilebilsin)
+const taskText = (member, ev, coupleName) => fill(getWhatsapp().otomatikCevap.ekipGorev || '', taskVars(member, ev, coupleName)).replace(/\n{3,}/g, '\n\n').trim();
+
 const panelLink = () => `${config.siteUrl}/uygulama`;
 const enabled = () => Boolean(config.n8nApiKey);
 
-module.exports = { normalizePhone, displayPhone, fill, textMessage, templateMessage, panelLink, enabled };
+module.exports = { normalizePhone, displayPhone, fill, textMessage, templateMessage, panelLink, enabled, taskVars, taskText };

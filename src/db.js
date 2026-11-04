@@ -139,6 +139,21 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS payments_couple ON payments(couple_id);
+CREATE TABLE IF NOT EXISTS team (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT '',
+  phone TEXT,
+  notes TEXT NOT NULL DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1,
+  wa_optin INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS event_team (
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  member_id INTEGER NOT NULL REFERENCES team(id) ON DELETE CASCADE,
+  PRIMARY KEY (event_id, member_id)
+);
 CREATE TABLE IF NOT EXISTS notifications (
   key TEXT PRIMARY KEY,
   sent_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -241,6 +256,29 @@ module.exports = {
     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(coupleId, e.eventType, e.eventDate || null, e.startTime, e.city, e.venue, e.package, e.packageDetail, e.price, e.team).lastInsertRowid),
   updateEvent: (id, e) => q(`UPDATE events SET event_type = ?, event_date = ?, start_time = ?, city = ?, venue = ?, package = ?, package_detail = ?, price = ?, team = ? WHERE id = ?`)
     .run(e.eventType, e.eventDate || null, e.startTime, e.city, e.venue, e.package, e.packageDetail, e.price, e.team, id),
+  // ── Ekip ──
+  listTeam: () => q(`SELECT t.*, (SELECT COUNT(*) FROM event_team x JOIN events e ON e.id = x.event_id WHERE x.member_id = t.id AND e.event_date >= date('now', '+3 hours')) AS upcoming
+    FROM team t ORDER BY t.active DESC, t.name`).all(),
+  getMember: (id) => q('SELECT * FROM team WHERE id = ?').get(id),
+  addMember: (m) => Number(q('INSERT INTO team(name, role, phone, notes, active, wa_optin) VALUES(?, ?, ?, ?, ?, ?)').run(m.name, m.role, m.phone || null, m.notes, m.active ? 1 : 0, m.waOptin ? 1 : 0).lastInsertRowid),
+  updateMember: (id, m) => q('UPDATE team SET name = ?, role = ?, phone = ?, notes = ?, active = ?, wa_optin = ? WHERE id = ?').run(m.name, m.role, m.phone || null, m.notes, m.active ? 1 : 0, m.waOptin ? 1 : 0, id),
+  deleteMember: (id) => q('DELETE FROM team WHERE id = ?').run(id),
+  memberEvents: (memberId) => q(`SELECT e.*, c.name AS couple_name FROM event_team x JOIN events e ON e.id = x.event_id JOIN couples c ON c.id = e.couple_id
+    WHERE x.member_id = ? ORDER BY e.event_date DESC LIMIT 30`).all(memberId),
+  eventMemberIds: (eventId) => q('SELECT member_id FROM event_team WHERE event_id = ?').all(eventId).map((r) => r.member_id),
+  eventMembers: (eventId) => q('SELECT t.* FROM event_team x JOIN team t ON t.id = x.member_id WHERE x.event_id = ? ORDER BY t.name').all(eventId),
+  // Etkinliğin ekibini ayarlar; yeni eklenen kişilerin kimliklerini döndürür (onlara görev mesajı gider)
+  setEventTeam: (eventId, ids) => {
+    const before = new Set(q('SELECT member_id FROM event_team WHERE event_id = ?').all(eventId).map((r) => r.member_id));
+    const valid = new Set(q('SELECT id FROM team').all().map((r) => r.id));
+    const want = [...new Set(ids)].filter((id) => valid.has(id));
+    q('DELETE FROM event_team WHERE event_id = ?').run(eventId);
+    for (const id of want) q('INSERT INTO event_team(event_id, member_id) VALUES(?, ?)').run(eventId, id);
+    const names = want.length ? q(`SELECT group_concat(name, ', ') AS n FROM (SELECT name FROM team WHERE id IN (${want.map(() => '?').join(',')}) ORDER BY name)`).get(...want).n : '';
+    q('UPDATE events SET team = ? WHERE id = ?').run(names || '', eventId);
+    return want.filter((id) => !before.has(id));
+  },
+  packageNames: () => q("SELECT package, COUNT(*) AS n FROM events WHERE package <> '' GROUP BY package ORDER BY n DESC LIMIT 30").all().map((r) => r.package),
   teamNames: () => q("SELECT DISTINCT team FROM events WHERE team <> '' ORDER BY team").all().map((r) => r.team),
   deleteEvent: (id) => q('DELETE FROM events WHERE id = ?').run(id),
 
@@ -309,7 +347,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM favorites; DELETE FROM photos; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
+    DELETE FROM favorites; DELETE FROM photos; DELETE FROM event_team; DELETE FROM team; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');
