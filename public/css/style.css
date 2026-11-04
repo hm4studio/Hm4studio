@@ -1402,3 +1402,9 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .prog__empty { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: var(--pencil); padding-bottom: 18px; border-bottom: 1px solid var(--rule); }
 .prog__empty .prog__tag { background: var(--faint); }
 .prog .tmr__call { flex: none; }
+/* Mobil menü: bantlar olsa da başlığın altından açılır, kapatma (X) düğmesi görünür kalır */
+.site-nav.is-open { inset: var(--nav-top, var(--header-h)) 0 0 0; }
+.site-header:has(.site-nav.is-open) { backdrop-filter: none; z-index: 60; }
+.nav-toggle .icon + .icon { display: none; }
+.nav-toggle[aria-expanded="true"] .icon:first-child { display: none; }
+.nav-toggle[aria-expanded="true"] .icon + .icon { display: block; }

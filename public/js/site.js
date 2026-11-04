@@ -15,7 +15,10 @@
   const toggle = document.querySelector('[data-nav-toggle]');
   const nav = document.querySelector('[data-nav]');
   if (toggle && nav) {
+    const header = toggle.closest('.site-header');
     const setOpen = (open) => {
+      // Menü, üstteki bantlardan bağımsız olarak başlığın hemen altından başlasın; kapatma düğmesi hep görünsün
+      if (open && header) nav.style.setProperty('--nav-top', `${Math.max(0, header.getBoundingClientRect().bottom)}px`);
       nav.classList.toggle('is-open', open);
       toggle.setAttribute('aria-expanded', String(open));
       toggle.querySelector('.sr-only').textContent = open ? 'Menüyü kapat' : 'Menüyü aç';
