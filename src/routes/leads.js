@@ -16,7 +16,7 @@ const { addDays } = require('../jobs');
 // Form için IP başına saatte 5 gönderim
 const sent = new Map();
 function tooMany(req) {
-  const ip = req.socket.remoteAddress || 'x';
+  const ip = require('../http').clientIp(req);
   const now = Date.now();
   const list = (sent.get(ip) || []).filter((t) => now - t < 3600 * 1000);
   if (list.length >= 5) { sent.set(ip, list); return true; }
@@ -41,7 +41,7 @@ function register(router) {
   // Seçilen tarihin doluluğu (isim vermeden yalnızca durum)
   const availHits = new Map();
   router.get('/talep/uygunluk', (req, res, { query }) => {
-    const ip = req.socket.remoteAddress || '';
+    const ip = require('../http').clientIp(req);
     const now = Date.now();
     const hits = (availHits.get(ip) || []).filter((t) => now - t < 60000);
     hits.push(now); availHits.set(ip, hits);

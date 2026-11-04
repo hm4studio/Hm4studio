@@ -1,0 +1,17 @@
+{
+	email {$ACME_EMAIL}
+}
+
+# Site ve paneller
+{$SITE_DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 120MB
+	}
+	reverse_proxy site:3000
+}
+
+# n8n (WhatsApp otomasyonları)
+{$N8N_DOMAIN} {
+	reverse_proxy n8n:5678
+}

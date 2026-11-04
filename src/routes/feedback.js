@@ -15,7 +15,7 @@ const AREAS = ['Genel site', 'Portfolyo', 'Çift paneli', 'Stüdyo (admin) panel
 // Görüş formu için IP başına saatte 6 gönderim
 const sent = new Map();
 function tooMany(req) {
-  const ip = req.socket.remoteAddress || 'x';
+  const ip = require('../http').clientIp(req);
   const now = Date.now();
   const list = (sent.get(ip) || []).filter((t) => now - t < 3600 * 1000);
   sent.set(ip, list);

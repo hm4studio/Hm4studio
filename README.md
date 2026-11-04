@@ -145,6 +145,9 @@ görür, kalbe dokunarak ekleyip çıkarabilir.
 
 ## 5. Yayına alma
 
+**Hostinger VPS (önerilen):** tek komutla kurulum için `deploy/BENIOKU.md`.
+
+
 Bu uygulama **kalıcı diski olan** bir Node.js sunucusu ister (veritabanı ve fotoğraflar diskte durur).
 Uygun seçenekler: bir VPS (ör. Hetzner, DigitalOcean, Türkiye'de bir VPS sağlayıcısı) veya kalıcı disk
 sunan platformlar (Render "Persistent Disk", Railway "Volume", Fly.io "Volume").

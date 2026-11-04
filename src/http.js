@@ -122,4 +122,14 @@ function sendFile(req, res, baseDir, relPath, { cache = 'public, max-age=86400',
   return true;
 }
 
-module.exports = { MIME, HttpError, createRouter, readBody, readForm, readJson, send, html, json, redirect, sendFile };
+// Ziyaretçinin IP adresi. Sunucu Caddy gibi bir ters vekilin arkasındaysa (TRUST_PROXY=1)
+// vekilin eklediği X-Forwarded-For başlığının son değeri kullanılır.
+function clientIp(req) {
+  if (process.env.TRUST_PROXY === '1') {
+    const xff = String(req.headers['x-forwarded-for'] || '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (xff.length) return xff[xff.length - 1];
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
+module.exports = { clientIp, MIME, HttpError, createRouter, readBody, readForm, readJson, send, html, json, redirect, sendFile };

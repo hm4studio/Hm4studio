@@ -102,7 +102,7 @@ const LIMIT = 10;
 
 function clientIp(req) {
   // Bir ters vekil (proxy) arkasındaysanız X-Forwarded-For'u yalnızca güvendiğiniz proxy ayarlar.
-  return req.socket.remoteAddress || 'unknown';
+  return require('./http').clientIp(req);
 }
 
 function isRateLimited(req) {

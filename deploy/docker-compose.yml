@@ -1,0 +1,57 @@
+# HM4 Studio — Hostinger VPS kurulumu (deploy/kur.sh bu dosyayı kullanır)
+# site  : HM4 Studio web sitesi + paneller (veriler: hm4-data biriminde, kalıcı)
+# n8n   : WhatsApp otomasyonları (veriler: n8n-data biriminde, kalıcı)
+# caddy : HTTPS (ücretsiz SSL, kendiliğinden yenilenir) ve yönlendirme
+services:
+  site:
+    build: ..
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /data
+      PORT: "3000"
+    volumes:
+      - hm4-data:/data
+    expose:
+      - "3000"
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    environment:
+      N8N_HOST: ${N8N_DOMAIN}
+      N8N_PROTOCOL: https
+      WEBHOOK_URL: https://${N8N_DOMAIN}/
+      GENERIC_TIMEZONE: Europe/Istanbul
+      TZ: Europe/Istanbul
+      N8N_SECURE_COOKIE: "true"
+      N8N_RUNNERS_ENABLED: "true"
+    volumes:
+      - n8n-data:/home/node/.n8n
+    expose:
+      - "5678"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      N8N_DOMAIN: ${N8N_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - site
+      - n8n
+
+volumes:
+  hm4-data:
+  n8n-data:
+  caddy-data:
+  caddy-config:
