@@ -1253,3 +1253,5 @@ input[type="tel"]:focus, input[type="time"]:focus, input[type="search"]:focus { 
 .admin-ui .tab[aria-current="page"], .admin-ui .tab.is-active { color: var(--graphite); }
 .admin-ui .form .btn--primary { justify-self: start; }
 .admin-ui .tile { background: var(--rule); }
+.admin-ui .album-bar__title { text-transform: none; letter-spacing: 0; font-size: .82rem; color: var(--pencil); }
+.admin-ui .album-bar__count { font-family: var(--gfont); font-weight: 300; letter-spacing: -.02em; }
