@@ -19,6 +19,8 @@ const { addDays, today } = require('../jobs');
 const appt = require('../appointments');
 const wa = require('../whatsapp');
 const events = require('../events');
+const contract = require('../contract');
+const contractViews = require('../views/contract');
 
 // Excel formül enjeksiyonuna karşı korumalı CSV hücresi
 function csvCell(v) {
@@ -437,6 +439,54 @@ function register(router) {
     html(res, views.appointmentDoc(getContent(), { card: db.getCoupleCard(couple.id), events: db.listEvents(couple.id), payments: db.listPayments(couple.id), back: `/admin/ciftler/${couple.id}` }));
   });
 
+  // ── Sözleşme ──
+  router.get('/admin/sozlesme', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, contractViews.settingsPage(getContent(), { adminNav: views.adminNav, adminTabs: views.adminTabs, flashBlock: views.flashBlock, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/sozlesme', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const o = siteOver();
+    const t = (k, n) => cleanText(form[k], n);
+    const company = {};
+    for (const k of ['unvan', 'sorumlu', 'telefon', 'adres', 'vergiDairesi', 'vergiNo', 'mahkeme']) company[k] = t(k, 160);
+    const template = String(form.template || '').replace(/\r\n/g, '\n').trim().slice(0, 40000);
+    o.contract = { title: t('title', 120), company };
+    if (form.reset !== '1' && template && template !== contract.DEFAULT_TEMPLATE) o.contract.template = template;
+    saveOver(o);
+    setFlash(req, { message: form.reset === '1' ? 'Sözleşme metni ilk hâline döndü.' : 'Sözleşme kaydedildi.', type: 'success' });
+    redirect(res, '/admin/sozlesme');
+  });
+  const contractData = (couple) => contract.snapshotData(getContent(), db.getCoupleCard(couple.id), db.listEvents(couple.id), db.listPayments(couple.id));
+  router.get('/admin/ciftler/:id/sozlesme', (req, res, { params, query }) => {
+    if (!requireAdmin(req, res)) return;
+    const couple = getCoupleOr404(params.id);
+    const k = query.get('onizleme') ? null : db.activeContract(couple.id);
+    html(res, contractViews.contractDoc(getContent(), { k, data: k ? JSON.parse(k.snapshot) : contractData(couple), back: `/admin/ciftler/${couple.id}#sozlesme` }));
+  });
+  router.post('/admin/ciftler/:id/sozlesme', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    if (!db.listEvents(couple.id).length) {
+      setFlash(req, { message: 'Önce kişi kartına en az bir etkinlik girin.', type: 'error' });
+      return redirect(res, `/admin/ciftler/${couple.id}#sozlesme`);
+    }
+    db.createContract(couple.id, JSON.stringify(contractData(couple)));
+    setFlash(req, { message: 'Sözleşme çiftin paneline gönderildi. WhatsApp ile haber verebilirsiniz.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}#sozlesme`);
+  });
+  router.post('/admin/ciftler/:id/sozlesme/iptal', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const k = db.activeContract(couple.id);
+    if (k && !k.signed_at) db.cancelContract(k.id);
+    setFlash(req, { message: 'Sözleşme geri çekildi.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}#sozlesme`);
+  });
+
   // ── Aylık rapor ──
   router.get('/admin/rapor', (req, res, { query }) => {
     if (!requireAdmin(req, res)) return;
@@ -682,6 +732,7 @@ function register(router) {
       edited,
       events: db.listEvents(couple.id).map((e) => ({ ...e, members: db.eventMembers(e.id) })),
       payments: db.listPayments(couple.id),
+      contract: db.activeContract(couple.id),
       demoAdmin: demo.isDemoAdmin(req),
     }));
   });

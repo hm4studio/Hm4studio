@@ -7,7 +7,7 @@ const { jobStatus, daysBetween, today, addDays } = require('../jobs');
 const { displayPhone, taskText } = require('../whatsapp');
 const { payment, tl, shortDate, eventIndexes } = require('../appointments');
 
-const SETTINGS_KEYS = ['account', 'feedback', 'portfolio', 'team', 'packages', 'site', 'data'];
+const SETTINGS_KEYS = ['contract', 'account', 'feedback', 'portfolio', 'team', 'packages', 'site', 'data'];
 function adminNav(active, csrf, demoAdmin = false) {
   const items = [
     { href: '/admin', label: 'Panel', key: 'couples', icon: 'users' },
@@ -189,6 +189,7 @@ function attentionItems(c, couples) {
     else if (k.due_date && k.stage < last && k.due_date >= t && daysBetween(t, k.due_date) <= 7) items.push({ k, level: 2, text: `Teslime ${daysBetween(t, k.due_date)} gün kaldı`, tag: 'Teslim' });
     if (k.next_date && pay[2] > 0 && daysBetween(t, k.next_date) <= 14) items.push({ k, level: daysBetween(t, k.next_date) <= 3 ? 3 : 2, text: `Etkinlik ${relDays(daysBetween(t, k.next_date))}, ${tl(pay[2])} bakiye var`, tag: 'Ödeme' });
     if (k.next_date && !plan.saved && daysBetween(t, k.next_date) <= 10) items.push({ k, level: 1, text: `Gün planı doldurulmadı (etkinlik ${relDays(daysBetween(t, k.next_date))})`, tag: 'Plan' });
+    if (k.contract_status === 'bekliyor') items.push({ k, level: k.next_date && daysBetween(t, k.next_date) <= 14 ? 2 : 1, text: 'Sözleşme onayı bekleniyor', tag: 'Sözleşme' });
     if (k.photo_count > 0 && !k.album_locked && k.stage < last) items.push({ k, level: 1, text: `Albüm seçimi bekleniyor (${k.fav_count}/${k.album_limit})`, tag: 'Albüm' });
   }
   return items.sort((a, b) => b.level - a.level);
@@ -214,7 +215,7 @@ function coupleCard(c, k) {
       </span>
       <span class="crow__pay${urgent ? ' is-urgent' : ''}">${pay[0] === 'paid' ? h`<span class="crow__sub">Ödendi</span>` : pay[0] === 'none' ? h`<span class="crow__sub">Tutar yok</span>` : h`<span>${tl(pay[2])}</span><span class="crow__sub">kalan</span>`}</span>
       <span class="crow__ready" aria-label="Hazır olanlar">
-        <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span>
+        <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span><span class="${k.contract_status === 'imzali' ? 'is-on' : ''}" title="${k.contract_status === 'imzali' ? 'Sözleşme onaylandı' : k.contract_status ? 'Sözleşme onay bekliyor' : 'Sözleşme gönderilmedi'}">S</span>
       </span>
     </a>
   </li>`;
@@ -536,7 +537,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=20">
+<link rel="stylesheet" href="/css/style.css?v=21">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -644,7 +645,7 @@ function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
   return panelLayout(c, { title: `Rapor ${year}`, csrf, nav: adminNav('report', csrf, demoAdmin), home: '/admin', tabs: adminTabs('report', demoAdmin), body });
 }
 
-function coupleDetail(c, { couple, card, selection = [], videos = [], edited = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
+function coupleDetail(c, { couple, card, contract: ct = null, selection = [], videos = [], edited = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
@@ -658,6 +659,8 @@ function coupleDetail(c, { couple, card, selection = [], videos = [], edited = [
     ${flashBlock(f)}
 
     ${appointmentSummary(c, card, evs, payments, csrf)}
+
+    ${require('./contract').adminSection({ coupleId: couple.id, k: ct, csrf, phone: couple.phone, loginUrl, coupleName: couple.name })}
 
     ${statusBar(c.stages, couple.stage, couple.stage_note, 'İş durumu (çiftin gördüğü)', { status: couple.video_status, stages: c.appointments?.videoStages || [] })}
 
@@ -983,6 +986,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
   const links = [
     { href: '/admin/site', title: 'Site', text: 'Kapak, duyuru bandı, logo, hakkımızda, iletişim ve hizmetler.' },
     { href: '/admin/paketler', title: 'Paketler', text: 'Paket adları, fiyatları ve içerikleri. Randevu formunda seçince fiyat kendiliğinden gelir.' },
+    { href: '/admin/sozlesme', title: 'Sözleşme', text: 'Sözleşme metni ve firma bilgileri. Randevu bilgileri her çift için kendiliğinden dolar.' },
     { href: '/admin/ekip', title: 'Ekip', text: 'Personel, görevleri ve iletişim bilgileri.' },
     { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitede görünen fotoğraflar ve anasayfa kapağı.' },
     { href: '/admin/veriler', title: 'Veriler', text: 'Sezon arşivleri ve her gece alınan veritabanı yedekleri.' },
@@ -1258,4 +1262,4 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=7'] });
 }
 
-module.exports = { dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = { flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

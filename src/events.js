@@ -108,4 +108,10 @@ function flushPhotoTimers() {
   for (const [id, t] of photoTimers) { clearTimeout(t); photoTimers.delete(id); }
 }
 
-module.exports = { teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };
+// Çift sözleşmeyi onayladı (n8n üzerinden size bildirim gönderilebilir)
+function contractSigned(couple, signerName) {
+  if (!config.n8nWebhookUrl) return;
+  post({ event: 'sozlesme_onaylandi', at: new Date().toISOString(), couple: coupleInfo(couple), signerName });
+}
+
+module.exports = { contractSigned, teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };

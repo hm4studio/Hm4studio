@@ -180,6 +180,17 @@ CREATE TABLE IF NOT EXISTS event_team (
   member_id INTEGER NOT NULL REFERENCES team(id) ON DELETE CASCADE,
   PRIMARY KEY (event_id, member_id)
 );
+CREATE TABLE IF NOT EXISTS contracts (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  snapshot TEXT NOT NULL,
+  sent_at TEXT NOT NULL DEFAULT (datetime('now')),
+  signed_at TEXT,
+  signer_name TEXT, signer_tc TEXT, signer_address TEXT, consent TEXT,
+  signature TEXT, ip TEXT, user_agent TEXT, hash TEXT,
+  cancelled_at TEXT
+);
+CREATE INDEX IF NOT EXISTS contracts_couple ON contracts(couple_id);
 CREATE TABLE IF NOT EXISTS notifications (
   key TEXT PRIMARY KEY,
   sent_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -209,7 +220,8 @@ const CARD_SQL = `
     (SELECT COALESCE(SUM(price), 0) FROM events e WHERE e.couple_id = c.id) AS total,
     (SELECT COALESCE(SUM(amount), 0) FROM payments y WHERE y.couple_id = c.id) AS paid,
     (SELECT group_concat(event_type, ', ') FROM (SELECT event_type FROM events e WHERE e.couple_id = c.id AND event_type <> '' ORDER BY event_date)) AS types,
-    (SELECT MIN(event_date) FROM events e WHERE e.couple_id = c.id AND event_date >= date('now', '+3 hours')) AS next_date
+    (SELECT MIN(event_date) FROM events e WHERE e.couple_id = c.id AND event_date >= date('now', '+3 hours')) AS next_date,
+    (SELECT CASE WHEN k.signed_at IS NOT NULL THEN 'imzali' ELSE 'bekliyor' END FROM contracts k WHERE k.couple_id = c.id AND k.cancelled_at IS NULL ORDER BY k.id DESC LIMIT 1) AS contract_status
   FROM couples c`;
 
 module.exports = {
@@ -379,6 +391,17 @@ module.exports = {
   deleteLead: (id) => q('DELETE FROM leads WHERE id = ?').run(id),
   countNewLeads: () => q("SELECT COUNT(*) AS n FROM leads WHERE status = 'yeni'").get().n,
 
+  // ── Sözleşmeler (gönderilen metin dondurulur; imzalandıktan sonra değiştirilemez) ──
+  activeContract: (coupleId) => q('SELECT * FROM contracts WHERE couple_id = ? AND cancelled_at IS NULL ORDER BY id DESC LIMIT 1').get(coupleId),
+  getContract: (id) => q('SELECT * FROM contracts WHERE id = ?').get(id),
+  createContract: (coupleId, snapshot) => {
+    q("UPDATE contracts SET cancelled_at = datetime('now') WHERE couple_id = ? AND cancelled_at IS NULL AND signed_at IS NULL").run(coupleId);
+    return Number(q('INSERT INTO contracts(couple_id, snapshot) VALUES(?, ?)').run(coupleId, snapshot).lastInsertRowid);
+  },
+  cancelContract: (id) => q("UPDATE contracts SET cancelled_at = datetime('now') WHERE id = ?").run(id),
+  signContract: (id, f) => q(`UPDATE contracts SET signed_at = ?, signer_name = ?, signer_tc = ?, signer_address = ?, consent = ?, signature = ?, ip = ?, user_agent = ?, hash = ?
+    WHERE id = ? AND signed_at IS NULL AND cancelled_at IS NULL`).run(f.signedAt, f.ad, f.tc, f.adres, f.izin, f.imza, f.ip, f.ua, f.hash, id).changes,
+
   // ── Gönderilen bildirimler (aynı mesaj iki kez gitmesin) ──
   wasNotified: (key) => Boolean(q('SELECT 1 FROM notifications WHERE key = ?').get(key)),
   markNotified: (key) => q('INSERT OR IGNORE INTO notifications(key) VALUES(?)').run(key),
@@ -395,7 +418,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM favorites; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
+    DELETE FROM contracts; DELETE FROM favorites; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

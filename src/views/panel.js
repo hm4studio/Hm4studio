@@ -198,21 +198,29 @@ const COUPLE_PAGES = [
   { key: 'plan', href: '/panel/plan', label: 'Plan', icon: 'pin' },
 ];
 
+// Sözleşme gönderildiyse menüde görünür (onay bekliyorsa Durum'dan sonra, onaylandıysa en sonda)
+function pagesFor(couple) {
+  const ct = { key: 'sozlesme', href: '/panel/sozlesme', label: 'Sözleşme', icon: 'check' };
+  if (couple.contract_state === 'bekliyor') return [COUPLE_PAGES[0], ct, ...COUPLE_PAGES.slice(1)];
+  if (couple.contract_state === 'imzali') return [...COUPLE_PAGES, ct];
+  return COUPLE_PAGES;
+}
+
 function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
   const nav = h`<div class="panel-nav"><span class="panel-nav__who">${couple.name}</span>${config.demoMode ? h`<a class="panel-nav__link" href="/gorus?alan=${encodeURIComponent('Çift paneli')}">${icon('star')}<span>Görüş bildir</span></a>` : ''}${logoutForm(csrf)}</div>`;
   const content = h`
   <div class="container">
     <nav class="cpages" aria-label="Panel sayfaları">
-      ${COUPLE_PAGES.map((p) => h`<a class="cpages__link" href="${p.href}"${p.key === page ? raw(' aria-current="page"') : ''}>${p.label}</a>`)}
+      ${pagesFor(couple).map((p) => h`<a class="cpages__link" href="${p.href}"${p.key === page ? raw(' aria-current="page"') : ''}>${p.label}</a>`)}
     </nav>
     ${f ? flash(f.message, f.type) : ''}
     ${body}
   </div>`;
   const tabs = [
-    ...COUPLE_PAGES.map((p) => ({ href: p.href, label: p.label, icon: p.icon, active: p.key === page })),
+    ...pagesFor(couple).map((p) => ({ href: p.href, label: p.label, icon: p.icon, active: p.key === page })),
     { form: '/cikis', csrf, label: 'Çıkış', icon: 'logout' },
   ];
-  const title = (COUPLE_PAGES.find((p) => p.key === page) || {}).label || 'Panelim';
+  const title = (pagesFor(couple).find((p) => p.key === page) || {}).label || 'Panelim';
   return panelLayout(c, { title, csrf, nav, body: content, scripts, tabs, home: '/panel' });
 }
 
@@ -224,6 +232,8 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, edit
       <h1 class="page-title">${couple.name}</h1>
       ${couple.event_date ? h`<p class="muted">${formatDate(couple.event_date)}</p>` : ''}
     </section>
+
+    ${couple.contract_state === 'bekliyor' ? h`<a class="ct-callout" href="/panel/sozlesme"><span><strong>Sözleşmeniz onayınızı bekliyor</strong><span>Okuyup birkaç dakikada onaylayabilirsiniz.</span></span>${icon('right')}</a>` : ''}
 
     <div class="install" data-install hidden>
       <img class="install__icon" src="/images/icon-192.png" alt="" width="48" height="48">
@@ -345,4 +355,4 @@ function couplePlan(c, { couple, csrf, flash: f }) {
   return coupleShell(c, { couple, page: 'plan', csrf, flash: f, body: planSection(couple, csrf), scripts: ['/js/panel.js?v=4'] });
 }
 
-module.exports = { couplePhotos, coupleVideos, couplePlan, coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };
+module.exports = { coupleShell, couplePhotos, coupleVideos, couplePlan, coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };

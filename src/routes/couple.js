@@ -11,9 +11,62 @@ const events = require('../events');
 const views = require('../views/panel');
 const adminViews = require('../views/admin');
 const { requireCouple, checkCsrf, toId, setFlash, takeFlash } = require('./guards');
+const contract = require('../contract');
+const contractViews = require('../views/contract');
+const { clientIp } = require('../http');
 
 function register(router) {
-  const me = (req) => { const c = db.getCouple(req.session.userId); if (!c) throw new HttpError(404, 'Bulunamadı'); return c; };
+  const me = (req) => {
+    const c = db.getCouple(req.session.userId);
+    if (!c) throw new HttpError(404, 'Bulunamadı');
+    const k = db.activeContract(c.id);
+    return { ...c, contract_state: k ? (k.signed_at ? 'imzali' : 'bekliyor') : '' };
+  };
+
+  // ── Sözleşme: oku, bilgileri yaz, imzala ──
+  const myContract = (couple) => {
+    const k = db.activeContract(couple.id);
+    if (!k) throw new HttpError(404, 'Henüz gönderilmiş bir sözleşme yok.');
+    return { k, data: JSON.parse(k.snapshot) };
+  };
+  router.get('/panel/sozlesme', (req, res) => {
+    if (!requireCouple(req, res)) return;
+    const couple = me(req);
+    const { k, data } = myContract(couple);
+    html(res, contractViews.signPage(getContent(), { coupleShell: views.coupleShell, couple, k, data, csrf: req.session.csrf, flash: takeFlash(req) }));
+  });
+  router.get('/panel/sozlesme/belge', (req, res) => {
+    if (!requireCouple(req, res)) return;
+    const { k, data } = myContract(me(req));
+    html(res, contractViews.contractDoc(getContent(), { k, data, back: '/panel/sozlesme' }));
+  });
+  router.post('/panel/sozlesme', async (req, res) => {
+    if (!requireCouple(req, res)) return;
+    const form = await readForm(req);
+    checkCsrf(req, form.csrf);
+    const couple = me(req);
+    const { k, data } = myContract(couple);
+    if (k.signed_at) return redirect(res, '/panel/sozlesme');
+    const clean = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
+    const values = { ad: clean(form.ad, 80), tc: String(form.tc || '').replace(/\D/g, ''), adres: clean(form.adres, 200), izin: form.izin === 'evet' ? 'evet' : form.izin === 'hayir' ? 'hayir' : '' };
+    const imza = String(form.imza || '');
+    const errors = [];
+    if (values.ad.length < 3) errors.push('Ad soyadınızı yazın.');
+    if (!contract.validTc(values.tc)) errors.push('T.C. kimlik numarası geçersiz.');
+    if (values.adres.length < 5) errors.push('Adresinizi yazın.');
+    if (!values.izin) errors.push('Paylaşım izni için bir seçim yapın.');
+    if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(imza) || imza.length < 1500 || imza.length > 600000) errors.push('Lütfen imzanızı çizin.');
+    if (form.kabul !== '1') errors.push('Sözleşmeyi okuyup kabul ettiğinizi işaretleyin.');
+    if (errors.length) {
+      return html(res, contractViews.signPage(getContent(), { coupleShell: views.coupleShell, couple, k, data, csrf: req.session.csrf, flash: { message: errors.join(' '), type: 'error' }, values }), 422);
+    }
+    const signedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const signer = { ...values, imza, tarih: contractViews.trTime(signedAt).split(' ')[0] };
+    const changed = db.signContract(k.id, { ...signer, signedAt, ip: clientIp(req), ua: String(req.headers['user-agent'] || '').slice(0, 300), hash: contract.fingerprint(data, signer) });
+    if (changed) events.contractSigned(couple, values.ad);
+    setFlash(req, { message: changed ? 'Teşekkürler, sözleşmeniz onaylandı.' : 'Sözleşme bu arada güncellendi, lütfen yeniden bakın.', type: changed ? 'success' : 'error' });
+    redirect(res, '/panel/sozlesme');
+  });
 
   // Durum sayfası
   router.get('/panel', (req, res) => {
