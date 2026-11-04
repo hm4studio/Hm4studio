@@ -127,6 +127,10 @@ büyük (görüntüleme) sürümünü hazırlar; "Orijinal dosyaları da sakla" 
 **Kopyala** numaraları boşlukla ayırıp kopyalar (Lightroom/Bridge dosya adı aramasına yapıştırmak için).
 Panelde **Tamamlanan albüm seçimleri** bölümü seçimi bitmiş tüm çiftleri listeler; **Hepsini indir** tek Excel tablosu verir.
 
+**Düzenlenmiş (renkli) fotoğraflar:** Çiftin sayfasında yüklerken "Bu fotoğraflar" seçimini **Düzenlenmiş / renkli (teslim)** yapın.
+Çift, Fotoğraflar sayfasında **Düzenlenmiş fotoğraflar** ve **Seçim fotoğrafları**nı ayrı görür; düzenlenmişlerde kalp (seçim) yoktur,
+tek tıkla tümü indirilir. Sezon arşivinde `duzenlenmis-teslim/` klasörüne ayrı konur.
+
 **Video teslimi:** Çiftin sayfasında **Video teslimi** bölümünden klip, düğün filmi, teaser veya reels yüklenir
 (MP4/MOV; büyük dosyalar 8 MB'lık parçalar hâlinde yüklenir, kopan parça yeniden denenir; varsayılan üst sınır 10 GB, `MAX_VIDEO_GB`).
 İsterseniz dosya yerine Google Drive/YouTube/Vimeo bağlantısı da eklenir. Çift, panelindeki **Video** sayfasında izler ve indirir.

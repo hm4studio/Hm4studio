@@ -538,10 +538,11 @@ function register(router) {
   router.get('/admin/ciftler/:id/indir', async (req, res, { params, query }) => {
     if (!requireAdmin(req, res)) return;
     const couple = getCoupleOr404(params.id);
-    const onlyFav = query.get('g') === 'fav';
-    const entries = media.couplePhotoEntries(couple.id, onlyFav ? db.listFavoritePhotos(couple.id) : db.listPhotos(couple.id));
+    const g = query.get('g');
+    const onlyFav = g === 'fav';
+    const entries = media.couplePhotoEntries(couple.id, onlyFav ? db.listFavoritePhotos(couple.id) : db.listPhotos(couple.id, g === 'duzenli' ? 'duzenli' : 'secim'));
     if (!entries.length) throw new HttpError(404, 'İndirilecek fotoğraf yok');
-    const name = `${couple.ref_no ? couple.ref_no + ' ' : ''}${couple.name}${onlyFav ? ' - Albüm seçimi' : ''}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
+    const name = `${couple.ref_no ? couple.ref_no + ' ' : ''}${couple.name}${onlyFav ? ' - Albüm seçimi' : g === 'duzenli' ? ' - Düzenlenmiş' : ' - Seçim'}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
     res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="fotograflar.zip"; filename*=UTF-8''${encodeURIComponent(name)}`, 'Cache-Control': 'no-store' });
     await require('../zip').streamZip(res, entries).catch(() => res.destroy());
   });
@@ -654,7 +655,8 @@ function register(router) {
   router.get('/admin/ciftler/:id', (req, res, { params, query }) => {
     if (!requireAdmin(req, res)) return;
     const couple = getCoupleOr404(params.id);
-    const all = db.listPhotos(couple.id);
+    const all = db.listPhotos(couple.id, 'secim');
+    const edited = db.listPhotos(couple.id, 'duzenli');
     const favs = all.filter((p) => p.is_fav);
     const view = query.get('g') === 'fav' ? 'fav' : 'all';
     html(res, views.coupleDetail(getContent(), {
@@ -669,6 +671,7 @@ function register(router) {
       card: db.getCoupleCard(couple.id),
       selection: appt.selectionNames(favs),
       videos: db.listVideos(couple.id),
+      edited,
       events: db.listEvents(couple.id).map((e) => ({ ...e, members: db.eventMembers(e.id) })),
       payments: db.listPayments(couple.id),
       demoAdmin: demo.isDemoAdmin(req),
@@ -745,7 +748,8 @@ function register(router) {
     const fileKey = newKey();
     const originalName = cleanText(decodeURIComponent(String(req.headers['x-filename'] || '')), 160);
     media.saveCouplePhoto(couple.id, fileKey, parts);
-    const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt });
+    const kind = decodeURIComponent(String(req.headers['x-category'] || '')) === 'duzenli' ? 'duzenli' : 'secim';
+    const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt, kind });
     events.photosUploaded(couple.id);
     json(res, { ok: true, id });
   });
@@ -767,7 +771,7 @@ function register(router) {
     const couple = getCoupleOr404(params.id);
     const { photoId, on } = await readJson(req);
     const photo = db.getPhoto(toId(photoId));
-    if (!photo || photo.couple_id !== couple.id) throw new HttpError(404, 'Bulunamadı');
+    if (!photo || photo.couple_id !== couple.id || photo.kind === 'duzenli') throw new HttpError(404, 'Bulunamadı');
     db.setFavorite(couple.id, photo.id, Boolean(on));
     json(res, { ok: true, on: Boolean(on), count: db.listFavoritePhotos(couple.id).length });
   });

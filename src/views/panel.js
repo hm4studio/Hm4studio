@@ -89,7 +89,7 @@ function formatDate(iso) {
 }
 
 // Çift ve admin galerilerinde ortak fotoğraf kutusu
-function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked }) {
+function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFav }) {
   const fav = Boolean(p.is_fav);
   return h`
   <li class="tile${fav ? ' is-fav' : ''}" data-tile>
@@ -97,9 +97,9 @@ function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked }) {
       <img src="/m/${p.id}/thumb" alt="${p.original_name || 'Fotoğraf'}" loading="lazy" decoding="async" width="640" height="640">
     </a>
     <div class="tile__bar">
-      <button type="button" class="tile__fav" data-fav="${favEndpoint}" data-photo="${p.id}" aria-pressed="${fav ? 'true' : 'false'}" aria-label="${fav ? 'Albümden çıkar' : 'Albüme ekle'}"${locked ? raw(' disabled') : ''}>
+      ${noFav ? h`<span></span>` : h`<button type="button" class="tile__fav" data-fav="${favEndpoint}" data-photo="${p.id}" aria-pressed="${fav ? 'true' : 'false'}" aria-label="${fav ? 'Albümden çıkar' : 'Albüme ekle'}"${locked ? raw(' disabled') : ''}>
         ${icon('heart')}
-      </button>
+      </button>`}
       <a class="tile__btn" href="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1" aria-label="İndir">${icon('download')}</a>
       ${canDelete ? h`<form method="post" action="${deleteAction}" class="inline-form" data-confirm="Bu fotoğraf kalıcı olarak silinsin mi?">
         <input type="hidden" name="csrf" value="${csrf}">
@@ -112,7 +112,7 @@ function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked }) {
 function galleryTabs(base, view, total, favs) {
   return h`
   <div class="tabs" role="tablist" aria-label="Galeri görünümü">
-    <a class="tab${view !== 'fav' ? ' is-active' : ''}" href="${base}" ${view !== 'fav' ? raw('aria-current="page"') : ''}>Tüm fotoğraflar <span class="tab__count">${total}</span></a>
+    <a class="tab${view !== 'fav' ? ' is-active' : ''}" href="${base}${base === '/panel/fotograflar' ? '?g=secim' : ''}" ${view !== 'fav' ? raw('aria-current="page"') : ''}>Tüm fotoğraflar <span class="tab__count">${total}</span></a>
     <a class="tab${view === 'fav' ? ' is-active' : ''}" href="${base}?g=fav" ${view === 'fav' ? raw('aria-current="page"') : ''}>${icon('heart')}Albüm seçimi <span class="tab__count" data-fav-count>${favs}</span></a>
   </div>`;
 }
@@ -217,7 +217,7 @@ function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
 }
 
 // Durum: iş durumu, randevular, ödeme
-function couplePanel(c, { couple, card = null, events = [], totalCount = 0, videoCount = 0, csrf, flash: f }) {
+function couplePanel(c, { couple, card = null, events = [], totalCount = 0, editedCount = 0, videoCount = 0, csrf, flash: f }) {
   const body = h`
     <section class="welcome">
       <p class="eyebrow">Hoş geldiniz</p>
@@ -234,8 +234,9 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, vide
 
     <div id="durum">${statusBar(c.stages, couple.stage, couple.stage_note, 'İşinizin durumu', { status: couple.video_status, stages: c.appointments?.videoStages || [] })}</div>
 
-    ${totalCount || videoCount ? h`<div class="cquick">
-      ${totalCount ? h`<a class="cquick__item" href="/panel/fotograflar"><span class="cquick__num">${totalCount}</span><span>fotoğraf</span>${icon('right')}</a>` : ''}
+    ${totalCount || editedCount || videoCount ? h`<div class="cquick">
+      ${editedCount ? h`<a class="cquick__item" href="/panel/fotograflar?g=duzenli"><span class="cquick__num">${editedCount}</span><span>düzenlenmiş fotoğraf</span>${icon('right')}</a>` : ''}
+      ${totalCount ? h`<a class="cquick__item" href="/panel/fotograflar?g=secim"><span class="cquick__num">${totalCount}</span><span>seçim fotoğrafı</span>${icon('right')}</a>` : ''}
       ${videoCount ? h`<a class="cquick__item" href="/panel/video"><span class="cquick__num">${videoCount}</span><span>video</span>${icon('right')}</a>` : ''}
     </div>` : ''}
 
@@ -270,20 +271,37 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, vide
 }
 
 // Fotoğraflar: galeri, albüm seçimi, indirme
-function couplePhotos(c, { couple, photos, totalCount, favCount, view, csrf, flash: f }) {
-  const body = h`
+function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount, view, csrf, flash: f }) {
+  const isEdited = view === 'edited';
+  const sets = editedCount && totalCount ? h`<nav class="sets" aria-label="Fotoğraf grupları">
+      <a class="sets__link" href="/panel/fotograflar?g=duzenli"${isEdited ? raw(' aria-current="page"') : ''}><span>Düzenlenmiş fotoğraflar</span><span class="sets__count">${editedCount}</span></a>
+      <a class="sets__link" href="/panel/fotograflar?g=secim"${!isEdited ? raw(' aria-current="page"') : ''}><span>Seçim fotoğrafları</span><span class="sets__count">${totalCount}</span></a>
+    </nav>` : '';
+  const body = isEdited ? h`
     <section class="panel-section cpage" id="fotograflar" aria-labelledby="gallery-title">
       <div class="panel-section__head">
         <h1 class="panel-section__title" id="gallery-title">Fotoğraflarınız</h1>
+        <p class="muted">Renk ve ışık düzenlemesi yapılmış, teslim edilen fotoğraflarınız.</p>
+        <div class="dl-row"><a class="btn btn--primary btn--sm" href="/panel/indir?g=duzenli" download>${icon('download')}Tümünü indir (${editedCount})</a></div>
+      </div>
+      ${sets}
+      <ul class="tiles" data-gallery>
+        ${photos.map((p) => photoTile(p, { csrf, locked: true, noFav: true }))}
+      </ul>
+    </section>` : h`
+    <section class="panel-section cpage" id="fotograflar" aria-labelledby="gallery-title">
+      <div class="panel-section__head">
+        <h1 class="panel-section__title" id="gallery-title">${editedCount ? 'Seçim fotoğrafları' : 'Fotoğraflarınız'}</h1>
         <p class="muted">Albümünüze girecek kareleri kalbe dokunarak seçin. Bitirince “Seçimi tamamladım”a basın.</p>
         ${totalCount ? h`<div class="dl-row">
           <a class="btn btn--outline btn--sm" href="/panel/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>
           ${favCount ? h`<a class="btn btn--text btn--sm" href="/panel/indir?g=fav" download>${icon('download')}Seçimimi indir (${favCount})</a>` : ''}
         </div>` : ''}
       </div>
+      ${sets}
       ${totalCount ? albumBar(couple, favCount, { admin: false, csrf }) : ''}
       ${totalCount && !couple.album_locked ? h`<a class="selpill" href="/panel/fotograflar?g=fav" data-selpill hidden><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 60} kare seçildi</a>` : ''}
-      ${galleryTabs('/panel/fotograflar', view, totalCount, favCount)}
+      ${totalCount ? galleryTabs('/panel/fotograflar', view, totalCount, favCount) : ''}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
         ${photos.map((p) => photoTile(p, { favEndpoint: '/panel/favori', csrf, locked: Boolean(couple.album_locked) }))}

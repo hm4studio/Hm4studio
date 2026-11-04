@@ -24,7 +24,8 @@ function register(router) {
       couple,
       card: c.couplePanel?.showPayments ? db.getCoupleCard(couple.id) : null,
       events: db.listEvents(couple.id),
-      totalCount: db.listPhotos(couple.id).length,
+      totalCount: db.listPhotos(couple.id, 'secim').length,
+      editedCount: db.listPhotos(couple.id, 'duzenli').length,
       videoCount: db.videoCount(couple.id),
       csrf: req.session.csrf,
       flash: takeFlash(req),
@@ -35,10 +36,14 @@ function register(router) {
   router.get('/panel/fotograflar', (req, res, { query }) => {
     if (!requireCouple(req, res)) return;
     const couple = me(req);
-    const all = db.listPhotos(couple.id);
+    const all = db.listPhotos(couple.id, 'secim');
+    const edited = db.listPhotos(couple.id, 'duzenli');
     const favs = all.filter((p) => p.is_fav);
-    const view = query.get('g') === 'fav' ? 'fav' : 'all';
-    html(res, views.couplePhotos(getContent(), { couple, photos: view === 'fav' ? favs : all, totalCount: all.length, favCount: favs.length, view, csrf: req.session.csrf, flash: takeFlash(req) }));
+    const g = query.get('g');
+    // Düzenlenmiş fotoğraflar varsa sayfa onlarla açılır
+    const view = g === 'fav' ? 'fav' : g === 'secim' ? 'all' : g === 'duzenli' || (!g && edited.length) ? 'edited' : 'all';
+    const photos = view === 'edited' ? edited : view === 'fav' ? favs : all;
+    html(res, views.couplePhotos(getContent(), { couple, photos, totalCount: all.length, editedCount: edited.length, favCount: favs.length, view, csrf: req.session.csrf, flash: takeFlash(req) }));
   });
 
   // Videolar
@@ -70,7 +75,7 @@ function register(router) {
     checkCsrf(req);
     const { photoId, on } = await readJson(req);
     const photo = db.getPhoto(toId(photoId));
-    if (!photo || photo.couple_id !== req.session.userId) throw new HttpError(404, 'Bulunamadı');
+    if (!photo || photo.couple_id !== req.session.userId || photo.kind === 'duzenli') throw new HttpError(404, 'Bulunamadı');
     const couple = db.getCouple(photo.couple_id);
     if (couple.album_locked) throw new HttpError(409, 'Albüm seçiminiz tamamlandı. Değişiklik için bize yazın.');
     if (on && db.favoriteCount(couple.id) >= couple.album_limit) {
@@ -116,11 +121,12 @@ function register(router) {
     if (!requireCouple(req, res)) return;
     const couple = db.getCouple(req.session.userId);
     if (!couple) throw new HttpError(404, 'Bulunamadı');
-    const onlyFav = query.get('g') === 'fav';
-    const photos = onlyFav ? db.listFavoritePhotos(couple.id) : db.listPhotos(couple.id);
+    const g = query.get('g');
+    const onlyFav = g === 'fav';
+    const photos = onlyFav ? db.listFavoritePhotos(couple.id) : db.listPhotos(couple.id, g === 'duzenli' ? 'duzenli' : 'secim');
     const entries = require('../media').couplePhotoEntries(couple.id, photos);
     if (!entries.length) throw new HttpError(404, 'İndirilecek fotoğraf yok');
-    const name = `${couple.name}${onlyFav ? ' - Albüm seçimi' : ' - Fotoğraflar'}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
+    const name = `${couple.name}${onlyFav ? ' - Albüm seçimi' : g === 'duzenli' ? ' - Düzenlenmiş fotoğraflar' : ' - Fotoğraflar'}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
     res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="fotograflar.zip"; filename*=UTF-8''${encodeURIComponent(name)}`, 'Cache-Control': 'no-store' });
     await require('../zip').streamZip(res, entries).catch(() => res.destroy());
   });

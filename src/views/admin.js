@@ -536,7 +536,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=19">
+<link rel="stylesheet" href="/css/style.css?v=20">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -644,7 +644,7 @@ function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
   return panelLayout(c, { title: `Rapor ${year}`, csrf, nav: adminNav('report', csrf, demoAdmin), home: '/admin', tabs: adminTabs('report', demoAdmin), body });
 }
 
-function coupleDetail(c, { couple, card, selection = [], videos = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
+function coupleDetail(c, { couple, card, selection = [], videos = [], edited = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
@@ -706,6 +706,13 @@ function coupleDetail(c, { couple, card, selection = [], videos = [], events: ev
         <p class="muted">Fotoğraflar tarayıcınızda web için küçültülür, sonra yüklenir. Dosyalar gizli klasörde saklanır; yalnızca bu çift ve siz görebilirsiniz.</p>
       </div>
       <form class="uploader" data-uploader data-endpoint="${base}/fotograflar">
+        <div class="field field--inline">
+          <label for="up-kind">Bu fotoğraflar</label>
+          <select id="up-kind" data-category data-kind-select>
+            <option value="secim">Seçim için (çift albüm karelerini seçer)</option>
+            <option value="duzenli">Düzenlenmiş / renkli (teslim)</option>
+          </select>
+        </div>
         <label class="uploader__drop">
           ${icon('upload')}
           <span><strong>Fotoğraf seçin</strong> veya buraya sürükleyin</span>
@@ -743,6 +750,15 @@ function coupleDetail(c, { couple, card, selection = [], videos = [], events: ev
       <ul class="tiles" data-gallery>
         ${photos.map((p) => photoTile(p, { favEndpoint: `${base}/favori`, canDelete: true, csrf, deleteAction: `${base}/fotograflar/${p.id}/sil` }))}
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav' ? 'Bu çift henüz albüm için kare seçmedi.' : 'Henüz fotoğraf yüklenmedi.'}</p></div>`}
+    </section>
+
+    <section class="panel-section" id="duzenli" aria-labelledby="edited-title">
+      <div class="panel-section__head">
+        <h2 class="panel-section__title" id="edited-title">Düzenlenmiş fotoğraflar <span class="sec-count">${edited.length}</span></h2>
+        <p class="muted">Renk ve ışık düzenlemesi yapılmış teslim fotoğrafları. Çift, Fotoğraflar sayfasında bunları ayrı görür ve tek tıkla indirir. Yüklerken yukarıda "Düzenlenmiş / renkli" seçin; orijinal dosyaları sakla işaretli kalsın.</p>
+        ${edited.length ? h`<div class="dl-row"><a class="btn btn--outline btn--sm" href="${base}/indir?g=duzenli" download>${icon('download')}Tümünü indir (${edited.length})</a></div>` : ''}
+      </div>
+      ${edited.length ? h`<ul class="tiles" data-gallery>${edited.map((p) => photoTile(p, { canDelete: true, csrf, noFav: true, deleteAction: `${base}/fotograflar/${p.id}/sil` }))}</ul>` : h`<p class="sec-empty">Henüz düzenlenmiş fotoğraf yüklenmedi.</p>`}
     </section>
 
     <section class="panel-section" id="video" aria-labelledby="video-title">

@@ -145,7 +145,8 @@ async function streamSeason(res, year, { csvEvents, csvPayments }) {
     + `randevular.csv  Bu sezondaki tüm etkinlikler (Excel ile açın)\n`
     + `odemeler.csv    Bu sezonun çiftlerinden alınan ödemeler\n`
     + `veritabani.db   O anki tüm veritabanının kopyası (geri yükleme için)\n`
-    + `fotograflar/    Her çift için bir klasör: duzenlenmis/ (görüntüleme boyutu), orijinal/ (varsa)\n`
+    + `fotograflar/    Her çift için bir klasör: secim/ (çiftin seçim yaptığı kareler), secim-orijinal/ (varsa),\n`
+    + `                duzenlenmis-teslim/ (renk düzenlemesi yapılmış teslim fotoğrafları)\n`
     + `                Albüme seçilen kareler dosya adında "-SECILDI" ile işaretlidir.\n`, 'utf8'));
   const snap = path.join(DIR, `.arsiv-${process.pid}-${Date.now()}.db`);
   try {
@@ -163,11 +164,15 @@ async function streamSeason(res, year, { csvEvents, csvPayments }) {
       const base = safe(p.original_name ? p.original_name.replace(/\.[a-z0-9]+$/i, '') : `foto-${String(n).padStart(4, '0')}`);
       const mark = p.is_fav ? '-SECILDI' : '';
       const display = path.join(dir, 'display.jpg');
-      if (fs.existsSync(display)) await writeFileEntry(res, `${folder}/duzenlenmis/${String(n).padStart(4, '0')}-${base}${mark}.jpg`, display);
-      if (p.original_ext) {
-        const orig = path.join(dir, `original.${p.original_ext}`);
-        if (fs.existsSync(orig)) await writeFileEntry(res, `${folder}/orijinal/${String(n).padStart(4, '0')}-${base}${mark}.${p.original_ext}`, orig);
+      const orig = p.original_ext ? path.join(dir, `original.${p.original_ext}`) : null;
+      if (p.kind === 'duzenli') {
+        // Teslim edilen düzenlenmiş fotoğraf: varsa tam çözünürlük, yoksa büyük boy
+        const file = orig && fs.existsSync(orig) ? orig : display;
+        if (fs.existsSync(file)) await writeFileEntry(res, `${folder}/duzenlenmis-teslim/${base}.${file === orig ? p.original_ext : 'jpg'}`, file);
+        continue;
       }
+      if (fs.existsSync(display)) await writeFileEntry(res, `${folder}/secim/${String(n).padStart(4, '0')}-${base}${mark}.jpg`, display);
+      if (orig && fs.existsSync(orig)) await writeFileEntry(res, `${folder}/secim-orijinal/${String(n).padStart(4, '0')}-${base}${mark}.${p.original_ext}`, orig);
     }
   }
   res.end(Buffer.alloc(1024)); // tar sonu

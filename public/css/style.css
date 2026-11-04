@@ -1514,3 +1514,9 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .disk__bar span { display: block; height: 100%; width: 0; background: var(--graphite); transition: width .8s; }
 .disk__bar.is-full span { background: var(--mark); }
 .disk__warn { margin: 0; color: var(--mark); font-size: .9rem; }
+/* Düzenlenmiş / seçim fotoğraf grupları */
+.sets { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 4px 0 20px; border: 1px solid var(--rule-2, #d9d9d5); }
+.sets__link { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; text-decoration: none; color: var(--pencil, #6e6e6b); font-size: .92rem; }
+.sets__link + .sets__link { border-left: 1px solid var(--rule-2, #d9d9d5); }
+.sets__link[aria-current="page"] { background: var(--graphite, #1a1a1a); color: #fff; }
+.sets__count { font: 400 1.4rem/1.1 var(--serif); }

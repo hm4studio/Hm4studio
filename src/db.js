@@ -86,6 +86,7 @@ addColumn('couples', 'phone', 'TEXT');
 addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
+addColumn('photos', 'kind', "TEXT NOT NULL DEFAULT 'secim'"); // secim: albüm seçimi için · duzenli: düzenlenmiş (renkli) teslim
 addColumn('couples', 'archived_at', 'TEXT');
 addColumn('couples', 'archived_selection', "TEXT NOT NULL DEFAULT ''");
 addColumn('couples', 'archived_photos', 'INTEGER NOT NULL DEFAULT 0');
@@ -339,16 +340,17 @@ module.exports = {
   deleteCouple: (id) => q('DELETE FROM couples WHERE id = ?').run(id),
 
   // ── Çift fotoğrafları ──
-  listPhotos: (coupleId) => q(`
-    SELECT p.*, EXISTS(SELECT 1 FROM favorites f WHERE f.photo_id = p.id) AS is_fav
-    FROM photos p WHERE p.couple_id = ? ORDER BY p.id`).all(coupleId),
+  // kind verilmezse çiftin bütün fotoğrafları; 'secim' veya 'duzenli' ile yalnızca o grup
+  listPhotos: (coupleId, kind) => (kind
+    ? q(`SELECT p.*, EXISTS(SELECT 1 FROM favorites f WHERE f.photo_id = p.id) AS is_fav FROM photos p WHERE p.couple_id = ? AND p.kind = ? ORDER BY p.id`).all(coupleId, kind)
+    : q(`SELECT p.*, EXISTS(SELECT 1 FROM favorites f WHERE f.photo_id = p.id) AS is_fav FROM photos p WHERE p.couple_id = ? ORDER BY p.id`).all(coupleId)),
   listFavoritePhotos: (coupleId) => q(`
     SELECT p.*, 1 AS is_fav FROM favorites f JOIN photos p ON p.id = f.photo_id
     WHERE f.couple_id = ? ORDER BY p.id`).all(coupleId),
   getPhoto: (id) => q('SELECT * FROM photos WHERE id = ?').get(id),
-  addPhoto: ({ coupleId, fileKey, originalName, originalExt }) =>
-    Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on) VALUES(?, ?, ?, ?, date('now'))")
-      .run(coupleId, fileKey, originalName, originalExt || null).lastInsertRowid),
+  addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind }) =>
+    Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind) VALUES(?, ?, ?, ?, date('now'), ?)")
+      .run(coupleId, fileKey, originalName, originalExt || null, kind === 'duzenli' ? 'duzenli' : 'secim').lastInsertRowid),
   deletePhoto: (id) => q('DELETE FROM photos WHERE id = ?').run(id),
 
   // ── Favoriler ──
