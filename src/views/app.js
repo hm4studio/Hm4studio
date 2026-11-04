@@ -23,7 +23,7 @@ function appLogin(c, { error, values = {}, heroUrl }) {
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=15">
+<link rel="stylesheet" href="/css/style.css?v=16">
 </head>
 <body class="app-body pui">
 <main class="app-login" id="main">

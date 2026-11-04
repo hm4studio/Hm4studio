@@ -131,32 +131,41 @@ function tomorrowBlock(c, tomorrowEvents, tomorrowDue) {
   </section>`;
 }
 
-// Bu haftanın çekim programı (pazartesi–pazar)
-function weekBlock(weekEvents, monday) {
-  if (!monday) return '';
+// Program: önce yarın, sonra bu haftanın çekim olan diğer günleri (gün başlığı, altında büyük çift adı)
+function programBlock(c, weekEvents, upcoming, tomorrowDue) {
   const t = today();
   const tm = addDays(t, 1);
-  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
-  const sunday = days[6];
-  const fmt = (iso, o) => new Date(`${iso}T12:00:00`).toLocaleDateString('tr-TR', o);
+  const dow = (new Date(`${t}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const sunday = addDays(t, 6 - dow);
+  const all = [...upcoming, ...weekEvents].filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i);
+  const tomorrow = all.filter((e) => e.event_date === tm);
+  const rest = all.filter((e) => e.event_date > tm && e.event_date <= sunday);
+  const days = [...new Set(rest.map((e) => e.event_date))].sort();
+  const dayLabel = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const shoot = (e) => h`
+    <li class="prog__shoot">
+      <div class="prog__head">
+        <a class="prog__name" href="/admin/ciftler/${e.couple_id}">${e.couple_name}</a>
+        ${e.couple_phone ? h`<a class="tmr__call" href="tel:+${e.couple_phone}" aria-label="${e.couple_name} ara">${icon('phone')}</a>` : ''}
+      </div>
+      <p class="prog__line"><span class="prog__time">${e.start_time || 'Saat yok'}</span>${e.event_type || 'Etkinlik'}${e.venue || e.city ? h`, ${[e.venue, e.city].filter(Boolean).join(', ')}` : ''}</p>
+      ${e.team ? h`<p class="prog__team">Ekip: ${e.team}</p>` : ''}
+      ${e.package_detail ? h`<p class="prog__note">${e.package_detail}</p>` : ''}
+    </li>`;
+  const day = (iso, list, isTomorrow) => h`
+    <section class="prog__day${isTomorrow ? ' is-tomorrow' : ''}">
+      <h3 class="prog__date">${isTomorrow ? h`<span class="prog__tag">Yarın</span>` : ''}${dayLabel(iso)}</h3>
+      <ul class="prog__list">${list.map(shoot)}</ul>
+    </section>`;
   return h`
-  <section class="week" aria-labelledby="week-title">
+  <section class="prog" aria-labelledby="prog-title">
     <header class="sec-head">
-      <h2 class="sec-title" id="week-title">Bu hafta</h2>
-      <span class="sec-note">${fmt(monday, { day: 'numeric', month: 'long' })} – ${fmt(sunday, { day: 'numeric', month: 'long' })}, ${weekEvents.length} çekim</span>
+      <h2 class="sec-title" id="prog-title">Program</h2>
+      <span class="sec-note">${tomorrow.length + rest.length ? `Bu hafta ${tomorrow.length + rest.length} çekim daha` : 'Bu hafta başka çekim yok'}</span>
     </header>
-    <ol class="week__days">${days.map((d) => {
-      const list = weekEvents.filter((e) => e.event_date === d);
-      const state = d < t ? 'is-past' : d === t ? 'is-today' : d === tm ? 'is-tomorrow' : '';
-      return h`<li class="week__day ${state}${list.length ? '' : ' is-empty'}">
-        <span class="week__date"><span class="week__dow">${fmt(d, { weekday: 'short' })}</span><span class="week__num">${Number(d.slice(8))}</span></span>
-        <span class="week__events">${list.length ? list.map((e) => h`<a class="week__ev" href="/admin/ciftler/${e.couple_id}">
-          <span class="week__time">${e.start_time || '—'}</span>
-          <span class="week__name">${e.couple_name}</span>
-          <span class="week__meta">${e.event_type || 'Etkinlik'}${e.venue || e.city ? `, ${e.venue || e.city}` : ''}${e.team ? ` · ${e.team}` : ''}</span>
-        </a>`) : h`<span class="week__none">${d === t ? 'Bugün çekim yok' : '—'}</span>`}</span>
-      </li>`;
-    })}</ol>
+    ${tomorrow.length ? day(tm, tomorrow, true) : h`<p class="prog__empty"><span class="prog__tag">Yarın</span>Çekim yok.</p>`}
+    ${days.map((d) => day(d, rest.filter((e) => e.event_date === d), false))}
+    ${tomorrowDue.length ? h`<p class="tmr__due">Yarın teslim: ${tomorrowDue.map((k, i) => h`${i ? ', ' : ''}<a href="/admin/ciftler/${k.id}">${k.name}</a>`)}</p>` : ''}
   </section>`;
 }
 
@@ -256,10 +265,7 @@ function dashboard(c, { weekEvents = [], monday, selections = [], couples, month
     </dl>
 
     <div class="dash-top">
-      <div class="dash-left">
-      ${tomorrowBlock(c, tomorrowEvents, tomorrowDue)}
-      ${weekBlock(weekEvents, monday)}
-      </div>
+      ${programBlock(c, weekEvents, upcoming, tomorrowDue)}
       <section class="todo" aria-labelledby="todo-title">
         <header class="sec-head">
           <h2 class="sec-title" id="todo-title">Bekleyenler</h2>
@@ -524,7 +530,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=15">
+<link rel="stylesheet" href="/css/style.css?v=16">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>

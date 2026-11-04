@@ -1383,3 +1383,22 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .week__day.is-today .week__num { background: var(--graphite); color: #fff; border-radius: 50%; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: .85rem; }
 .week__day.is-tomorrow .week__dow, .week__day.is-tomorrow .week__num { color: var(--mark); }
 @media (max-width: 599px) { .week__ev { grid-template-columns: 44px minmax(0, 1fr); } .week__meta { grid-column: 2; white-space: normal; } }
+/* Program: yarın + bu haftanın çekim günleri */
+.prog__day { padding: 20px 0 6px; border-bottom: 1px solid var(--rule); }
+.prog__date { font: 500 .9rem var(--gfont); color: var(--pencil); letter-spacing: 0; display: flex; align-items: center; gap: 10px; margin: 0; }
+.prog__date::first-letter { text-transform: uppercase; }
+.prog__tag { font: 600 .78rem var(--gfont); color: #fff; background: var(--mark); padding: 2px 8px; border-radius: 999px; }
+.prog__day:not(.is-tomorrow) .prog__tag { background: var(--graphite); }
+.prog__list { list-style: none; margin: 0; padding: 0; }
+.prog__shoot { padding: 8px 0 14px; }
+.prog__shoot + .prog__shoot { border-top: 1px dashed var(--rule); padding-top: 14px; }
+.prog__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.prog__name { font: 500 clamp(1.6rem, 3vw, 2.1rem) / 1.15 var(--gfont); letter-spacing: -.03em; color: var(--graphite); text-decoration: none; }
+.prog__name:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.prog__line { margin: 4px 0 0; color: var(--pencil); font-size: .95rem; }
+.prog__time { color: var(--graphite); font-weight: 600; margin-right: 10px; font-variant-numeric: tabular-nums; }
+.prog__team { margin: 4px 0 0; font-size: .9rem; color: var(--graphite); }
+.prog__note { margin: 8px 0 0; padding-left: 12px; border-left: 2px solid var(--mark); font-size: .9rem; white-space: pre-line; }
+.prog__empty { display: flex; align-items: center; gap: 10px; margin: 18px 0; color: var(--pencil); padding-bottom: 18px; border-bottom: 1px solid var(--rule); }
+.prog__empty .prog__tag { background: var(--faint); }
+.prog .tmr__call { flex: none; }
