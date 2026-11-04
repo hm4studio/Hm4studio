@@ -1,6 +1,8 @@
 'use strict';
 // Yönetim paneli: çiftler, fotoğraf yükleme, favoriler, iş aşamaları, portfolyo, hesap.
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const backup = require('../backup');
 const db = require('../db');
 const auth = require('../auth');
 const media = require('../media');
@@ -17,6 +19,13 @@ const { addDays, today } = require('../jobs');
 const appt = require('../appointments');
 const wa = require('../whatsapp');
 const events = require('../events');
+
+// Excel formül enjeksiyonuna karşı korumalı CSV hücresi
+function csvCell(v) {
+  let s = String(v ?? '');
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
+  return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
 
 const newKey = () => crypto.randomBytes(16).toString('hex');
 
@@ -412,9 +421,8 @@ function register(router) {
     html(res, views.report(getContent(), { year: y, events: db.allEvents(), payments: db.allPayments(), couples: db.listCouples(), csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
   });
 
-  // Tüm etkinlikler: Excel'de açılan CSV (her etkinlik bir satır)
-  router.get('/admin/randevular.csv', (req, res) => {
-    if (!requireAdmin(req, res)) return;
+  // Etkinlik satırları → Excel'de açılan CSV (her etkinlik bir satır)
+  function eventsCsv(evs) {
     const stages = getContent().stages;
     const cards = new Map(db.listCouples().map((k) => [k.id, k]));
     const d = appt.shortDate;
@@ -430,19 +438,52 @@ function register(router) {
       ['Albüm Hazır', (k) => (k.album_ready ? 'Evet' : 'Hayır')], ['Teslim Tarihi', (k) => d(k.due_date)],
       ['Müşteri Kaynağı', (k) => k.source], ['Notlar', (k) => k.notes],
     ];
-    const cell = (v) => {
-      let s = String(v ?? '');
-      if (/^[=+\-@]/.test(s)) s = `'${s}`; // Excel formül enjeksiyonuna karşı
-      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const rows = db.allEvents().map((e) => [cards.get(e.couple_id), e]).filter(([k]) => k);
-    const lines = [cols.map((x) => x[0]).join(';'), ...rows.map(([k, e]) => cols.map((x) => cell(x[1](k, e))).join(';'))];
+    const rows = evs.map((e) => [cards.get(e.couple_id), e]).filter(([k]) => k);
+    return '﻿' + [cols.map((x) => x[0]).join(';'), ...rows.map(([k, e]) => cols.map((x) => csvCell(x[1](k, e))).join(';'))].join('\r\n');
+  }
+  function paymentsCsv(couples) {
+    const lines = ['Randevu No;Çift;Tarih;Tutar;Yöntem;Not'];
+    for (const k of couples) for (const p of db.listPayments(k.id)) lines.push([k.ref_no, k.name, appt.shortDate(p.paid_on), p.amount, p.method, p.note].map(csvCell).join(';'));
+    return '﻿' + lines.join('\r\n');
+  }
+
+  router.get('/admin/randevular.csv', (req, res) => {
+    if (!requireAdmin(req, res)) return;
     res.writeHead(200, {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="hm4-randevular-${today()}.csv"`,
       'Cache-Control': 'no-store',
     });
-    res.end(`﻿${lines.join('\r\n')}`);
+    res.end(eventsCsv(db.allEvents()));
+  });
+
+  // ── Veriler: yedekler ve sezon arşivleri ──
+  router.get('/admin/veriler', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, views.dataPage(getContent(), { backups: backup.listBackups(), seasons: backup.seasonSummary(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
+  router.post('/admin/veriler/yedek', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const name = backup.manual();
+    setFlash(req, { message: `Yedek alındı: ${name}`, type: 'success' });
+    redirect(res, '/admin/veriler');
+  });
+
+  router.get('/admin/veriler/yedek/:name', (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    const file = backup.backupPath(params.name);
+    if (!file || !fs.existsSync(file)) throw new HttpError(404, 'Bulunamadı');
+    res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': `attachment; filename="${params.name}"`, 'Content-Length': fs.statSync(file).size, 'Cache-Control': 'no-store' });
+    fs.createReadStream(file).pipe(res);
+  });
+
+  router.get('/admin/veriler/sezon/:year', async (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    const year = Number(params.year);
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) throw new HttpError(404, 'Bulunamadı');
+    await backup.streamSeason(res, year, { csvEvents: eventsCsv, csvPayments: paymentsCsv });
   });
 
   router.get('/admin/ciftler/:id', (req, res, { params, query }) => {

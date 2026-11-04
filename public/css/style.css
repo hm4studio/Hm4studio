@@ -1345,3 +1345,10 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 /* Kapak üstünde koyu logo beyaz görünsün */
 .site-header--overlay:not(.is-solid) .brand__logo { filter: brightness(0) invert(1); }
 .site-header--overlay:has(.site-nav.is-open) .brand__logo { filter: none; }
+.data-list { list-style: none; margin: 0; padding: 0; }
+.data-list li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.data-list__main { display: flex; flex-direction: column; gap: 2px; }
+.data-list__title { font-weight: 600; }
+.data-list__meta { font-size: .85rem; color: var(--pencil); }
+.data-now { margin: 0 0 8px; }
+.pui .panel-section .hint { margin-top: 10px; }

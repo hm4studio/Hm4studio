@@ -16,6 +16,7 @@ require('./src/routes/feedback').register(router);
 require('./src/routes/leads').register(router);
 require('./src/routes/api').register(router);
 require('./src/demo').start();
+require('./src/backup').start();
 
 // İsteğe bağlı: .env / barındırma panelindeki ADMIN_USERNAME + ADMIN_PASSWORD ile ilk yönetici hesabını oluştur
 (function bootstrapAdmin() {

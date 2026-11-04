@@ -69,6 +69,12 @@ durur ve `content/site.json` dosyasındaki değerlerin üzerine yazılır.
 
 **Ayarlar › Paketler:** paket adı, fiyatı ve içeriği. Randevu formunda paket seçilince fiyat ve içerik kendiliğinden dolar.
 
+**Ayarlar › Veriler:**
+- **Sezon arşivi:** Seçilen yılın randevuları ve ödemeleri (Excel), veritabanı kopyası ve o yıl etkinliği olan çiftlerin
+  tüm fotoğrafları tek bir `.tar` dosyası olarak iner (albüme seçilen kareler dosya adında `-SECILDI` ile işaretli).
+- **Veritabanı yedeği:** Her gece kendiliğinden `DATA_DIR/backups/` içine alınır, son 14 gün saklanır; "Şimdi yedek al" ile elle de alınır.
+- **Geri yükleme:** Sunucuyu durdurun, yedek `.db` dosyasını `DATA_DIR/hm4.db` olarak kopyalayın, sunucuyu başlatın.
+
 ## 2b. Dosyadan değiştirilebilecek yerler
 
 | Ne | Nerede |

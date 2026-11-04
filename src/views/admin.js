@@ -7,7 +7,7 @@ const { jobStatus, daysBetween, today, addDays } = require('../jobs');
 const { displayPhone, taskText } = require('../whatsapp');
 const { payment, tl, shortDate, eventIndexes } = require('../appointments');
 
-const SETTINGS_KEYS = ['account', 'feedback', 'portfolio', 'team', 'packages', 'site'];
+const SETTINGS_KEYS = ['account', 'feedback', 'portfolio', 'team', 'packages', 'site', 'data'];
 function adminNav(active, csrf, demoAdmin = false) {
   const items = [
     { href: '/admin', label: 'Panel', key: 'couples', icon: 'users' },
@@ -477,7 +477,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=12">
+<link rel="stylesheet" href="/css/style.css?v=13">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -841,6 +841,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
     { href: '/admin/paketler', title: 'Paketler', text: 'Paket adları, fiyatları ve içerikleri. Randevu formunda seçince fiyat kendiliğinden gelir.' },
     { href: '/admin/ekip', title: 'Ekip', text: 'Personel, görevleri ve iletişim bilgileri.' },
     { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitede görünen fotoğraflar ve anasayfa kapağı.' },
+    { href: '/admin/veriler', title: 'Veriler', text: 'Sezon arşivleri ve her gece alınan veritabanı yedekleri.' },
     ...(demoAdmin ? [] : [{ href: '/admin/gorusler', title: 'Görüşler', text: 'Demo ziyaretçilerinin bıraktığı görüşler.' }]),
   ];
   const body = h`
@@ -867,6 +868,44 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
     </section>
   </div>`;
   return panelLayout(c, { title: 'Ayarlar', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
+}
+
+// Veriler: sezon arşivleri ve veritabanı yedekleri
+function dataPage(c, { backups, seasons, csrf, flash: f, demoAdmin }) {
+  const mb = (n) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1).replace('.', ',')} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <h1 class="page-title">Veriler</h1>
+    ${flashBlock(f)}
+
+    <section class="panel-section">
+      <div class="panel-section__head">
+        <h2 class="panel-section__title">Sezon arşivleri</h2>
+        <p class="muted">Bir sezonu tek dosya olarak indirin: o yılın randevuları ve ödemeleri (Excel), veritabanının kopyası ve çiftlerin tüm fotoğrafları. Sezon bitince indirip harici diske veya buluta koymanızı öneririz.</p>
+      </div>
+      ${seasons.length ? h`<ul class="data-list">${seasons.map((x) => h`
+        <li>
+          <span class="data-list__main"><span class="data-list__title">${x.year} sezonu</span><span class="data-list__meta">${x.couples} çift, ${x.events} etkinlik, ${x.photos} fotoğraf</span></span>
+          <a class="btn btn--outline btn--sm" href="/admin/veriler/sezon/${x.year}" download>${icon('download')}Arşivi indir</a>
+        </li>`)}</ul>` : h`<p class="sec-empty">Henüz etkinlik yok.</p>`}
+      <p class="hint">Arşiv .tar biçimindedir; Mac'te çift tıklayınca, Windows'ta "Tümünü ayıkla" ile açılır. Fotoğraf sayısına göre indirme birkaç dakika sürebilir.</p>
+    </section>
+
+    <section class="panel-section">
+      <div class="panel-section__head">
+        <h2 class="panel-section__title">Veritabanı yedekleri</h2>
+        <p class="muted">Her gece kendiliğinden alınır, son 14 gün saklanır. Bir sorun olursa bu dosyadan her şey geri yüklenebilir.</p>
+      </div>
+      <form method="post" action="/admin/veriler/yedek" class="data-now">${csrfField(csrf)}<button class="btn btn--primary btn--sm" type="submit">Şimdi yedek al</button></form>
+      ${backups.length ? h`<ul class="data-list">${backups.map((b) => h`
+        <li>
+          <span class="data-list__main"><span class="data-list__title">${shortDate(b.date)}${b.manual ? ', elle alınan' : ''}</span><span class="data-list__meta">${mb(b.size)}</span></span>
+          <a class="btn btn--text btn--sm" href="/admin/veriler/yedek/${b.name}" download>${icon('download')}İndir</a>
+        </li>`)}</ul>` : h`<p class="sec-empty">${demoAdmin ? 'Demoda gece yedeği alınmaz; "Şimdi yedek al" ile deneyebilirsiniz.' : 'İlk gece yedeği sunucu açıldıktan kısa süre sonra alınır.'}</p>`}
+    </section>
+  </div>`;
+  return panelLayout(c, { title: 'Veriler', csrf, nav: adminNav('data', csrf, demoAdmin), home: '/admin', tabs: adminTabs('data', demoAdmin), body });
 }
 
 // Site ayarları: sitede görünen her şey panelden
@@ -1015,4 +1054,4 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=5'] });
 }
 
-module.exports = { sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = { dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
