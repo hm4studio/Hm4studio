@@ -84,7 +84,7 @@ function monthCalendar(monthEvents, ym) {
   return h`
   <section class="cal" aria-labelledby="cal-title">
     <div class="cal__head">
-      <h2 class="cal__title" id="cal-title">${MONTHS[m - 1]} ${y}</h2>
+      <h2 class="sec-title" id="cal-title">${MONTHS[m - 1]} <span class="sec-light">${y}</span></h2>
       <div class="cal__nav">
         <a class="cal__btn" href="/admin?ay=${prev}" aria-label="Önceki ay">${icon('left')}</a>
         <a class="cal__today" href="/admin">Bugün</a>
@@ -99,13 +99,12 @@ function monthCalendar(monthEvents, ym) {
         const list = byDay.get(d) || [];
         return h`<div class="cal__cell${iso === t ? ' is-today' : ''}${list.length > 1 ? ' is-busy' : ''}" role="gridcell">
           <a class="cal__day" href="/admin/randevu/yeni?tarih=${iso}" title="${shortDate(iso)} için randevu oluştur">${d}</a>
-          ${list.map((e) => h`<a class="cal__ev ${typeClass(e.event_type)}" href="/admin/ciftler/${e.couple_id}" title="${e.couple_name} · ${e.event_type || 'Etkinlik'}${e.start_time ? ' · ' + e.start_time : ''}">
+          ${list.map((e) => h`<a class="cal__ev" href="/admin/ciftler/${e.couple_id}" title="${e.couple_name} · ${e.event_type || 'Etkinlik'}${e.start_time ? ' · ' + e.start_time : ''}">
             <span class="cal__ev-time">${e.start_time || ''}</span><span class="cal__ev-name">${e.couple_name}</span></a>`)}
         </div>`;
       })}
     </div>
-    <div class="cal__legend">${Object.keys(TYPE_CLASS).map((t) => h`<span class="tchip ${typeClass(t)}">${t}</span>`)}</div>
-    <p class="cal__hint muted">Boş bir güne dokunarak o tarihe randevu oluşturabilirsiniz. Aynı gün iki çekim varsa gün kırmızı çizgiyle işaretlenir.</p>
+    <p class="cal__hint">Bir güne dokunarak o tarihe randevu oluşturun.</p>
   </section>`;
 }
 
@@ -114,21 +113,21 @@ function tomorrowBlock(c, tomorrowEvents, tomorrowDue) {
   const tm = addDays(today(), 1);
   return h`
   <section class="tmr" aria-labelledby="tmr-title">
-    <div class="tmr__head">
-      <p class="eyebrow">Yarın · ${longDay(tm)}</p>
-      <h2 class="tmr__title" id="tmr-title">${tomorrowEvents.length ? `${tomorrowEvents.length} çekim var` : 'Yarın çekim yok'}</h2>
-    </div>
+    <header class="sec-head">
+      <h2 class="sec-title" id="tmr-title">Yarın</h2>
+      <span class="sec-note">${longDay(tm)}</span>
+    </header>
     ${tomorrowEvents.length ? h`<ol class="tmr__list">${tomorrowEvents.map((e) => h`
       <li class="tmr__item">
         <span class="tmr__time">${e.start_time || '—'}</span>
         <div class="tmr__main">
-          <a class="strong-link" href="/admin/ciftler/${e.couple_id}">${e.couple_name}</a>
-          <span class="tmr__meta">${e.event_type ? h`<span class="tchip ${typeClass(e.event_type)}">${e.event_type}</span>` : ''}${[e.venue, e.city].filter(Boolean).join(', ') || 'Mekân girilmedi'}</span>
-          ${e.team ? h`<span class="tmr__team">Ekip: ${e.team}</span>` : ''}
-          ${e.package_detail ? h`<span class="tmr__note">${e.package_detail}</span>` : ''}
+          <a class="tmr__name" href="/admin/ciftler/${e.couple_id}">${e.couple_name}</a>
+          <span class="tmr__meta">${e.event_type || 'Etkinlik'}${e.venue || e.city ? h`, ${[e.venue, e.city].filter(Boolean).join(', ')}` : ''}</span>
+          ${e.team ? h`<span class="tmr__team">${e.team}</span>` : ''}
+          ${e.package_detail ? h`<p class="tmr__note">${e.package_detail}</p>` : ''}
         </div>
         ${e.couple_phone ? h`<a class="tmr__call" href="tel:+${e.couple_phone}" aria-label="${e.couple_name} ara">${icon('phone')}</a>` : ''}
-      </li>`)}</ol>` : ''}
+      </li>`)}</ol>` : h`<p class="sec-empty">Yarın çekim yok.</p>`}
     ${tomorrowDue.length ? h`<p class="tmr__due">Yarın teslim: ${tomorrowDue.map((k, i) => h`${i ? ', ' : ''}<a href="/admin/ciftler/${k.id}">${k.name}</a>`)}</p>` : ''}
   </section>`;
 }
@@ -152,7 +151,7 @@ function attentionItems(c, couples) {
   return items.sort((a, b) => b.level - a.level);
 }
 
-// Çift kartı (panelde arama ve süzgeçle)
+// Çift satırı (panelde arama ve süzgeçle)
 function coupleCard(c, k) {
   const pay = payment(k);
   const t = today();
@@ -161,24 +160,19 @@ function coupleCard(c, k) {
   const done = k.stage >= c.stages.length - 1;
   // Sıralama: önce yaklaşanlar (en yakın üstte), sonra geçmiş etkinlikler (en yeni üstte)
   const sortKey = k.next_date ? `0${k.next_date}` : shown ? `1${99999999 - Number(shown.replace(/-/g, ''))}` : '2';
-  return h`<li class="ccard${done ? ' is-done' : ''}" data-card data-search="${search}" data-stage="${k.stage}" data-type="${k.types || ''}" data-pay="${pay[0]}" data-date="${sortKey}">
-    <a class="ccard__link" href="/admin/ciftler/${k.id}">
-      <div class="ccard__top">
-        <span class="ccard__ref">${k.ref_no || '—'}</span>
-        <span class="ccard__chips">${typeChips(k.types)}</span>
-      </div>
-      <h3 class="ccard__name">${k.name}</h3>
-      <p class="ccard__date">${shown ? h`${icon('clock')}<strong>${shortDate(shown)}</strong> <span class="muted">${k.next_date ? relDays(daysBetween(t, shown)) : 'son etkinlik'}</span>` : h`<span class="muted">Tarih yok</span>`}${k.event_count > 1 ? h` <span class="muted">· ${k.event_count} etkinlik</span>` : ''}</p>
-      <div class="ccard__steps" aria-label="Aşama: ${c.stages[k.stage]}">
-        <span class="ccard__dots">${c.stages.map((s, i) => h`<i class="${i < k.stage ? 'is-done' : i === k.stage ? 'is-now' : ''}"></i>`)}</span>
-        <span class="ccard__stage-label">${c.stages[k.stage] || c.stages[0]}</span>
-      </div>
-      <div class="ccard__foot">
-        <span class="paypill paypill--${pay[0]}">${pay[1]}${pay[2] ? h` · <strong>${tl(pay[2])}</strong>` : ''}</span>
-        <span class="ccard__ready" aria-label="Hazır olanlar">
-          <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span>
-        </span>
-      </div>
+  const urgent = pay[2] > 0 && k.next_date && daysBetween(t, k.next_date) <= 14;
+  return h`<li class="crow${done ? ' is-done' : ''}" data-card data-search="${search}" data-stage="${k.stage}" data-type="${k.types || ''}" data-pay="${pay[0]}" data-date="${sortKey}">
+    <a class="crow__link" href="/admin/ciftler/${k.id}">
+      <span class="crow__who"><span class="crow__name">${k.name}</span><span class="crow__sub">${k.types || 'Etkinlik yok'}</span></span>
+      <span class="crow__date">${shown ? h`<span>${shortDate(shown)}</span><span class="crow__sub">${k.next_date ? relDays(daysBetween(t, shown)) : 'tamamlandı'}</span>` : h`<span class="crow__sub">Tarih yok</span>`}</span>
+      <span class="crow__stage">
+        <span class="steps" aria-hidden="true">${c.stages.map((s, i) => h`<i class="${i < k.stage ? 'is-done' : i === k.stage ? 'is-now' : ''}"></i>`)}</span>
+        <span class="crow__sub">${c.stages[k.stage] || c.stages[0]}</span>
+      </span>
+      <span class="crow__pay${urgent ? ' is-urgent' : ''}">${pay[0] === 'paid' ? h`<span class="crow__sub">Ödendi</span>` : pay[0] === 'none' ? h`<span class="crow__sub">Tutar yok</span>` : h`<span>${tl(pay[2])}</span><span class="crow__sub">kalan</span>`}</span>
+      <span class="crow__ready" aria-label="Hazır olanlar">
+        <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span>
+      </span>
     </a>
   </li>`;
 }
@@ -196,7 +190,8 @@ function stageBoard(c, couples) {
             <a class="bcard" href="/admin/ciftler/${k.id}">
               <strong>${k.name}</strong>
               <span class="bcard__meta">${shortDate(k.next_date || k.event_date) || 'Tarih yok'}</span>
-              <span class="bcard__foot"><span class="bcard__chips">${typeChips(k.types)}</span><span class="paydot paydot--${pay[0]}" title="${pay[1]}"></span></span>
+              <span class="bcard__meta">${k.types || ''}</span>
+              ${pay[2] > 0 ? h`<span class="bcard__pay">${tl(pay[2])} kalan</span>` : ''}
             </a></li>`;
         })}</ul>
       </section>`;
@@ -215,61 +210,64 @@ function dashboard(c, { couples, monthEvents, upcoming, ym, csrf, flash: f, demo
   const todo = attentionItems(c, couples);
   const o = c.appointments || {};
   const body = h`
-  <div class="container">
-    <div class="dash-head">
+  <div class="container dashboard">
+    <header class="dash-head">
       <div>
         <p class="dash-head__date">${longDay(t)}</p>
         <h1 class="dash-head__title">Panel</h1>
       </div>
       <a class="btn btn--primary" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a>
-    </div>
+    </header>
     ${flashBlock(f)}
 
-    <div class="tiles">
-      <div class="tile-stat tile-stat--slate"><span class="tile-stat__num">${monthEvents.length}</span><span class="tile-stat__label">${MONTHS[Number(ym.slice(5)) - 1]} ayında etkinlik</span></div>
-      <div class="tile-stat tile-stat--olive"><span class="tile-stat__num">${upcoming.length}</span><span class="tile-stat__label">Önümüzdeki 30 gün</span></div>
-      <div class="tile-stat tile-stat--gold"><span class="tile-stat__num">${tl(balance)}</span><span class="tile-stat__label">Bekleyen bakiye</span></div>
-      <a class="tile-stat tile-stat--kina" href="/admin/takvim"><span class="tile-stat__num">${late}</span><span class="tile-stat__label">Geciken teslim ${icon('arrow')}</span></a>
-    </div>
+    <dl class="figures">
+      <div><dt>${MONTHS[Number(ym.slice(5)) - 1]} ayında etkinlik</dt><dd>${monthEvents.length}</dd></div>
+      <div><dt>Önümüzdeki 30 gün</dt><dd>${upcoming.length}</dd></div>
+      <div><dt>Bekleyen bakiye</dt><dd>${tl(balance)}</dd></div>
+      <div><dt><a href="/admin/takvim">Geciken teslim</a></dt><dd class="${late ? 'is-alert' : ''}">${late}</dd></div>
+    </dl>
 
     <div class="dash-top">
       ${tomorrowBlock(c, tomorrowEvents, tomorrowDue)}
       <section class="todo" aria-labelledby="todo-title">
-        <h2 class="box-title" id="todo-title">Takip listesi <span class="box-count">${todo.length}</span></h2>
+        <header class="sec-head">
+          <h2 class="sec-title" id="todo-title">Bekleyenler</h2>
+          <span class="sec-note">${todo.length ? `${todo.length} iş` : ''}</span>
+        </header>
         ${todo.length ? h`<ul class="todo__list">${todo.slice(0, 8).map((x) => h`
-          <li class="todo__item todo__item--${x.level}">
-            <a href="/admin/ciftler/${x.k.id}"><span class="todo__tag">${x.tag}</span><strong>${x.k.name}</strong><span class="todo__text">${x.text}</span></a>
-          </li>`)}</ul>${todo.length > 8 ? h`<p class="muted todo__more">+${todo.length - 8} iş daha</p>` : ''}` : h`<p class="todo__empty">${icon('check')}Bekleyen iş yok.</p>`}
+          <li class="todo__item${x.level === 3 ? ' is-urgent' : ''}">
+            <a href="/admin/ciftler/${x.k.id}"><span class="todo__name">${x.k.name}</span><span class="todo__text">${x.text}</span></a>
+          </li>`)}</ul>${todo.length > 8 ? h`<p class="sec-empty">ve ${todo.length - 8} iş daha</p>` : ''}` : h`<p class="sec-empty">Bekleyen iş yok.</p>`}
       </section>
     </div>
 
     <div class="dash">
-      <div class="box">${monthCalendar(monthEvents, ym)}</div>
-      <section class="box dash__side" aria-labelledby="up-title">
-        <h2 class="box-title" id="up-title">Yaklaşan</h2>
+      ${monthCalendar(monthEvents, ym)}
+      <section class="dash__side" aria-labelledby="up-title">
+        <header class="sec-head"><h2 class="sec-title" id="up-title">Yaklaşan</h2></header>
         ${later.length ? h`<ul class="uplist">${later.slice(0, 9).map((e) => {
           const dt = new Date(`${e.event_date}T12:00:00`);
           return h`<li><a class="up" href="/admin/ciftler/${e.couple_id}">
-            <span class="up__date ${typeClass(e.event_type)}"><b>${dt.getDate()}</b><small>${dt.toLocaleDateString('tr-TR', { month: 'short' })}</small></span>
-            <span class="up__main"><strong>${e.couple_name}</strong><span>${[e.event_type, e.start_time, e.venue || e.city].filter(Boolean).join(' · ') || 'Ayrıntı girilmedi'}</span></span>
-            <span class="up__rel">${relDays(daysBetween(t, e.event_date))}</span>
+            <span class="up__day">${dt.getDate()}</span>
+            <span class="up__main"><span class="up__name">${e.couple_name}</span><span class="up__meta">${e.event_type || 'Etkinlik'}${e.start_time ? `, ${e.start_time}` : ''}</span></span>
+            <span class="up__rel">${dt.toLocaleDateString('tr-TR', { month: 'short' })}</span>
           </a></li>`;
-        })}</ul>` : h`<p class="muted">Yarından sonraki 30 günde randevu yok.</p>`}
+        })}</ul>` : h`<p class="sec-empty">Yarından sonraki 30 günde randevu yok.</p>`}
       </section>
     </div>
 
-    <section class="panel-section" aria-labelledby="cards-title">
-      <div class="cards-head">
-        <h2 class="box-title" id="cards-title">Çiftler <span class="box-count" data-card-count>${couples.length}</span></h2>
+    <section class="couples" aria-labelledby="cards-title">
+      <header class="sec-head cards-head">
+        <h2 class="sec-title" id="cards-title">Çiftler <span class="sec-count" data-card-count>${couples.length}</span></h2>
         <div class="seg" role="tablist" aria-label="Görünüm">
-          <button type="button" class="seg__btn is-on" data-view="cards" role="tab" aria-selected="true">Kartlar</button>
-          <button type="button" class="seg__btn" data-view="board" role="tab" aria-selected="false">Aşama panosu</button>
+          <button type="button" class="seg__btn is-on" data-view="cards" role="tab" aria-selected="true">Liste</button>
+          <button type="button" class="seg__btn" data-view="board" role="tab" aria-selected="false">Aşamalar</button>
         </div>
         <a class="btn btn--text btn--sm" href="/admin/randevular.csv">${icon('download')}Excel</a>
-      </div>
+      </header>
       <div class="card-filters" data-card-filters>
         <label class="sr-only" for="q">Ara</label>
-        <input id="q" type="search" placeholder="İsim, telefon, randevu no…" data-f-q autocomplete="off">
+        <input id="q" type="search" placeholder="Ara: isim, telefon, randevu no" data-f-q autocomplete="off">
         <label class="sr-only" for="f-stage">Aşama</label>
         <select id="f-stage" data-f-stage><option value="">Tüm aşamalar</option>${c.stages.map((s, i) => h`<option value="${i}">${s}</option>`)}</select>
         <label class="sr-only" for="f-type">Tür</label>
@@ -279,10 +277,11 @@ function dashboard(c, { couples, monthEvents, upcoming, ym, csrf, flash: f, demo
         <label class="sr-only" for="f-sort">Sıralama</label>
         <select id="f-sort" data-f-sort><option value="date">Sıradaki etkinliğe göre</option><option value="new">En yeni kayıt</option></select>
       </div>
-      ${couples.length ? h`<ul class="ccards" data-cards>${couples.map((k) => coupleCard(c, k))}</ul>
+      ${couples.length ? h`<div class="crow-head" aria-hidden="true"><span>Çift</span><span>Tarih</span><span>Aşama</span><span>Bakiye</span><span>Hazır</span></div>
+        <ul class="ccards crows" data-cards>${couples.map((k) => coupleCard(c, k))}</ul>
         ${stageBoard(c, couples)}
-        <p class="muted" data-cards-empty hidden>Aramaya uyan çift yok.</p>`
-        : h`<div class="empty-box"><p>Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p></div>`}
+        <p class="sec-empty" data-cards-empty hidden>Aramaya uyan çift yok.</p>`
+        : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
   return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=4'] });
@@ -479,7 +478,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=9">
+<link rel="stylesheet" href="/css/style.css?v=10">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>

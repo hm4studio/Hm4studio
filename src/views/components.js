@@ -100,8 +100,8 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=9">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="/css/style.css?v=10">
 </head>
 <body class="${bodyClass}">
 <a class="skip-link" href="#main">İçeriğe geç</a>`;
