@@ -2,6 +2,14 @@
    toplam/kalan hesabı ve aynı gün çakışma uyarısı; randevu belgesini yazdırma. */
 (function () {
   'use strict';
+  // Seri numaralarını panoya kopyala
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    const old = btn.textContent;
+    try { await navigator.clipboard.writeText(btn.dataset.copy); btn.textContent = 'Kopyalandı'; } catch { btn.textContent = 'Kopyalanamadı'; }
+    setTimeout(() => { btn.textContent = old; }, 1600);
+  });
   const tl = (n) => `${n.toLocaleString('tr-TR')} ₺`;
   const num = (v) => Number(String(v || '').split(',')[0].replace(/\D/g, '')) || 0;
   const fmt = (el) => { const n = num(el.value); el.value = n ? n.toLocaleString('tr-TR') : ''; };

@@ -1352,3 +1352,15 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .data-list__meta { font-size: .85rem; color: var(--pencil); }
 .data-now { margin: 0 0 8px; }
 .pui .panel-section .hint { margin-top: 10px; }
+/* Albüm seçim listeleri */
+.sel { margin-bottom: 56px; }
+.sel__list { list-style: none; margin: 0; padding: 0; }
+.sel__item { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+.sel__who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sel__name { font-weight: 600; color: var(--graphite); text-decoration: none; }
+.sel__name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sel__meta { font-size: .85rem; color: var(--pencil); }
+.sel__actions { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.sel-box { margin: 0 0 20px; padding: 14px 16px; background: var(--white, #fff); border: 1px solid var(--rule, #e8e8e5); }
+.sel-box__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.sel-box__names { margin: 10px 0 0; font-size: .85rem; color: var(--pencil, #6e6e6b); line-height: 1.7; word-break: break-word; font-variant-numeric: tabular-nums; }

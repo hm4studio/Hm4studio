@@ -119,6 +119,11 @@ Paket önerileri daha önce yazdığınız paket adlarından gelir. Etkinlik tü
 **Fotoğraf yükleme:** Çiftin sayfasında fotoğrafları seçin. Tarayıcı her fotoğrafın küçük (ızgara) ve
 büyük (görüntüleme) sürümünü hazırlar; "Orijinal dosyaları da sakla" işaretliyse çift tam çözünürlüğü indirebilir.
 
+**Albüm seçim listesi (RAW için):** Fotoğrafları kamera dosya adıyla yükleyin (örn. `DSC01234.jpg`).
+Çiftin seçtiği karelerin seri numaraları çiftin sayfasında görünür; **Listeyi indir** her satırda bir numara olan bir .txt verir,
+**Kopyala** numaraları boşlukla ayırıp kopyalar (Lightroom/Bridge dosya adı aramasına yapıştırmak için).
+Panelde **Tamamlanan albüm seçimleri** bölümü seçimi bitmiş tüm çiftleri listeler; **Hepsini indir** tek Excel tablosu verir.
+
 **Favoriler:** Çift kalbe dokunarak seçer; admin aynı listeyi çiftin sayfasındaki **Favoriler** sekmesinde
 görür, kalbe dokunarak ekleyip çıkarabilir.
 

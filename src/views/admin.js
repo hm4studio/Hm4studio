@@ -198,7 +198,7 @@ function stageBoard(c, couples) {
   </div>`;
 }
 
-function dashboard(c, { couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+function dashboard(c, { selections = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowEvents = upcoming.filter((e) => e.event_date === tm);
@@ -255,6 +255,21 @@ function dashboard(c, { couples, monthEvents, upcoming, ym, csrf, flash: f, demo
       </section>
     </div>
 
+    ${selections.length ? h`<section class="sel" aria-labelledby="sel-title">
+      <header class="sec-head">
+        <h2 class="sec-title" id="sel-title">Tamamlanan albüm seçimleri <span class="sec-count">${selections.length}</span></h2>
+        <a class="btn btn--text btn--sm" href="/admin/secimler.csv">${icon('download')}Hepsini indir (Excel)</a>
+      </header>
+      <ul class="sel__list">${selections.map(({ k, names }) => h`
+        <li class="sel__item">
+          <span class="sel__who"><a class="sel__name" href="/admin/ciftler/${k.id}">${k.name}</a><span class="sel__meta">${k.ref_no || ''}${k.ref_no ? ', ' : ''}${names.length} kare</span></span>
+          <span class="sel__actions">
+            <button type="button" class="btn btn--text btn--sm" data-copy="${names.join(' ')}" title="Seri numaralarını boşlukla ayrılmış olarak kopyalar (Lightroom/Bridge araması için)">Kopyala</button>
+            <a class="btn btn--outline btn--sm" href="/admin/ciftler/${k.id}/secim.txt">${icon('download')}Liste</a>
+          </span>
+        </li>`)}</ul>
+    </section>` : ''}
+
     <section class="couples" aria-labelledby="cards-title">
       <header class="sec-head cards-head">
         <h2 class="sec-title" id="cards-title">Çiftler <span class="sec-count" data-card-count>${couples.length}</span></h2>
@@ -283,7 +298,7 @@ function dashboard(c, { couples, monthEvents, upcoming, ym, csrf, flash: f, demo
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=5'] });
+  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=6'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -397,7 +412,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=5'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=6'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -477,7 +492,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=13">
+<link rel="stylesheet" href="/css/style.css?v=14">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -585,7 +600,7 @@ function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
   return panelLayout(c, { title: `Rapor ${year}`, csrf, nav: adminNav('report', csrf, demoAdmin), home: '/admin', tabs: adminTabs('report', demoAdmin), body });
 }
 
-function coupleDetail(c, { couple, card, events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
+function coupleDetail(c, { couple, card, selection = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
@@ -660,6 +675,16 @@ function coupleDetail(c, { couple, card, events: evs, payments, photos, totalCou
         <p class="muted">Kalbe dokunarak çiftin albüm seçimini düzenleyebilirsiniz.</p>
       </div>
       ${albumBar(couple, favCount, { admin: true, csrf, base })}
+      ${selection.length ? h`<div class="sel-box">
+        <div class="sel-box__head">
+          <span><strong>Seçilen karelerin seri numaraları</strong> <span class="muted">(${selection.length}${couple.album_locked ? ', seçim tamamlandı' : ', çift seçmeye devam ediyor'})</span></span>
+          <span class="sel__actions">
+            <button type="button" class="btn btn--text btn--sm" data-copy="${selection.join(' ')}">Kopyala</button>
+            <a class="btn btn--outline btn--sm" href="${base}/secim.txt">${icon('download')}Listeyi indir</a>
+          </span>
+        </div>
+        <p class="sel-box__names">${selection.join(', ')}</p>
+      </div>` : ''}
       ${galleryTabs(base, view, totalCount, favCount)}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
@@ -676,7 +701,7 @@ function coupleDetail(c, { couple, card, events: evs, payments, photos, totalCou
       </form>
     </section>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=2', '/js/admin.js?v=2'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=2', '/js/admin.js?v=3'] });
 }
 
 function calendar(c, { couples, csrf, demoAdmin }) {
@@ -781,7 +806,7 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       </ul>` : h`<div class="empty-box">${icon('image')}<p>Henüz portfolyo fotoğrafı yok.</p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=2'] });
+  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=3'] });
 }
 
 // Ekip: personel ekle, düzenle, sil; her kişinin görevleri
@@ -1005,7 +1030,7 @@ function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
       <div class="appt-actions"><button class="btn btn--primary" type="submit">Siteyi güncelle</button></div>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=2'] });
+  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=3'] });
 }
 
 // Paketler: ad, fiyat, içerik; randevu formunda seçilince fiyat ve içerik dolar
@@ -1051,7 +1076,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=5'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=6'] });
 }
 
 module.exports = { dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

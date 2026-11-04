@@ -92,7 +92,10 @@ function register(router) {
     const ay = query.get('ay');
     const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ay || '') ? ay : today().slice(0, 7);
     const t = today();
-    html(res, views.dashboard(getContent(), { couples: db.listCouples(), monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const couplesAll = db.listCouples();
+    const selections = couplesAll.filter((k) => k.album_locked && k.fav_count > 0)
+      .map((k) => ({ k, names: appt.selectionNames(db.listFavoritePhotos(k.id)) }));
+    html(res, views.dashboard(getContent(), { selections, couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   // Yeni kişi kartı formu (takvimden tarih, talepten bilgiler gelebilir)
@@ -457,6 +460,36 @@ function register(router) {
     res.end(eventsCsv(db.allEvents()));
   });
 
+  // ── Albüm seçim listeleri (seri numaraları: RAW orijinalleri işlemek için) ──
+  router.get('/admin/ciftler/:id/secim.txt', (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    const couple = getCoupleOr404(params.id);
+    const names = appt.selectionNames(db.listFavoritePhotos(couple.id));
+    const file = `${couple.ref_no ? couple.ref_no + ' ' : ''}${couple.name} - secim.txt`.replace(/[\\/:*?"<>|]+/g, '-');
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Disposition': `attachment; filename="secim.txt"; filename*=UTF-8''${encodeURIComponent(file)}`,
+      'Cache-Control': 'no-store',
+    });
+    res.end(names.join('\r\n') + (names.length ? '\r\n' : ''));
+  });
+
+  // Seçimini tamamlamış tüm çiftler tek tabloda: Randevu No; Çift; Seri No
+  router.get('/admin/secimler.csv', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const lines = ['Randevu No;Çift;Kare;Seri No'];
+    for (const k of db.listCouples().filter((x) => x.album_locked)) {
+      const names = appt.selectionNames(db.listFavoritePhotos(k.id));
+      names.forEach((n, i) => lines.push([k.ref_no, k.name, i + 1, n].map(csvCell).join(';')));
+    }
+    res.writeHead(200, {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="hm4-album-secimleri-${today()}.csv"`,
+      'Cache-Control': 'no-store',
+    });
+    res.end('\uFEFF' + lines.join('\r\n'));
+  });
+
   // ── Veriler: yedekler ve sezon arşivleri ──
   router.get('/admin/veriler', (req, res) => {
     if (!requireAdmin(req, res)) return;
@@ -502,6 +535,7 @@ function register(router) {
       flash: takeFlash(req),
       loginUrl: `${config.siteUrl}/uygulama`,
       card: db.getCoupleCard(couple.id),
+      selection: appt.selectionNames(favs),
       events: db.listEvents(couple.id).map((e) => ({ ...e, members: db.eventMembers(e.id) })),
       payments: db.listPayments(couple.id),
       demoAdmin: demo.isDemoAdmin(req),

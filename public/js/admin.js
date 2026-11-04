@@ -3,6 +3,14 @@
    ardından sırayla sunucuya gönderilir. İstenirse orijinal dosya da yüklenir. */
 (function () {
   'use strict';
+  // Seri numaralarını panoya kopyala
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-copy]');
+    if (!btn) return;
+    const old = btn.textContent;
+    try { await navigator.clipboard.writeText(btn.dataset.copy); btn.textContent = 'Kopyalandı'; } catch { btn.textContent = 'Kopyalanamadı'; }
+    setTimeout(() => { btn.textContent = old; }, 1600);
+  });
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const THUMB = { edge: 900, quality: 0.8 };      // ızgara görünümü
   const DISPLAY = { edge: 2400, quality: 0.86 };  // büyük görüntüleme

@@ -96,7 +96,7 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin }) {
       </li>`)}
     </ul>` : h`<div class="empty-box">${icon('whatsapp')}<p>Henüz talep yok. WhatsApp’tan yazan ya da sitedeki formu dolduran ilk kişi burada görünecek.</p></div>`}
   </div>`;
-  return panelLayout(c, { title: 'Talepler', csrf, nav: adminNav('leads', csrf, demoAdmin), home: '/admin', tabs: adminTabs('leads', demoAdmin), body, scripts: ['/js/admin.js?v=2'] });
+  return panelLayout(c, { title: 'Talepler', csrf, nav: adminNav('leads', csrf, demoAdmin), home: '/admin', tabs: adminTabs('leads', demoAdmin), body, scripts: ['/js/admin.js?v=3'] });
 }
 
 module.exports = { form, adminList, STATUS };

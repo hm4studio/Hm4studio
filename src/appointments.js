@@ -120,4 +120,11 @@ function eventIndexes(values) {
 
 const shortDate = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
 
-module.exports = { readForm, payment, tl, displayName, formValues, eventIndexes, money, shortDate, EVENT_FIELDS, cleanDate };
+// Albüm seçimi: fotoğrafların seri numaraları (dosya adı, uzantısız), sıralı.
+// Örn. "DSC01234.jpg" → "DSC01234"; RAW (ARW) orijinaller bu adla eşleştirilir.
+function selectionNames(favPhotos) {
+  const names = favPhotos.map((p, i) => String(p.original_name || '').replace(/\.[a-z0-9]{2,5}$/i, '').trim() || `foto-${String(i + 1).padStart(4, '0')}`);
+  return [...new Set(names)].sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
+}
+
+module.exports = { selectionNames, readForm, payment, tl, displayName, formValues, eventIndexes, money, shortDate, EVENT_FIELDS, cleanDate };
