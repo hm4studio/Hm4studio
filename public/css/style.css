@@ -1364,3 +1364,4 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .sel-box { margin: 0 0 20px; padding: 14px 16px; background: var(--white, #fff); border: 1px solid var(--rule, #e8e8e5); }
 .sel-box__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
 .sel-box__names { margin: 10px 0 0; font-size: .85rem; color: var(--pencil, #6e6e6b); line-height: 1.7; word-break: break-word; font-variant-numeric: tabular-nums; }
+.sel-box__warn { margin: 8px 0 0; font-size: .85rem; color: var(--mark, #cf2a1f); }

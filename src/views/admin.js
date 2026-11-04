@@ -684,6 +684,7 @@ function coupleDetail(c, { couple, card, selection = [], events: evs, payments, 
           </span>
         </div>
         <p class="sel-box__names">${selection.join(', ')}</p>
+        ${(() => { const d = selection.filter((x, i) => selection.indexOf(x) !== i); return d.length ? h`<p class="sel-box__warn">Dikkat: aynı adla birden fazla dosya seçilmiş: ${[...new Set(d)].join(', ')}. RAW eşleştirmesinde kontrol edin.</p>` : ''; })()}
       </div>` : ''}
       ${galleryTabs(base, view, totalCount, favCount)}
       ${photos.length ? h`
