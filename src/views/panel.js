@@ -190,7 +190,7 @@ function planView(couple) {
   </section>`;
 }
 
-function couplePanel(c, { couple, events = [], photos, totalCount, favCount, view, csrf, flash: f }) {
+function couplePanel(c, { couple, card = null, events = [], photos, totalCount, favCount, view, csrf, flash: f }) {
   const nav = h`<div class="panel-nav"><span class="panel-nav__who">${couple.name}</span>${config.demoMode ? h`<a class="panel-nav__link" href="/gorus?alan=${encodeURIComponent('Çift paneli')}">${icon('star')}<span>Görüş bildir</span></a>` : ''}${logoutForm(csrf)}</div>`;
   const body = h`
   <div class="container">
@@ -204,6 +204,7 @@ function couplePanel(c, { couple, events = [], photos, totalCount, favCount, vie
     <nav class="subnav" aria-label="Panel bölümleri">
       <a class="chip" href="#durum">İş durumu</a>
       ${events.length ? h`<a class="chip" href="#randevular">Randevular</a>` : ''}
+      ${card && card.total ? h`<a class="chip" href="#odeme">Ödeme</a>` : ''}
       <a class="chip" href="#fotograflar">Fotoğraflar ve albüm</a>
       <a class="chip" href="#plan">Çekim günü planı</a>
     </nav>
@@ -232,12 +233,30 @@ function couplePanel(c, { couple, events = [], photos, totalCount, favCount, vie
       })}</ul>
     </section>` : ''}
 
+    ${card && card.total ? (() => {
+      const kalan = Math.max(card.total - card.paid, 0);
+      const tl = (n) => `${Number(n || 0).toLocaleString('tr-TR')} ₺`;
+      return h`<section class="panel-section" id="odeme" aria-labelledby="pay-title">
+        <div class="panel-section__head"><h2 class="panel-section__title" id="pay-title">Ödeme</h2></div>
+        <dl class="cpay">
+          <div><dt>Toplam</dt><dd>${tl(card.total)}</dd></div>
+          <div><dt>Ödenen</dt><dd>${tl(card.paid)}</dd></div>
+          <div><dt>Kalan</dt><dd class="${kalan ? 'is-due' : 'is-done'}">${kalan ? tl(kalan) : 'Ödendi'}</dd></div>
+        </dl>
+      </section>`;
+    })() : ''}
+
     <section class="panel-section" id="fotograflar" aria-labelledby="gallery-title">
       <div class="panel-section__head">
         <h2 class="panel-section__title" id="gallery-title">Fotoğraflarınız</h2>
         <p class="muted">Albümünüze girecek kareleri kalbe dokunarak seçin. Bitirince “Seçimi tamamladım”a basın.</p>
+        ${totalCount ? h`<div class="dl-row">
+          <a class="btn btn--outline btn--sm" href="/panel/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>
+          ${favCount ? h`<a class="btn btn--text btn--sm" href="/panel/indir?g=fav" download>${icon('download')}Seçimimi indir (${favCount})</a>` : ''}
+        </div>` : ''}
       </div>
       ${totalCount ? albumBar(couple, favCount, { admin: false, csrf }) : ''}
+      ${totalCount && !couple.album_locked ? h`<a class="selpill" href="?g=fav#fotograflar" data-selpill hidden><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 60} kare seçildi</a>` : ''}
       ${galleryTabs('/panel', view, totalCount, favCount)}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
@@ -256,7 +275,7 @@ function couplePanel(c, { couple, events = [], photos, totalCount, favCount, vie
     { href: '/panel#plan', label: 'Plan', icon: 'pin' },
     { form: '/cikis', csrf, label: 'Çıkış', icon: 'logout' },
   ];
-  return panelLayout(c, { title: 'Panelim', csrf, nav, body, scripts: ['/js/panel.js?v=2'], tabs, home: '/panel' });
+  return panelLayout(c, { title: 'Panelim', csrf, nav, body, scripts: ['/js/panel.js?v=3'], tabs, home: '/panel' });
 }
 
 module.exports = { coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };

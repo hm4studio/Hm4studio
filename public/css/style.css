@@ -1408,3 +1408,29 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .nav-toggle .icon + .icon { display: none; }
 .nav-toggle[aria-expanded="true"] .icon:first-child { display: none; }
 .nav-toggle[aria-expanded="true"] .icon + .icon { display: block; }
+/* Çift paneli: sitenin başlık yazısı (marka bütünlüğü) */
+.pui:not(.is-admin) .welcome .page-title, .pui:not(.is-admin) .panel-section__title, .pui:not(.is-admin) .status__title,
+.pui:not(.is-admin) .album-bar__count, .pui .app-login__title, .pui .auth__title { font-family: var(--serif); font-weight: 500; letter-spacing: -.005em; }
+.pui:not(.is-admin) .welcome .page-title { font-size: clamp(2.4rem, 7vw, 3.4rem); }
+.pui:not(.is-admin) .panel-section__title, .pui:not(.is-admin) .status__title { font-size: 1.6rem; }
+.pui:not(.is-admin) .album-bar__count { font-size: 2rem; }
+.pui .app-login__title { font-size: 2.2rem; }
+.pui:not(.is-admin) .panel-nav__who { font-family: var(--serif); font-size: 1.15rem; font-weight: 500; }
+/* İndirme, ödeme özeti, sabit sayaç */
+.dl-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.cpay { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; }
+.cpay div { border-top: 1px solid var(--rule-2, #d9d9d5); padding-top: 10px; }
+.cpay dt { font-size: .85rem; color: var(--pencil, #6e6e6b); }
+.cpay dd { margin: 2px 0 0; font: 400 1.5rem/1.2 var(--serif); }
+.cpay dd.is-due { color: var(--graphite, #1a1a1a); }
+.cpay dd.is-done { color: var(--pencil, #6e6e6b); }
+.selpill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 45; display: inline-flex; align-items: center; gap: 2px; padding: 10px 18px; border-radius: 999px; background: var(--graphite, #1a1a1a); color: #fff; font-size: .92rem; text-decoration: none; box-shadow: 0 6px 24px rgba(0, 0, 0, .18); white-space: nowrap; }
+.selpill[hidden] { display: none; }
+.selpill__icon { display: inline-flex; margin-right: 8px; color: #f3a9b4; }
+.selpill__icon .icon { width: 16px; height: 16px; }
+.selpill strong { font-weight: 600; }
+@media (max-width: 699px) { body:has(.tabbar) .selpill { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); } }
+.avail { margin: 8px 0 0; font-size: .88rem; line-height: 1.45; padding-left: 10px; border-left: 2px solid var(--line); color: var(--ink-2); }
+.avail--free { border-left-color: #4f6b3a; color: #3e5a2b; }
+.avail--some { border-left-color: #b88a2a; color: #6e4a00; }
+.avail--full, .avail--past { border-left-color: var(--accent); color: var(--accent); }

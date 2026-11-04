@@ -530,7 +530,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=17">
+<link rel="stylesheet" href="/css/style.css?v=18">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -711,6 +711,7 @@ function coupleDetail(c, { couple, card, selection = [], events: evs, payments, 
       <div class="panel-section__head">
         <h2 class="panel-section__title" id="gallery-title">Galeri ve albüm seçimi</h2>
         <p class="muted">Kalbe dokunarak çiftin albüm seçimini düzenleyebilirsiniz.</p>
+        ${totalCount ? h`<div class="dl-row"><a class="btn btn--outline btn--sm" href="${base}/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>${favCount ? h`<a class="btn btn--text btn--sm" href="${base}/indir?g=fav" download>${icon('download')}Seçimi indir (${favCount})</a>` : ''}</div>` : ''}
       </div>
       ${albumBar(couple, favCount, { admin: true, csrf, base })}
       ${selection.length ? h`<div class="sel-box">
@@ -740,7 +741,7 @@ function coupleDetail(c, { couple, card, selection = [], events: evs, payments, 
       </form>
     </section>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=2', '/js/admin.js?v=3'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=3', '/js/admin.js?v=3'] });
 }
 
 function calendar(c, { couples, csrf, demoAdmin }) {
@@ -1064,6 +1065,28 @@ function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
         <div class="appt-row">${field('email', 'E-posta', k.email, { max: 120, ph: 'iletisim@hm4studio.com' })}${field('instagram', 'Instagram kullanıcı adı', k.instagram, { max: 60, ph: 'hm4studio' })}</div>
         ${field('regions', 'Çalışma bölgeleri', (k.regions || []).join('\n'), { area: true, rows: 3, hint: 'Her satıra bir bölge.' })}
         ${field('hours', 'Çalışma saatleri', k.hours, { max: 120 })}
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>Talep formu ve çift paneli</legend>
+        <div class="appt-row">
+          ${field('dailyCapacity', 'Günde en fazla kaç çekim alırsınız?', String(c.appointments?.dailyCapacity || 2), { max: 2, hint: 'Talep formunda tarih seçilince "boş / yer olabilir / dolu" bilgisi buna göre gösterilir. Çift isimleri gösterilmez.' })}
+          ${field('deliveryDays', 'Varsayılan teslim süresi (gün)', String(c.appointments?.defaultDeliveryDays || 45), { max: 3 })}
+        </div>
+        <label class="check"><input type="checkbox" name="showPayments" value="1"${c.couplePanel?.showPayments ? raw(' checked') : ''}><span>Çift panelinde ödeme özetini göster (toplam, ödenen, kalan)</span></label>
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>İş akışı</legend>
+        <p class="appt-help">Her satıra bir tane. Aşamaları çiftler de panelinde görür; sırası işin sırasıdır. Aşama sayısını azaltırsanız sondaki aşamadaki çiftler yeni son aşamaya geçer.</p>
+        <div class="appt-row">
+          ${field('stages', 'İş aşamaları', c.stages.join('\n'), { area: true, rows: 7, max: 500 })}
+          ${field('eventTypes', 'Etkinlik türleri', (c.appointments?.eventTypes || []).join('\n'), { area: true, rows: 7, max: 500 })}
+        </div>
+        <div class="appt-row">
+          ${field('sources', 'Müşteri kaynakları', (c.appointments?.sources || []).join('\n'), { area: true, rows: 6, max: 500 })}
+          ${field('teamRoles', 'Ekip görevleri', (c.appointments?.teamRoles || []).join('\n'), { area: true, rows: 6, max: 500 })}
+        </div>
       </fieldset>
 
       <div class="appt-actions"><button class="btn btn--primary" type="submit">Siteyi güncelle</button></div>

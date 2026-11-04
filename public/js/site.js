@@ -181,4 +181,29 @@
     e.preventDefault();
     open(link);
   });
+
+  // ── Talep formu: seçilen tarihin doluluğu ──
+  const dateIn = document.querySelector('[data-availability]');
+  const note = document.querySelector('[data-avail-note]');
+  if (dateIn && note) {
+    const msg = {
+      free: 'Bu tarih şu an boş görünüyor. Formu gönderin, hemen teyit edelim.',
+      some: 'Bu tarihte başka bir çekimimiz var ama hâlâ yerimiz olabilir. Formu gönderin, kontrol edelim.',
+      full: 'Bu tarih dolu görünüyor. Yine de yazın; ekibimiz sizinle alternatifleri konuşsun.',
+      past: 'Geçmiş bir tarih seçtiniz.',
+    };
+    const check = async () => {
+      if (!dateIn.value) { note.hidden = true; return; }
+      try {
+        const r = await fetch(`/talep/uygunluk?tarih=${encodeURIComponent(dateIn.value)}`, { headers: { Accept: 'application/json' } });
+        const d = await r.json();
+        if (!d.ok) { note.hidden = true; return; }
+        note.textContent = msg[d.state] || '';
+        note.className = `avail avail--${d.state}`;
+        note.hidden = !note.textContent;
+      } catch { note.hidden = true; }
+    };
+    dateIn.addEventListener('change', check);
+    if (dateIn.value) check();
+  }
 })();

@@ -67,6 +67,9 @@ Sitedeki **/talep** formu ("Uygunluk sorun") n8n kurulmasa da çalışır; talep
 hizmetler, hakkımızda metni ve iletişim bilgileri. Kaydedince site hemen güncellenir. Bu ayarlar veritabanında
 durur ve `content/site.json` dosyasındaki değerlerin üzerine yazılır.
 
+**Ayarlar › Site › İş akışı:** iş aşamaları, etkinlik türleri, müşteri kaynakları, ekip görevleri, teslim süresi,
+günlük çekim kapasitesi (talep formundaki "boş / dolu" bilgisi için) ve çift panelinde ödeme özetinin gösterilip gösterilmeyeceği.
+
 **Ayarlar › Paketler:** paket adı, fiyatı ve içeriği. Randevu formunda paket seçilince fiyat ve içerik kendiliğinden dolar.
 
 **Ayarlar › Veriler:**
@@ -123,6 +126,9 @@ büyük (görüntüleme) sürümünü hazırlar; "Orijinal dosyaları da sakla" 
 Çiftin seçtiği karelerin seri numaraları çiftin sayfasında görünür; **Listeyi indir** her satırda bir numara olan bir .txt verir,
 **Kopyala** numaraları boşlukla ayırıp kopyalar (Lightroom/Bridge dosya adı aramasına yapıştırmak için).
 Panelde **Tamamlanan albüm seçimleri** bölümü seçimi bitmiş tüm çiftleri listeler; **Hepsini indir** tek Excel tablosu verir.
+
+**İndirme:** Çift panelinde ve yöneticinin çift sayfasında **Tümünü indir** ve **Seçimimi indir** tek bir .zip verir
+(varsa orijinal dosyalar, yoksa büyük boy; dosya adları yüklendiği gibi). iPhone'da Dosyalar uygulamasıyla açılır.
 
 **Favoriler:** Çift kalbe dokunarak seçer; admin aynı listeyi çiftin sayfasındaki **Favoriler** sekmesinde
 görür, kalbe dokunarak ekleyip çıkarabilir.

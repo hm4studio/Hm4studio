@@ -20,8 +20,10 @@ function register(router) {
     const all = db.listPhotos(couple.id);
     const favs = all.filter((p) => p.is_fav);
     const view = query.get('g') === 'fav' ? 'fav' : 'all';
-    html(res, views.couplePanel(getContent(), {
+    const c = getContent();
+    html(res, views.couplePanel(c, {
       couple,
+      card: c.couplePanel?.showPayments ? db.getCoupleCard(couple.id) : null,
       events: db.listEvents(couple.id),
       photos: view === 'fav' ? favs : all,
       totalCount: all.length,
@@ -77,6 +79,20 @@ function register(router) {
     events.planSaved({ id: req.session.userId });
     setFlash(req, { message: 'Planınız kaydedildi. HM4 Studio ekibi görebilir.', type: 'success' });
     redirect(res, '/panel#plan');
+  });
+
+  // Tüm fotoğrafları (veya albüm seçimini) tek ZIP olarak indir
+  router.get('/panel/indir', async (req, res, { query }) => {
+    if (!requireCouple(req, res)) return;
+    const couple = db.getCouple(req.session.userId);
+    if (!couple) throw new HttpError(404, 'Bulunamadı');
+    const onlyFav = query.get('g') === 'fav';
+    const photos = onlyFav ? db.listFavoritePhotos(couple.id) : db.listPhotos(couple.id);
+    const entries = require('../media').couplePhotoEntries(couple.id, photos);
+    if (!entries.length) throw new HttpError(404, 'İndirilecek fotoğraf yok');
+    const name = `${couple.name}${onlyFav ? ' - Albüm seçimi' : ' - Fotoğraflar'}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
+    res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="fotograflar.zip"; filename*=UTF-8''${encodeURIComponent(name)}`, 'Cache-Control': 'no-store' });
+    await require('../zip').streamZip(res, entries).catch(() => res.destroy());
   });
 
   // Randevu belgesi (çift kendi bilgilerini görür, yazdırabilir)

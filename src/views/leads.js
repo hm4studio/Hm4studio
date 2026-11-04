@@ -38,7 +38,7 @@ function form(c, { values = {}, error, thanks, services }) {
         <div class="plan-grid">
           <div class="field"><label for="t-name">Adınız</label><input id="t-name" name="name" type="text" required maxlength="80" autocomplete="name" value="${values.name || ''}"></div>
           <div class="field"><label for="t-phone">Telefon (WhatsApp)</label><input id="t-phone" name="phone" type="tel" required maxlength="20" autocomplete="tel" inputmode="tel" placeholder="05XX XXX XX XX" value="${values.phone || ''}"></div>
-          <div class="field"><label for="t-date">Tarih</label><input id="t-date" name="eventDate" type="date" value="${values.eventDate || ''}"></div>
+          <div class="field"><label for="t-date">Tarih</label><input id="t-date" name="eventDate" type="date" value="${values.eventDate || ''}" data-availability aria-describedby="t-date-note"><p class="avail" id="t-date-note" data-avail-note aria-live="polite" hidden></p></div>
           <div class="field"><label for="t-place">Şehir / mekân</label><input id="t-place" name="place" type="text" maxlength="120" value="${values.place || ''}"></div>
         </div>
         <div class="field"><label for="t-service">Ne için?</label>

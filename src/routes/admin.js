@@ -294,6 +294,13 @@ function register(router) {
     const link = String(form.bannerLink || '').trim();
     if (link && !/^(https:\/\/|\/)[^\s"'<>]*$/.test(link)) errors.push('Duyuru bağlantısı "/" veya "https://" ile başlamalı.');
     if (errors.length) { setFlash(req, { message: errors.join(' '), type: 'error' }); return redirect(res, '/admin/site'); }
+    // İş akışı: aşamalar, etkinlik türleri, kaynaklar, ekip görevleri
+    const lines = (k, max, n) => String(form[k] || '').split(/\r?\n/).map((x) => x.replace(/\s+/g, ' ').trim().slice(0, n)).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).slice(0, max);
+    const stages = lines('stages', 10, 40);
+    const eventTypes = lines('eventTypes', 15, 30);
+    if (stages.length < 3) { setFlash(req, { message: 'En az 3 iş aşaması yazın (her satıra bir aşama).', type: 'error' }); return redirect(res, '/admin/site'); }
+    if (!eventTypes.length) { setFlash(req, { message: 'En az bir etkinlik türü yazın.', type: 'error' }); return redirect(res, '/admin/site'); }
+    const prevStages = getContent().stages.length;
     const services = [];
     for (let i = 0; i < 6; i++) {
       const title = t(`svc${i}_title`, 60);
@@ -313,7 +320,16 @@ function register(router) {
         regions: area('regions', 600).split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 8), hours: t('hours', 120),
       },
     });
+    o.stages = stages;
+    o.appointments = {
+      ...(o.appointments || {}),
+      eventTypes, sources: lines('sources', 15, 30), teamRoles: lines('teamRoles', 15, 30),
+      defaultDeliveryDays: Math.min(Math.max(Number.parseInt(form.deliveryDays, 10) || 45, 1), 365),
+      dailyCapacity: Math.min(Math.max(Number.parseInt(form.dailyCapacity, 10) || 2, 1), 20),
+    };
+    o.couplePanel = { showPayments: form.showPayments === '1' };
     saveOver(o);
+    if (stages.length < prevStages) db.clampStages(stages.length);
     setFlash(req, { message: 'Site güncellendi.', type: 'success' });
     redirect(res, '/admin/site');
   });
@@ -461,6 +477,18 @@ function register(router) {
       'Cache-Control': 'no-store',
     });
     res.end(eventsCsv(db.allEvents()));
+  });
+
+  // Çiftin fotoğrafları tek ZIP (yönetici)
+  router.get('/admin/ciftler/:id/indir', async (req, res, { params, query }) => {
+    if (!requireAdmin(req, res)) return;
+    const couple = getCoupleOr404(params.id);
+    const onlyFav = query.get('g') === 'fav';
+    const entries = media.couplePhotoEntries(couple.id, onlyFav ? db.listFavoritePhotos(couple.id) : db.listPhotos(couple.id));
+    if (!entries.length) throw new HttpError(404, 'İndirilecek fotoğraf yok');
+    const name = `${couple.ref_no ? couple.ref_no + ' ' : ''}${couple.name}${onlyFav ? ' - Albüm seçimi' : ''}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
+    res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="fotograflar.zip"; filename*=UTF-8''${encodeURIComponent(name)}`, 'Cache-Control': 'no-store' });
+    await require('../zip').streamZip(res, entries).catch(() => res.destroy());
   });
 
   // ── Albüm seçim listeleri (seri numaraları: RAW orijinalleri işlemek için) ──

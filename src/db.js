@@ -305,6 +305,7 @@ module.exports = {
   getPayment: (id) => q('SELECT * FROM payments WHERE id = ?').get(id),
   deletePayment: (id) => q('DELETE FROM payments WHERE id = ?').run(id),
 
+  clampStages: (n) => q('UPDATE couples SET stage = ? WHERE stage > ?').run(n - 1, n - 1),
   markAlbumInfoSent: (id) => q("UPDATE couples SET album_info_sent_at = date('now') WHERE id = ?").run(id),
   deleteCouple: (id) => q('DELETE FROM couples WHERE id = ?').run(id),
 

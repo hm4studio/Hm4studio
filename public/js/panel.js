@@ -20,10 +20,16 @@
   function updateAlbum(count) {
     if (!album) return;
     const limit = Number(album.dataset.limit) || 1;
-    const c = album.querySelector('[data-album-count]'); if (c) c.textContent = count;
+    document.querySelectorAll('[data-album-count]').forEach((c) => { c.textContent = count; });
     const fill = album.querySelector('.album-bar__fill'); if (fill) fill.style.width = Math.min(100, Math.round(count / limit * 100)) + '%';
     const bar = album.querySelector('[role="progressbar"]'); if (bar) bar.setAttribute('aria-valuenow', count);
     const lock = album.querySelector('[data-album-lock]'); if (lock) lock.disabled = count === 0;
+  }
+  // Galeri görünürken altta sabit seçim sayacı
+  const pill = document.querySelector('[data-selpill]');
+  const gallery = document.querySelector('#fotograflar');
+  if (pill && gallery && 'IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => { pill.hidden = !entries[0].isIntersecting; }, { rootMargin: '-35% 0px -35% 0px' }).observe(gallery);
   }
   const onlyFavView = new URLSearchParams(location.search).get('g') === 'fav';
 

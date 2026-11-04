@@ -7,7 +7,7 @@ const auth = require('../auth');
 const wa = require('../whatsapp');
 const events = require('../events');
 const { getContent } = require('../content');
-const { html, redirect, readForm, HttpError } = require('../http');
+const { html, json, redirect, readForm, HttpError } = require('../http');
 const views = require('../views/leads');
 const { requireAdmin, checkCsrf, setFlash, takeFlash, slugify, toId } = require('./guards');
 const demo = require('../demo');
@@ -36,6 +36,24 @@ function register(router) {
       values: tel ? { phone: wa.displayPhone(tel), kaynak: 'whatsapp' } : {},
       services: c.services.map((s) => s.title),
     }));
+  });
+
+  // Seçilen tarihin doluluğu (isim vermeden yalnızca durum)
+  const availHits = new Map();
+  router.get('/talep/uygunluk', (req, res, { query }) => {
+    const ip = req.socket.remoteAddress || '';
+    const now = Date.now();
+    const hits = (availHits.get(ip) || []).filter((t) => now - t < 60000);
+    hits.push(now); availHits.set(ip, hits);
+    if (availHits.size > 5000) availHits.clear();
+    if (hits.length > 40) return json(res, { ok: false }, 429);
+    const date = String(query.get('tarih') || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json(res, { ok: false }, 400);
+    const { today } = require('../jobs');
+    if (date < today()) return json(res, { ok: true, state: 'past' });
+    const cap = Math.max(1, Number(getContent().appointments?.dailyCapacity) || 2);
+    const n = new Set(db.eventsOn(date, 0).map((e) => e.couple_id)).size;
+    json(res, { ok: true, state: n === 0 ? 'free' : n < cap ? 'some' : 'full' });
   });
 
   router.post('/talep', async (req, res) => {
