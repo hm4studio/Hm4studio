@@ -623,7 +623,9 @@ function register(router) {
     const last = getContent().stages.length - 1;
     const storage = db.listCouples().map((k) => ({ k, u: media.coupleUsage(k.id), done: k.stage >= last })).filter((x) => x.u.photos + x.u.videos > 0)
       .sort((a, b) => (b.done - a.done) || ((b.u.photos + b.u.videos) - (a.u.photos + a.u.videos)));
-    html(res, views.dataPage(getContent(), { storage, diskTotal: media.dirSize(config.privateDir) + media.dirSize(config.publicMediaDir), backups: backup.listBackups(), seasons: backup.seasonSummary(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    let disk = null;
+    try { const st = fs.statfsSync(config.dataDir); disk = { total: st.blocks * st.bsize, free: st.bavail * st.bsize }; } catch { /* desteklenmiyorsa gösterme */ }
+    html(res, views.dataPage(getContent(), { disk, storage, diskTotal: media.dirSize(config.privateDir) + media.dirSize(config.publicMediaDir), backups: backup.listBackups(), seasons: backup.seasonSummary(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.post('/admin/veriler/yedek', async (req, res) => {

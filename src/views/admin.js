@@ -995,7 +995,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
 }
 
 // Veriler: sezon arşivleri ve veritabanı yedekleri
-function dataPage(c, { storage = [], diskTotal = 0, backups, seasons, csrf, flash: f, demoAdmin }) {
+function dataPage(c, { disk = null, storage = [], diskTotal = 0, backups, seasons, csrf, flash: f, demoAdmin }) {
   const mb = (n) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1).replace('.', ',')} GB` : n > 1024 * 1024 ? `${Math.round(n / 1024 / 1024)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
   const body = h`
   <div class="container container--form">
@@ -1018,7 +1018,16 @@ function dataPage(c, { storage = [], diskTotal = 0, backups, seasons, csrf, flas
 
     <section class="panel-section" id="alan">
       <div class="panel-section__head">
-        <h2 class="panel-section__title">Sunucu alanı <span class="sec-count">${mb(diskTotal)}</span></h2>
+        <h2 class="panel-section__title">Sunucu alanı</h2>
+        ${disk ? (() => {
+          const used = disk.total - disk.free;
+          const pct = Math.round((used / disk.total) * 100);
+          return h`<div class="disk">
+            <div class="disk__nums"><span><strong>${mb(disk.free)}</strong> boş</span><span class="muted">${mb(disk.total)} diskin %${pct}'i dolu · fotoğraf ve videolar ${mb(diskTotal)}</span></div>
+            <span class="disk__bar${pct >= 85 ? ' is-full' : ''}"><span data-pct="${pct}"></span></span>
+            ${pct >= 85 ? h`<p class="disk__warn">Disk dolmak üzere. Teslimi biten çiftlerin dosyalarını aşağıdan silin.</p>` : ''}
+          </div>`;
+        })() : h`<p class="muted">Fotoğraf ve videolar: ${mb(diskTotal)}</p>`}
         <p class="muted">Teslimi biten çiftlerin fotoğraf (ve isterseniz video) dosyalarını sunucudan silin. Çift kartı, randevular, ödemeler ve albüm seçim listesi (seri numaraları) silinmez. Silmeden önce sezon arşivini indirmeyi unutmayın.</p>
       </div>
       ${storage.length ? h`<form method="post" action="/admin/veriler/temizle" data-confirm="Seçilen çiftlerin dosyaları sunucudan kalıcı olarak silinsin mi? Sezon arşivini indirdiniz mi?">

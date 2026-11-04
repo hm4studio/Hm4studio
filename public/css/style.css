@@ -1507,3 +1507,10 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .store-size { font-size: .85rem; color: var(--pencil); text-align: right; white-space: nowrap; }
 #alan form { display: grid; gap: 12px; justify-items: start; }
 #alan .data-list { width: 100%; }
+.disk { display: grid; gap: 8px; margin: 6px 0 4px; }
+.disk__nums { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; font-size: .95rem; }
+.disk__nums strong { font-size: 1.4rem; font-weight: 400; letter-spacing: -.02em; }
+.disk__bar { display: block; height: 4px; background: var(--rule); }
+.disk__bar span { display: block; height: 100%; width: 0; background: var(--graphite); transition: width .8s; }
+.disk__bar.is-full span { background: var(--mark); }
+.disk__warn { margin: 0; color: var(--mark); font-size: .9rem; }
