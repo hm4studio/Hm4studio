@@ -47,10 +47,18 @@ function slugify(str) {
     .slice(0, 40);
 }
 
+// Kısa ve akılda kalıcı erişim kodu: çiftin adları (ör. busra-oguz). Doluysa yıl, sonra sayı eklenir.
+function uniqueAccessCode(name, year, taken) {
+  const base = slugify(name) || 'cift';
+  const tries = [base, `${base}-${year}`, ...Array.from({ length: 50 }, (_, i) => `${base}-${i + 2}`)];
+  for (const c of tries) if (c.length >= 3 && !taken(c)) return c;
+  return `${base}-${Date.now().toString(36)}`;
+}
+
 function toId(value) {
   const n = Number(value);
   if (!Number.isInteger(n) || n <= 0) throw new HttpError(404, 'Bulunamadı');
   return n;
 }
 
-module.exports = { requireAdmin, requireCouple, checkCsrf, setFlash, takeFlash, slugify, toId };
+module.exports = { uniqueAccessCode, requireAdmin, requireCouple, checkCsrf, setFlash, takeFlash, slugify, toId };

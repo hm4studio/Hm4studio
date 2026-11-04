@@ -75,6 +75,7 @@
   "appointments": {
     "eventTypes": ["Düğün", "Nişan", "Kına", "Söz", "Dış Çekim", "Diğer"],
     "sources": ["Instagram", "WhatsApp", "Tavsiye", "Google", "Site formu", "Diğer"],
+    "videoStages": ["Çekim bekleniyor", "Kurguda", "Onayınızda", "Hazır", "Teslim edildi"],
     "teamRoles": ["Fotoğrafçı", "Videocu", "Drone", "Asistan", "Kurgu", "Diğer"],
     "defaultDeliveryDays": 45
   },

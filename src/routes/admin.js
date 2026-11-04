@@ -13,7 +13,7 @@ const panelViews = require('../views/panel');
 const views = require('../views/admin');
 const { portfolioItems, heroUrl } = require('./public');
 const appViews = require('../views/app');
-const { requireAdmin, checkCsrf, setFlash, takeFlash, slugify, toId } = require('./guards');
+const { requireAdmin, checkCsrf, setFlash, takeFlash, slugify, toId, uniqueAccessCode } = require('./guards');
 const demo = require('../demo');
 const { addDays, today } = require('../jobs');
 const appt = require('../appointments');
@@ -162,9 +162,9 @@ function register(router) {
     }
     // Çiftin panel girişi: kod ve şifre otomatik
     const base = slugify(a.name) || 'cift';
-    let code = `${base}-${crypto.randomInt(1000, 9999)}`;
-    while (db.getCoupleByCode(code) || db.findAdminLogin(code)) code = `${base}-${crypto.randomInt(1000, 9999)}`;
-    const password = auth.friendlyPassword(10);
+    const firstDate = list.map((e) => e.eventDate).filter(Boolean).sort()[0];
+    const code = uniqueAccessCode(a.name, (firstDate || today()).slice(0, 4), (x) => db.getCoupleByCode(x) || db.findAdminLogin(x));
+    const password = auth.memorablePassword();
     const id = db.createCouple({ name: a.name, accessCode: code, hash: auth.hashPassword(password), eventDate: null });
     a.dueDate = defaultDue(a, list, c);
     db.updateCard(id, a);
@@ -178,7 +178,7 @@ function register(router) {
     setFlash(req, {
       message: `${a.name} için randevu oluşturuldu.${assigned ? ` ${assigned} ekip görevi verildi${config.n8nWebhookUrl ? ' ve WhatsApp mesajı gönderildi' : ''}.` : ''}${warn ? ' ' + warn : ''}`,
       type: warn ? 'error' : 'success',
-      credentials: { url: `${config.siteUrl}/uygulama`, code, password },
+      credentials: { url: `${config.siteUrl}/uygulama`, code, password, phone: a.phone, name: a.name },
     });
     redirect(res, `/admin/ciftler/${id}`);
   });
@@ -324,6 +324,7 @@ function register(router) {
     o.appointments = {
       ...(o.appointments || {}),
       eventTypes, sources: lines('sources', 15, 30), teamRoles: lines('teamRoles', 15, 30),
+      videoStages: lines('videoStages', 8, 30).length ? lines('videoStages', 8, 30) : (getContent().appointments?.videoStages || []),
       defaultDeliveryDays: Math.min(Math.max(Number.parseInt(form.deliveryDays, 10) || 45, 1), 365),
       dailyCapacity: Math.min(Math.max(Number.parseInt(form.dailyCapacity, 10) || 2, 1), 20),
     };
@@ -479,6 +480,60 @@ function register(router) {
     res.end(eventsCsv(db.allEvents()));
   });
 
+  // ── Video teslimi: parça parça yükleme (8 MB'lık parçalar), bağlantı ekleme, silme ──
+  const uploads = new Map(); // uploadId → { coupleId, next, bytes, at }
+  const MAX_VIDEO = (Number(process.env.MAX_VIDEO_GB) || 10) * 1024 ** 3;
+  const VIDEO_KINDS = ['Klip', 'Düğün filmi', 'Reels', 'Teaser', 'Diğer'];
+  router.post('/admin/ciftler/:id/video/parca', async (req, res, { params }) => {
+    apiGuard(req);
+    const couple = getCoupleOr404(params.id);
+    const uploadId = String(req.headers['x-upload-id'] || '');
+    const index = Number(req.headers['x-index']);
+    const total = Number(req.headers['x-total']);
+    if (!/^[a-f0-9]{32}$/.test(uploadId) || !Number.isInteger(index) || !Number.isInteger(total) || index < 0 || total < 1 || index >= total || total > 2000) throw new HttpError(400, 'Geçersiz yükleme.');
+    for (const [k, u] of uploads) if (Date.now() - u.at > 6 * 3600 * 1000) { uploads.delete(k); media.discardVideoUpload(k); }
+    let u = uploads.get(uploadId);
+    if (index === 0) { u = { coupleId: couple.id, next: 0, bytes: 0, at: Date.now() }; uploads.set(uploadId, u); }
+    if (!u || u.coupleId !== couple.id || u.next !== index) throw new HttpError(409, 'Yükleme sırası bozuldu, baştan deneyin.');
+    const chunk = await readBody(req, 17 * 1024 * 1024);
+    if (!chunk.length) throw new HttpError(400, 'Boş parça.');
+    u.bytes = media.appendVideoChunk(uploadId, chunk, index === 0);
+    u.next++; u.at = Date.now();
+    if (u.bytes > MAX_VIDEO) { uploads.delete(uploadId); media.discardVideoUpload(uploadId); throw new HttpError(413, 'Video çok büyük.'); }
+    if (index < total - 1) return json(res, { ok: true, next: u.next });
+    uploads.delete(uploadId);
+    const fileKey = newKey();
+    const done = media.finishVideo(uploadId, couple.id, fileKey);
+    if (!done) throw new HttpError(415, 'Desteklenmeyen video biçimi. MP4 veya MOV yükleyin.');
+    const kind = VIDEO_KINDS.includes(decodeURIComponent(String(req.headers['x-kind'] || ''))) ? decodeURIComponent(String(req.headers['x-kind'])) : 'Klip';
+    const title = cleanText(decodeURIComponent(String(req.headers['x-title'] || '')), 120);
+    const id = db.addVideo({ coupleId: couple.id, title, kind, fileKey, ext: done.ext, size: done.size });
+    json(res, { ok: true, id });
+  });
+
+  router.post('/admin/ciftler/:id/video/baglanti', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const link = String(form.link || '').trim();
+    if (!/^https:\/\/[^\s"'<>]{4,500}$/.test(link)) { setFlash(req, { message: 'Bağlantı https:// ile başlamalı.', type: 'error' }); return redirect(res, `/admin/ciftler/${couple.id}#video`); }
+    db.addVideo({ coupleId: couple.id, title: cleanText(form.title, 120), kind: VIDEO_KINDS.includes(form.kind) ? form.kind : 'Klip', link });
+    setFlash(req, { message: 'Video bağlantısı eklendi.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}#video`);
+  });
+
+  router.post('/admin/ciftler/:id/video/:vid/sil', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const v = db.getVideo(toId(params.vid));
+    if (!v || v.couple_id !== couple.id) throw new HttpError(404, 'Bulunamadı');
+    db.deleteVideo(v.id);
+    if (v.file_key) media.removeVideo(couple.id, v.file_key, v.ext);
+    setFlash(req, { message: 'Video silindi.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}#video`);
+  });
+
   // Çiftin fotoğrafları tek ZIP (yönetici)
   router.get('/admin/ciftler/:id/indir', async (req, res, { params, query }) => {
     if (!requireAdmin(req, res)) return;
@@ -567,6 +622,7 @@ function register(router) {
       loginUrl: `${config.siteUrl}/uygulama`,
       card: db.getCoupleCard(couple.id),
       selection: appt.selectionNames(favs),
+      videos: db.listVideos(couple.id),
       events: db.listEvents(couple.id).map((e) => ({ ...e, members: db.eventMembers(e.id) })),
       payments: db.listPayments(couple.id),
       demoAdmin: demo.isDemoAdmin(req),
@@ -580,6 +636,9 @@ function register(router) {
     const stages = getContent().stages;
     const stage = Math.min(Math.max(Number.parseInt(form.stage, 10) || 0, 0), stages.length - 1);
     db.setCoupleStage(couple.id, stage, String(form.note || '').trim().slice(0, 500));
+    const vlist = getContent().appointments?.videoStages || [];
+    const vstat = vlist.includes(form.videoStatus) ? form.videoStatus : '';
+    db.setVideoStatus(couple.id, vstat);
     if (stage !== couple.stage) events.stageChanged(couple, stage);
     setFlash(req, { message: `Aşama güncellendi: ${stages[stage]}`, type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
@@ -606,13 +665,13 @@ function register(router) {
     const form = await formGuard(req, res);
     if (!form) return;
     const couple = getCoupleOr404(params.id);
-    const password = auth.friendlyPassword(10);
+    const password = auth.memorablePassword();
     db.setCouplePassword(couple.id, auth.hashPassword(password));
     db.deleteSessionsFor('couple', couple.id); // açık oturumları kapat
     setFlash(req, {
       message: 'Yeni şifre oluşturuldu. Eski şifre artık çalışmaz.',
       type: 'success',
-      credentials: { url: `${config.siteUrl}/giris`, code: couple.access_code, password },
+      credentials: { url: `${config.siteUrl}/uygulama`, code: couple.access_code, password, phone: couple.phone, name: couple.name },
     });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });

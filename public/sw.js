@@ -4,12 +4,12 @@
    - Sayfalar her zaman sunucudan istenir; internet yoksa sade bir "çevrimdışı" sayfası gösterilir.
    - Çiftlerin özel fotoğrafları (/m/...) ve panel sayfaları ASLA önbelleğe alınmaz:
      paylaşılan bir cihazda başkası göremesin. */
-const VERSION = 'hm4-v18';
+const VERSION = 'hm4-v19';
 const STATIC_CACHE = `${VERSION}-static`;
 const MEDIA_CACHE = `${VERSION}-media`;
 const PRECACHE = [
   '/offline.html',
-  '/css/style.css?v=18',
+  '/css/style.css?v=19',
   '/js/site.js?v=6',
   '/js/pwa.js?v=2',
   '/images/icon-192.png',
@@ -51,7 +51,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Özel fotoğraflar ve indirmeler: hiç dokunma
-  if (url.pathname.startsWith('/m/')) return;
+  if (url.pathname.startsWith('/m/') || url.pathname.startsWith('/v/')) return;
 
   // Sayfalar: önce ağ, bağlantı yoksa çevrimdışı sayfası (sayfa içeriği saklanmaz)
   if (req.mode === 'navigate') {

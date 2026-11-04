@@ -127,9 +127,8 @@ function register(router) {
     if (!lead) throw new HttpError(404, 'Bulunamadı');
     if (lead.couple_id && db.getCouple(lead.couple_id)) return redirect(res, `/admin/ciftler/${lead.couple_id}`);
     const name = lead.name || 'Yeni çift';
-    let code = `${slugify(name) || 'cift'}-${crypto.randomInt(1000, 9999)}`;
-    while (db.getCoupleByCode(code) || db.findAdminLogin(code)) code = `${slugify(name) || 'cift'}-${crypto.randomInt(1000, 9999)}`;
-    const password = auth.friendlyPassword(10);
+    const code = require('./guards').uniqueAccessCode(name, (lead.event_date || new Date().toISOString()).slice(0, 4), (x) => db.getCoupleByCode(x) || db.findAdminLogin(x));
+    const password = auth.memorablePassword();
     const id = db.createCouple({ name, accessCode: code, hash: auth.hashPassword(password), eventDate: lead.event_date });
     if (lead.event_date) db.setCoupleDue(id, addDays(lead.event_date, 45));
     db.setCoupleContact(id, lead.phone, true);

@@ -116,6 +116,18 @@ function sendFile(req, res, baseDir, relPath, { cache = 'public, max-age=86400',
   };
   if (download) headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(download)}`;
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, { ETag: etag, 'Cache-Control': cache }); res.end(); return true; }
+  headers['Accept-Ranges'] = 'bytes';
+  // Bölüm isteği (video oynatıcılar, özellikle iPhone, bunu ister)
+  const m = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || ''));
+  if (m && (m[1] || m[2])) {
+    let start = m[1] ? Number(m[1]) : Math.max(stat.size - Number(m[2]), 0);
+    let end = m[1] && m[2] ? Math.min(Number(m[2]), stat.size - 1) : stat.size - 1;
+    if (start > end || start >= stat.size) { res.writeHead(416, { 'Content-Range': `bytes */${stat.size}` }); res.end(); return true; }
+    res.writeHead(206, { ...headers, 'Content-Length': end - start + 1, 'Content-Range': `bytes ${start}-${end}/${stat.size}` });
+    if (req.method === 'HEAD') { res.end(); return true; }
+    fs.createReadStream(full, { start, end }).pipe(res);
+    return true;
+  }
   res.writeHead(200, headers);
   if (req.method === 'HEAD') { res.end(); return true; }
   fs.createReadStream(full).pipe(res);

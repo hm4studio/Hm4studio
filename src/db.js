@@ -86,6 +86,7 @@ addColumn('couples', 'phone', 'TEXT');
 addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
+addColumn('couples', 'video_status', "TEXT NOT NULL DEFAULT ''");
 // Randevu kartı alanları
 for (const [col, def] of [
   ['ref_no', 'TEXT'], ['full_name', "TEXT NOT NULL DEFAULT ''"], ['partner_name', "TEXT NOT NULL DEFAULT ''"],
@@ -158,6 +159,18 @@ CREATE TABLE IF NOT EXISTS packages (
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS videos (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT '',
+  kind TEXT NOT NULL DEFAULT 'Klip',
+  file_key TEXT,
+  ext TEXT,
+  size INTEGER NOT NULL DEFAULT 0,
+  link TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS videos_couple ON videos(couple_id);
 CREATE TABLE IF NOT EXISTS event_team (
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   member_id INTEGER NOT NULL REFERENCES team(id) ON DELETE CASCADE,
@@ -305,6 +318,12 @@ module.exports = {
   getPayment: (id) => q('SELECT * FROM payments WHERE id = ?').get(id),
   deletePayment: (id) => q('DELETE FROM payments WHERE id = ?').run(id),
 
+  setVideoStatus: (id, v) => q('UPDATE couples SET video_status = ? WHERE id = ?').run(v, id),
+  listVideos: (coupleId) => q("SELECT * FROM videos WHERE couple_id = ? ORDER BY CASE kind WHEN 'Reels' THEN 1 ELSE 0 END, id").all(coupleId),
+  getVideo: (id) => q('SELECT * FROM videos WHERE id = ?').get(id),
+  addVideo: (v) => Number(q('INSERT INTO videos(couple_id, title, kind, file_key, ext, size, link) VALUES(?, ?, ?, ?, ?, ?, ?)').run(v.coupleId, v.title, v.kind, v.fileKey || null, v.ext || null, v.size || 0, v.link || null).lastInsertRowid),
+  deleteVideo: (id) => q('DELETE FROM videos WHERE id = ?').run(id),
+  videoCount: (coupleId) => q('SELECT COUNT(*) AS n FROM videos WHERE couple_id = ?').get(coupleId).n,
   clampStages: (n) => q('UPDATE couples SET stage = ? WHERE stage > ?').run(n - 1, n - 1),
   markAlbumInfoSent: (id) => q("UPDATE couples SET album_info_sent_at = date('now') WHERE id = ?").run(id),
   deleteCouple: (id) => q('DELETE FROM couples WHERE id = ?').run(id),
@@ -363,7 +382,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM favorites; DELETE FROM photos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
+    DELETE FROM favorites; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

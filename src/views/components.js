@@ -108,7 +108,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=18">
+<link rel="stylesheet" href="/css/style.css?v=19">
 <link rel="stylesheet" href="/css/tema.css">
 </head>
 <body class="${bodyClass}">
@@ -191,7 +191,7 @@ function portfolioGrid(items, { limit } = {}) {
 }
 
 // İş aşamaları durum çubuğu (çift ve admin panelinde)
-function statusBar(stages, current, note, title = 'İşinizin durumu') {
+function statusBar(stages, current, note, title = 'İşinizin durumu', video = null) {
   const last = stages.length - 1;
   const pct = Math.round((Math.min(current, last) / last) * 100);
   return h`
@@ -212,6 +212,14 @@ function statusBar(stages, current, note, title = 'İşinizin durumu') {
         </li>`;
       })}
     </ol>
+    ${video && video.status ? (() => {
+      const vi = video.stages.indexOf(video.status);
+      return h`<div class="vstat">
+        <span class="vstat__label">${icon('play')}Video</span>
+        <span class="vstat__dots" aria-hidden="true">${video.stages.map((s, i) => h`<i class="${i < vi ? 'is-done' : i === vi ? 'is-now' : ''}"></i>`)}</span>
+        <span class="vstat__now">${video.status}</span>
+      </div>`;
+    })() : ''}
     ${note ? h`<p class="status__note">${note}</p>` : ''}
   </section>`;
 }

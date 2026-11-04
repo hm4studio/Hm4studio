@@ -13,25 +13,55 @@ const adminViews = require('../views/admin');
 const { requireCouple, checkCsrf, toId, setFlash, takeFlash } = require('./guards');
 
 function register(router) {
-  router.get('/panel', (req, res, { query }) => {
+  const me = (req) => { const c = db.getCouple(req.session.userId); if (!c) throw new HttpError(404, 'Bulunamadı'); return c; };
+
+  // Durum sayfası
+  router.get('/panel', (req, res) => {
     if (!requireCouple(req, res)) return;
-    const couple = db.getCouple(req.session.userId);
-    if (!couple) throw new HttpError(404, 'Bulunamadı');
-    const all = db.listPhotos(couple.id);
-    const favs = all.filter((p) => p.is_fav);
-    const view = query.get('g') === 'fav' ? 'fav' : 'all';
+    const couple = me(req);
     const c = getContent();
     html(res, views.couplePanel(c, {
       couple,
       card: c.couplePanel?.showPayments ? db.getCoupleCard(couple.id) : null,
       events: db.listEvents(couple.id),
-      photos: view === 'fav' ? favs : all,
-      totalCount: all.length,
-      favCount: favs.length,
-      view,
+      totalCount: db.listPhotos(couple.id).length,
+      videoCount: db.videoCount(couple.id),
       csrf: req.session.csrf,
       flash: takeFlash(req),
     }));
+  });
+
+  // Fotoğraflar ve albüm seçimi
+  router.get('/panel/fotograflar', (req, res, { query }) => {
+    if (!requireCouple(req, res)) return;
+    const couple = me(req);
+    const all = db.listPhotos(couple.id);
+    const favs = all.filter((p) => p.is_fav);
+    const view = query.get('g') === 'fav' ? 'fav' : 'all';
+    html(res, views.couplePhotos(getContent(), { couple, photos: view === 'fav' ? favs : all, totalCount: all.length, favCount: favs.length, view, csrf: req.session.csrf, flash: takeFlash(req) }));
+  });
+
+  // Videolar
+  router.get('/panel/video', (req, res) => {
+    if (!requireCouple(req, res)) return;
+    const couple = me(req);
+    html(res, views.coupleVideos(getContent(), { couple, videos: db.listVideos(couple.id), csrf: req.session.csrf, flash: takeFlash(req) }));
+  });
+
+  // Çekim günü planı
+  router.get('/panel/plan', (req, res) => {
+    if (!requireCouple(req, res)) return;
+    html(res, views.couplePlan(getContent(), { couple: me(req), csrf: req.session.csrf, flash: takeFlash(req) }));
+  });
+
+  // Video dosyası (yalnızca yönetici veya o çift; bölüm isteği desteklenir)
+  router.get('/v/:id', (req, res, { params, query }) => {
+    const s = req.session;
+    const v = db.getVideo(toId(params.id));
+    const allowed = s && v && v.file_key && (s.kind === 'admin' || (s.kind === 'couple' && s.userId === v.couple_id));
+    if (!allowed) throw new HttpError(404, 'Bulunamadı');
+    const name = query.get('indir') ? `${(v.title || v.kind || 'video').replace(/[\\/:*?"<>|]+/g, '-')}.${v.ext}` : undefined;
+    if (!sendFile(req, res, media.videoDir(v.couple_id), `${v.file_key}.${v.ext}`, { cache: 'private, max-age=3600', download: name })) throw new HttpError(404, 'Bulunamadı');
   });
 
   // Favori ekle/çıkar — çift yalnızca kendi fotoğrafını işaretleyebilir
@@ -65,7 +95,7 @@ function register(router) {
       events.albumLocked(couple);
       setFlash(req, { message: 'Teşekkürler! Albüm seçiminiz HM4 Studio’ya iletildi.', type: 'success' });
     }
-    redirect(res, '/panel#fotograflar');
+    redirect(res, '/panel/fotograflar');
   });
 
   // Çekim günü planını kaydet
@@ -78,7 +108,7 @@ function register(router) {
     db.setPlan(req.session.userId, plan);
     events.planSaved({ id: req.session.userId });
     setFlash(req, { message: 'Planınız kaydedildi. HM4 Studio ekibi görebilir.', type: 'success' });
-    redirect(res, '/panel#plan');
+    redirect(res, '/panel/plan');
   });
 
   // Tüm fotoğrafları (veya albüm seçimini) tek ZIP olarak indir

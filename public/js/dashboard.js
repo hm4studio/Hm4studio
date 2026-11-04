@@ -21,6 +21,26 @@
   document.addEventListener('blur', (e) => { if (e.target.matches?.('[data-money]')) fmt(e.target); }, true);
   document.querySelectorAll('[data-money]').forEach(fmt);
 
+  // ── Takvim: ay değiştirirken sayfa yenilenmesin, yerinde değişsin ──
+  document.addEventListener('click', async (e) => {
+    const a = e.target.closest('.cal__nav a');
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    const cal = a.closest('.cal');
+    cal.classList.add('is-loading');
+    try {
+      const res = await fetch(a.href, { credentials: 'same-origin', headers: { Accept: 'text/html' } });
+      if (!res.ok || res.redirected) throw new Error('yüklenemedi');
+      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      const fresh = doc.querySelector('.cal');
+      if (!fresh) throw new Error('yok');
+      cal.replaceWith(fresh);
+      const fig = doc.querySelector('.figures'); const cur = document.querySelector('.figures');
+      if (fig && cur) cur.replaceWith(fig);
+      history.replaceState(null, '', a.href);
+    } catch { location.href = a.href; }
+  });
+
   // ── Çift kartları ──
   const list = document.querySelector('[data-cards]');
   const box = document.querySelector('[data-card-filters]');

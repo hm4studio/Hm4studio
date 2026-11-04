@@ -61,10 +61,10 @@ function seed() {
   const daysFrom = (iso) => daysBetween(t, iso);
 
   const couples = [
-    { name: 'Elif & Burak', code: 'demo', appt: { fullName: 'Elif Yılmaz', partnerName: 'Burak Kaya', eventType: 'Düğün', startTime: '13:00', city: 'Antalya', venue: '[Düğün salonu]', package: 'Fotoğraf + Video + Albüm', total: 45000, deposit: 15000, source: 'Instagram', photoReady: true, team: 'Hasan, Mert', detail: 'Gelin hazırlığından başlanacak. Klip için drone isteniyor.', extra: [{ offset: -4, eventType: 'Dış Çekim', startTime: '17:30', venue: 'Göl kıyısı', package: 'Dış çekim', price: 8000, team: 'Hasan' }, { offset: -1, eventType: 'Kına', startTime: '20:00', venue: '[Kına salonu]', package: 'Fotoğraf + Video', price: 12000, team: 'Hasan, Mert' }] }, date: d(-51), due: d(5), stage: Math.min(2, last), limit: 5, locked: false, favs: [2, 3, 5],
+    { name: 'Elif & Burak', code: 'demo', video: 'Kurguda', appt: { fullName: 'Elif Yılmaz', partnerName: 'Burak Kaya', eventType: 'Düğün', startTime: '13:00', city: 'Antalya', venue: '[Düğün salonu]', package: 'Fotoğraf + Video + Albüm', total: 45000, deposit: 15000, source: 'Instagram', photoReady: true, team: 'Hasan, Mert', detail: 'Gelin hazırlığından başlanacak. Klip için drone isteniyor.', extra: [{ offset: -4, eventType: 'Dış Çekim', startTime: '17:30', venue: 'Göl kıyısı', package: 'Dış çekim', price: 8000, team: 'Hasan' }, { offset: -1, eventType: 'Kına', startTime: '20:00', venue: '[Kına salonu]', package: 'Fotoğraf + Video', price: 12000, team: 'Hasan, Mert' }] }, date: d(-51), due: d(5), stage: Math.min(2, last), limit: 5, locked: false, favs: [2, 3, 5],
       note: 'Fotoğraflarınızın düzenlenmesi sürüyor; video kurgusuna gelecek hafta başlıyoruz.',
       plan: { prep: 'Gelin evi · [adres]', venue: '[Düğün salonu adı ve adresi]', outdoor: 'Göl kıyısı ve çam ormanı, gün batımı', song: 'Klip için yavaş, akustik bir şarkı', flow: '13:00  Gelin hazırlığı\n15:30  Dış çekim\n19:00  Salon girişi\n21:30  Pasta', people: 'Gelinin annesi ve babaannesi, sağdıç Mert', notes: '', saved: d(-58) } },
-    { name: 'Selin & Emre', code: 'demo-2', appt: { fullName: 'Selin Aydın', partnerName: 'Emre Demir', eventType: 'Düğün', startTime: '16:00', city: 'Antalya', venue: '[Mekân adı]', package: 'Fotoğraf + Video', total: 35000, deposit: 10000, paidFull: true, source: 'Tavsiye', photoReady: true, videoReady: true, albumReady: true }, date: d(-70), due: d(-10), stage: last, limit: 4, locked: true, favs: [0, 1, 4],
+    { name: 'Selin & Emre', code: 'demo-2', video: 'Teslim edildi', appt: { fullName: 'Selin Aydın', partnerName: 'Emre Demir', eventType: 'Düğün', startTime: '16:00', city: 'Antalya', venue: '[Mekân adı]', package: 'Fotoğraf + Video', total: 35000, deposit: 10000, paidFull: true, source: 'Tavsiye', photoReady: true, videoReady: true, albumReady: true }, date: d(-70), due: d(-10), stage: last, limit: 4, locked: true, favs: [0, 1, 4],
       note: 'Tüm fotoğraflarınız ve düğün filminiz teslim edildi. Mutluluklar!',
       plan: { venue: '[Mekân adı]', outdoor: 'Göl kıyısı', flow: '16:00  Dış çekim\n20:00  Düğün', saved: d(-75) } },
     { name: 'Zeynep & Can', code: 'demo-3', appt: { fullName: 'Zeynep Arslan', partnerName: 'Can Öztürk', eventType: 'Nişan', startTime: '18:30', city: 'Muğla', venue: '[Bahçe]', package: 'Fotoğraf', total: 18000, deposit: 6000, source: 'Google', photoReady: true }, date: d(-40), due: d(-3), stage: Math.min(3, last), limit: 60, note: 'Video kurgusu sürüyor.' },
@@ -100,6 +100,7 @@ function seed() {
     if (x.deposit) db.addPayment(id, { amount: x.deposit, paidOn: addDays(k.date, -60), method: 'IBAN', note: 'Kapora' });
     if (x.paidFull) db.addPayment(id, { amount: evs.reduce((s2, e) => s2 + (e.price || 0), 0) - x.deposit, paidOn: addDays(k.date, 20), method: 'IBAN', note: 'Kalan bakiye' });
     db.setRefNo(id, db.nextRefNo(k.date.slice(0, 4)));
+    if (k.video) db.setVideoStatus(id, k.video);
     db.setAlbum(id, { limit: k.limit, locked: false });
     if (k.plan) db.setPlan(id, k.plan);
     const files = (manifest.couples && manifest.couples[k.code]) || [];

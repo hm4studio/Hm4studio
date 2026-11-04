@@ -37,6 +37,23 @@ function friendlyPassword(len = 10) {
   return out;
 }
 
+// Çiftlerin akılda tutabileceği şifre: iki kelime + üç rakam (örn. papatya-deniz-472).
+// Türkçe karakter yok (her klavyede kolay yazılsın). Hatalı girişler IP başına sınırlandığı için yeterince güçlü.
+const WORDS = ('papatya lale gul zambak orkide mimoza manolya lavanta nergis menekse sumbul yasemin kamelya leylak '
+  + 'deniz ada koy liman kumsal dalga ruzgar bulut yildiz ay gunes safak seher aksam gece bahar yaz kis '
+  + 'zeytin incir nar kiraz badem ceviz findik limon portakal mandalina erik ayva armut elma visne '
+  + 'mavi yesil mor pembe beyaz kirmizi turuncu altin gumus inci mercan firuze safir zumrut yakut '
+  + 'orman vadi tepe dag nehir pinar gol sahil kanyon yayla ova bag bahce koru cinar meşe'.replace('ş', 's') + ' '
+  + 'kelebek serce martı kugu turna leylek bulbul kartal sahin guvercin yunus'.replace('ı', 'i') + ' '
+  + 'melodi sarki dans vals tango ritim nota piyano keman gitar ney kanun ud saz '
+  + 'yuzuk duvak gelin damat kina davul zurna halay sofra hediye cicek buket kurdele').split(/\s+/).filter(Boolean);
+function memorablePassword() {
+  const w = () => WORDS[crypto.randomInt(WORDS.length)];
+  let a = w(), b = w();
+  while (b === a) b = w();
+  return `${a}-${b}-${crypto.randomInt(100, 1000)}`;
+}
+
 // Çerezdeki oturum anahtarı veritabanına doğrudan yazılmaz; HMAC'i saklanır.
 function hashSid(sid) {
   return crypto.createHmac('sha256', config.sessionSecret).update(sid).digest('hex');
@@ -128,7 +145,7 @@ setInterval(() => {
 }, 60 * 60 * 1000).unref();
 
 module.exports = {
-  hashPassword, verifyPassword, DUMMY_HASH, randomToken, friendlyPassword,
+  hashPassword, verifyPassword, DUMMY_HASH, randomToken, friendlyPassword, memorablePassword,
   startSession, endSession, loadSession, csrfValid, parseCookies, isApp,
   isRateLimited, recordFailure, clearFailures,
 };

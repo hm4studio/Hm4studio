@@ -159,9 +159,9 @@ function planSection(couple, csrf) {
         : h`<input id="pl-${f.key}" name="${f.key}" type="text" maxlength="${f.max}" placeholder="${f.placeholder}" value="${plan[f.key] || ''}">`}
     </div>`;
   return h`
-  <section class="panel-section" id="plan" aria-labelledby="plan-title">
+  <section class="panel-section cpage" id="plan" aria-labelledby="plan-title">
     <div class="panel-section__head">
-      <h2 class="panel-section__title" id="plan-title">Çekim günü planı</h2>
+      <h1 class="panel-section__title" id="plan-title">Çekim günü planı</h1>
       <p class="muted">Günün akışını ve adresleri buraya yazın; ekibimiz çekimden önce bu planla hazırlanır. İstediğiniz zaman güncelleyebilirsiniz.</p>
     </div>
     <form class="card form" method="post" action="/panel/plan">
@@ -190,24 +190,40 @@ function planView(couple) {
   </section>`;
 }
 
-function couplePanel(c, { couple, card = null, events = [], photos, totalCount, favCount, view, csrf, flash: f }) {
+// Çift paneli: ayrı sayfalar (Durum, Fotoğraflar, Video, Plan)
+const COUPLE_PAGES = [
+  { key: 'durum', href: '/panel', label: 'Durum', icon: 'clock' },
+  { key: 'foto', href: '/panel/fotograflar', label: 'Fotoğraflar', icon: 'image' },
+  { key: 'video', href: '/panel/video', label: 'Video', icon: 'play' },
+  { key: 'plan', href: '/panel/plan', label: 'Plan', icon: 'pin' },
+];
+
+function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
   const nav = h`<div class="panel-nav"><span class="panel-nav__who">${couple.name}</span>${config.demoMode ? h`<a class="panel-nav__link" href="/gorus?alan=${encodeURIComponent('Çift paneli')}">${icon('star')}<span>Görüş bildir</span></a>` : ''}${logoutForm(csrf)}</div>`;
-  const body = h`
+  const content = h`
   <div class="container">
+    <nav class="cpages" aria-label="Panel sayfaları">
+      ${COUPLE_PAGES.map((p) => h`<a class="cpages__link" href="${p.href}"${p.key === page ? raw(' aria-current="page"') : ''}>${p.label}</a>`)}
+    </nav>
+    ${f ? flash(f.message, f.type) : ''}
+    ${body}
+  </div>`;
+  const tabs = [
+    ...COUPLE_PAGES.map((p) => ({ href: p.href, label: p.label, icon: p.icon, active: p.key === page })),
+    { form: '/cikis', csrf, label: 'Çıkış', icon: 'logout' },
+  ];
+  const title = (COUPLE_PAGES.find((p) => p.key === page) || {}).label || 'Panelim';
+  return panelLayout(c, { title, csrf, nav, body: content, scripts, tabs, home: '/panel' });
+}
+
+// Durum: iş durumu, randevular, ödeme
+function couplePanel(c, { couple, card = null, events = [], totalCount = 0, videoCount = 0, csrf, flash: f }) {
+  const body = h`
     <section class="welcome">
       <p class="eyebrow">Hoş geldiniz</p>
       <h1 class="page-title">${couple.name}</h1>
       ${couple.event_date ? h`<p class="muted">${formatDate(couple.event_date)}</p>` : ''}
     </section>
-    ${f ? flash(f.message, f.type) : ''}
-
-    <nav class="subnav" aria-label="Panel bölümleri">
-      <a class="chip" href="#durum">İş durumu</a>
-      ${events.length ? h`<a class="chip" href="#randevular">Randevular</a>` : ''}
-      ${card && card.total ? h`<a class="chip" href="#odeme">Ödeme</a>` : ''}
-      <a class="chip" href="#fotograflar">Fotoğraflar ve albüm</a>
-      <a class="chip" href="#plan">Çekim günü planı</a>
-    </nav>
 
     <div class="install" data-install hidden>
       <img class="install__icon" src="/images/icon-192.png" alt="" width="48" height="48">
@@ -216,7 +232,12 @@ function couplePanel(c, { couple, card = null, events = [], photos, totalCount, 
       <button type="button" class="install__close" data-install-close aria-label="Kapat">${icon('close')}</button>
     </div>
 
-    <div id="durum">${statusBar(c.stages, couple.stage, couple.stage_note)}</div>
+    <div id="durum">${statusBar(c.stages, couple.stage, couple.stage_note, 'İşinizin durumu', { status: couple.video_status, stages: c.appointments?.videoStages || [] })}</div>
+
+    ${totalCount || videoCount ? h`<div class="cquick">
+      ${totalCount ? h`<a class="cquick__item" href="/panel/fotograflar"><span class="cquick__num">${totalCount}</span><span>fotoğraf</span>${icon('right')}</a>` : ''}
+      ${videoCount ? h`<a class="cquick__item" href="/panel/video"><span class="cquick__num">${videoCount}</span><span>video</span>${icon('right')}</a>` : ''}
+    </div>` : ''}
 
     ${events.length ? h`<section class="panel-section" id="randevular" aria-labelledby="ev-title">
       <div class="panel-section__head appt-card__head">
@@ -244,11 +265,16 @@ function couplePanel(c, { couple, card = null, events = [], photos, totalCount, 
           <div><dt>Kalan</dt><dd class="${kalan ? 'is-due' : 'is-done'}">${kalan ? tl(kalan) : 'Ödendi'}</dd></div>
         </dl>
       </section>`;
-    })() : ''}
+    })() : ''}`;
+  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=4'] });
+}
 
-    <section class="panel-section" id="fotograflar" aria-labelledby="gallery-title">
+// Fotoğraflar: galeri, albüm seçimi, indirme
+function couplePhotos(c, { couple, photos, totalCount, favCount, view, csrf, flash: f }) {
+  const body = h`
+    <section class="panel-section cpage" id="fotograflar" aria-labelledby="gallery-title">
       <div class="panel-section__head">
-        <h2 class="panel-section__title" id="gallery-title">Fotoğraflarınız</h2>
+        <h1 class="panel-section__title" id="gallery-title">Fotoğraflarınız</h1>
         <p class="muted">Albümünüze girecek kareleri kalbe dokunarak seçin. Bitirince “Seçimi tamamladım”a basın.</p>
         ${totalCount ? h`<div class="dl-row">
           <a class="btn btn--outline btn--sm" href="/panel/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>
@@ -256,26 +282,49 @@ function couplePanel(c, { couple, card = null, events = [], photos, totalCount, 
         </div>` : ''}
       </div>
       ${totalCount ? albumBar(couple, favCount, { admin: false, csrf }) : ''}
-      ${totalCount && !couple.album_locked ? h`<a class="selpill" href="?g=fav#fotograflar" data-selpill hidden><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 60} kare seçildi</a>` : ''}
-      ${galleryTabs('/panel', view, totalCount, favCount)}
+      ${totalCount && !couple.album_locked ? h`<a class="selpill" href="/panel/fotograflar?g=fav" data-selpill hidden><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 60} kare seçildi</a>` : ''}
+      ${galleryTabs('/panel/fotograflar', view, totalCount, favCount)}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
         ${photos.map((p) => photoTile(p, { favEndpoint: '/panel/favori', csrf, locked: Boolean(couple.album_locked) }))}
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav'
           ? 'Henüz albüm için kare seçmediniz. “Tüm fotoğraflar” sekmesinden kalbe dokunarak ekleyebilirsiniz.'
           : 'Fotoğraflarınız hazırlandığında burada görünecek.'}</p></div>`}
-    </section>
-
-    ${planSection(couple, csrf)}
-  </div>`;
-  const tabs = [
-    { href: '/panel#durum', label: 'Durum', icon: 'clock' },
-    { href: '/panel', label: 'Fotoğraflar', icon: 'image', active: view !== 'fav' },
-    { href: '/panel?g=fav', label: 'Albüm', icon: 'heart', active: view === 'fav' },
-    { href: '/panel#plan', label: 'Plan', icon: 'pin' },
-    { form: '/cikis', csrf, label: 'Çıkış', icon: 'logout' },
-  ];
-  return panelLayout(c, { title: 'Panelim', csrf, nav, body, scripts: ['/js/panel.js?v=3'], tabs, home: '/panel' });
+    </section>`;
+  return coupleShell(c, { couple, page: 'foto', csrf, flash: f, body, scripts: ['/js/panel.js?v=4'] });
 }
 
-module.exports = { coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };
+// Video: klip, film, reels — izle ve indir
+function coupleVideos(c, { couple, videos, csrf, flash: f }) {
+  const wide = videos.filter((v) => v.kind !== 'Reels');
+  const reels = videos.filter((v) => v.kind === 'Reels');
+  const item = (v) => h`
+    <li class="vid${v.kind === 'Reels' ? ' vid--reel' : ''}">
+      ${v.file_key ? h`<video class="vid__player" src="/v/${v.id}" controls playsinline preload="metadata"></video>`
+        : h`<a class="vid__link" href="${v.link}" target="_blank" rel="noopener">${icon('play')}<span>İzlemek için dokunun</span></a>`}
+      <div class="vid__meta">
+        <div><p class="vid__title">${v.title || v.kind}</p><p class="vid__sub">${v.kind}${v.size ? ` · ${Math.max(1, Math.round(v.size / 1024 / 1024))} MB` : ''}</p></div>
+        ${v.file_key ? h`<a class="btn btn--outline btn--sm" href="/v/${v.id}?indir=1" download>${icon('download')}İndir</a>`
+          : h`<a class="btn btn--outline btn--sm" href="${v.link}" target="_blank" rel="noopener">Aç</a>`}
+      </div>
+    </li>`;
+  const body = h`
+    <section class="panel-section cpage" aria-labelledby="video-title">
+      <div class="panel-section__head">
+        <h1 class="panel-section__title" id="video-title">Videolarınız</h1>
+        ${couple.video_status ? h`<p class="muted">Video durumu: ${couple.video_status}</p>` : ''}
+      </div>
+      ${videos.length ? h`
+        ${wide.length ? h`<ul class="vids">${wide.map(item)}</ul>` : ''}
+        ${reels.length ? h`<h2 class="vids__head">Reels</h2><ul class="vids vids--reels">${reels.map(item)}</ul>` : ''}`
+        : h`<div class="empty-box">${icon('play')}<p>${couple.video_status ? 'Videonuz hazırlanıyor. Hazır olduğunda burada izleyip indirebileceksiniz.' : 'Videolarınız hazır olduğunda burada görünecek.'}</p></div>`}
+    </section>`;
+  return coupleShell(c, { couple, page: 'video', csrf, flash: f, body });
+}
+
+// Plan: çekim günü planı
+function couplePlan(c, { couple, csrf, flash: f }) {
+  return coupleShell(c, { couple, page: 'plan', csrf, flash: f, body: planSection(couple, csrf), scripts: ['/js/panel.js?v=4'] });
+}
+
+module.exports = { couplePhotos, coupleVideos, couplePlan, coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };

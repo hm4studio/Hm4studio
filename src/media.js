@@ -110,7 +110,38 @@ function couplePhotoEntries(coupleId, photos) {
   return out;
 }
 
+// ── Videolar: parça parça yükleme (büyük dosyalar belleğe alınmaz) ──
+const videoDir = (coupleId) => path.join(config.privateDir, 'couples', String(coupleId), 'videos');
+const tmpVideo = (uploadId) => path.join(config.privateDir, 'tmp-video', `${uploadId}.part`);
+function appendVideoChunk(uploadId, buf, first) {
+  fs.mkdirSync(path.dirname(tmpVideo(uploadId)), { recursive: true });
+  if (first) fs.writeFileSync(tmpVideo(uploadId), buf); else fs.appendFileSync(tmpVideo(uploadId), buf);
+  return fs.statSync(tmpVideo(uploadId)).size;
+}
+// İlk baytlardan video türü: mp4/mov/m4v ("ftyp"), webm (EBML)
+function videoType(file) {
+  const fd = fs.openSync(file, 'r');
+  const b = Buffer.alloc(12);
+  fs.readSync(fd, b, 0, 12, 0);
+  fs.closeSync(fd);
+  if (b.slice(4, 8).toString('latin1') === 'ftyp') return b.slice(8, 10).toString('latin1') === 'qt' ? 'mov' : 'mp4';
+  if (b.readUInt32BE(0) === 0x1a45dfa3) return 'webm';
+  return null;
+}
+function finishVideo(uploadId, coupleId, fileKey) {
+  const tmp = tmpVideo(uploadId);
+  const ext = videoType(tmp);
+  if (!ext) { fs.rmSync(tmp, { force: true }); return null; }
+  fs.mkdirSync(videoDir(coupleId), { recursive: true });
+  const dest = path.join(videoDir(coupleId), `${fileKey}.${ext}`);
+  fs.renameSync(tmp, dest);
+  return { ext, size: fs.statSync(dest).size };
+}
+const discardVideoUpload = (uploadId) => fs.rmSync(tmpVideo(uploadId), { force: true });
+const removeVideo = (coupleId, fileKey, ext) => fs.rmSync(path.join(videoDir(coupleId), `${fileKey}.${ext}`), { force: true });
+
 module.exports = {
+  videoDir, appendVideoChunk, finishVideo, discardVideoUpload, removeVideo,
   couplePhotoEntries,
   saveSiteImage,
   removeSiteImage,

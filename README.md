@@ -127,6 +127,16 @@ büyük (görüntüleme) sürümünü hazırlar; "Orijinal dosyaları da sakla" 
 **Kopyala** numaraları boşlukla ayırıp kopyalar (Lightroom/Bridge dosya adı aramasına yapıştırmak için).
 Panelde **Tamamlanan albüm seçimleri** bölümü seçimi bitmiş tüm çiftleri listeler; **Hepsini indir** tek Excel tablosu verir.
 
+**Video teslimi:** Çiftin sayfasında **Video teslimi** bölümünden klip, düğün filmi, teaser veya reels yüklenir
+(MP4/MOV; büyük dosyalar 8 MB'lık parçalar hâlinde yüklenir, kopan parça yeniden denenir; varsayılan üst sınır 10 GB, `MAX_VIDEO_GB`).
+İsterseniz dosya yerine Google Drive/YouTube/Vimeo bağlantısı da eklenir. Çift, panelindeki **Video** sayfasında izler ve indirir.
+**Video durumu** (Kurguda, Onayınızda…) iş aşamasının yanında ayrıca seçilir; video olmayan işlerde "Bu işte video yok" kalır.
+
+**Çift paneli sayfaları:** Durum (iş durumu, randevular, ödeme) · Fotoğraflar (galeri, albüm seçimi, indirme) · Video · Plan.
+
+**Giriş bilgileri:** Erişim kodu çiftin adlarından oluşur (`busra-oguz`), şifre iki kelime ve üç rakamdır (`papatya-deniz-472`).
+Oluşturulunca **WhatsApp'tan gönder** ile hazır mesaj olarak iletilir.
+
 **İndirme:** Çift panelinde ve yöneticinin çift sayfasında **Tümünü indir** ve **Seçimimi indir** tek bir .zip verir
 (varsa orijinal dosyalar, yoksa büyük boy; dosya adları yüklendiği gibi). iPhone'da Dosyalar uygulamasıyla açılır.
 

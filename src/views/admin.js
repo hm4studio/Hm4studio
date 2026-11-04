@@ -38,17 +38,23 @@ const csrfField = (csrf) => h`<input type="hidden" name="csrf" value="${csrf}">`
 
 function flashBlock(f) {
   if (!f) return '';
+  const cr = f.credentials;
+  const text = cr ? `Merhaba ${cr.name || ''}, HM4 Studio panelinize buradan girebilirsiniz:\n${cr.url}\n\nErişim kodu: ${cr.code}\nŞifre: ${cr.password}\n\nTelefonunuzun ana ekranına eklerseniz uygulama gibi açılır.` : '';
   return h`
   ${flash(f.message, f.type)}
-  ${f.credentials ? h`
-  <div class="credentials" role="status">
-    <p class="credentials__title">${icon('lock')}Çiftle paylaşacağınız giriş bilgileri</p>
-    <dl>
-      <div><dt>Giriş adresi</dt><dd>${f.credentials.url}</dd></div>
-      <div><dt>Erişim kodu</dt><dd><code>${f.credentials.code}</code></dd></div>
-      <div><dt>Şifre</dt><dd><code>${f.credentials.password}</code></dd></div>
-    </dl>
-    <p class="muted">Şifre güvenlik nedeniyle yalnızca şimdi gösterilir. Kaybolursa "Şifre yenile" ile yenisini oluşturun.</p>
+  ${cr ? h`
+  <div class="credentials creds" role="status">
+    <p class="creds__title">Çiftin giriş bilgileri</p>
+    <div class="creds__grid">
+      <div><span class="creds__label">Erişim kodu</span><span class="creds__value">${cr.code}</span></div>
+      <div><span class="creds__label">Şifre</span><span class="creds__value">${cr.password}</span></div>
+    </div>
+    <p class="creds__url">${cr.url}</p>
+    <div class="creds__actions">
+      ${cr.phone ? h`<a class="btn btn--primary btn--sm" href="https://wa.me/${cr.phone}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan gönder</a>` : h`<a class="btn btn--primary btn--sm" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan gönder</a>`}
+      <button type="button" class="btn btn--outline btn--sm" data-copy="${text}">Mesajı kopyala</button>
+    </div>
+    <p class="creds__note">Şifre güvenlik nedeniyle yalnızca şimdi gösterilir. Kaybolursa "Şifre yenile" ile yenisini oluşturun.</p>
   </div>` : ''}`;
 }
 
@@ -204,7 +210,7 @@ function coupleCard(c, k) {
       <span class="crow__date">${shown ? h`<span>${shortDate(shown)}</span><span class="crow__sub">${k.next_date ? relDays(daysBetween(t, shown)) : 'tamamlandı'}</span>` : h`<span class="crow__sub">Tarih yok</span>`}</span>
       <span class="crow__stage">
         <span class="steps" aria-hidden="true">${c.stages.map((s, i) => h`<i class="${i < k.stage ? 'is-done' : i === k.stage ? 'is-now' : ''}"></i>`)}</span>
-        <span class="crow__sub">${c.stages[k.stage] || c.stages[0]}</span>
+        <span class="crow__sub">${c.stages[k.stage] || c.stages[0]}${k.video_status ? ` · Video: ${k.video_status.toLocaleLowerCase('tr-TR')}` : ''}</span>
       </span>
       <span class="crow__pay${urgent ? ' is-urgent' : ''}">${pay[0] === 'paid' ? h`<span class="crow__sub">Ödendi</span>` : pay[0] === 'none' ? h`<span class="crow__sub">Tutar yok</span>` : h`<span>${tl(pay[2])}</span><span class="crow__sub">kalan</span>`}</span>
       <span class="crow__ready" aria-label="Hazır olanlar">
@@ -336,7 +342,7 @@ function dashboard(c, { weekEvents = [], monday, selections = [], couples, month
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=6'] });
+  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=7'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -450,7 +456,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=6'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=7'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -530,7 +536,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=18">
+<link rel="stylesheet" href="/css/style.css?v=19">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -638,7 +644,7 @@ function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
   return panelLayout(c, { title: `Rapor ${year}`, csrf, nav: adminNav('report', csrf, demoAdmin), home: '/admin', tabs: adminTabs('report', demoAdmin), body });
 }
 
-function coupleDetail(c, { couple, card, selection = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
+function coupleDetail(c, { couple, card, selection = [], videos = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
@@ -653,7 +659,7 @@ function coupleDetail(c, { couple, card, selection = [], events: evs, payments, 
 
     ${appointmentSummary(c, card, evs, payments, csrf)}
 
-    ${statusBar(c.stages, couple.stage, couple.stage_note, 'İş durumu (çiftin gördüğü)')}
+    ${statusBar(c.stages, couple.stage, couple.stage_note, 'İş durumu (çiftin gördüğü)', { status: couple.video_status, stages: c.appointments?.videoStages || [] })}
 
     <div class="admin-grid admin-grid--2">
       <section class="card" aria-labelledby="stage-title">
@@ -664,6 +670,13 @@ function coupleDetail(c, { couple, card, selection = [], events: evs, payments, 
             <label for="stage">Aşama</label>
             <select id="stage" name="stage">
               ${c.stages.map((s, i) => h`<option value="${i}"${i === couple.stage ? raw(' selected') : ''}>${i + 1}. ${s}</option>`)}
+            </select>
+          </div>
+          <div class="field">
+            <label for="vstatus">Video durumu</label>
+            <select id="vstatus" name="videoStatus">
+              <option value="">Bu işte video yok</option>
+              ${(c.appointments?.videoStages || []).map((v) => h`<option${v === couple.video_status ? raw(' selected') : ''}>${v}</option>`)}
             </select>
           </div>
           <div class="field">
@@ -732,6 +745,41 @@ function coupleDetail(c, { couple, card, selection = [], events: evs, payments, 
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav' ? 'Bu çift henüz albüm için kare seçmedi.' : 'Henüz fotoğraf yüklenmedi.'}</p></div>`}
     </section>
 
+    <section class="panel-section" id="video" aria-labelledby="video-title">
+      <div class="panel-section__head">
+        <h2 class="panel-section__title" id="video-title">Video teslimi</h2>
+        <p class="muted">Klip, düğün filmi ve reels. Çift "Video" sayfasından izleyip indirir. Büyük dosyalar parça parça yüklenir; yükleme sırasında bu sayfayı kapatmayın.</p>
+      </div>
+      ${videos.length ? h`<ul class="vlist">${videos.map((v) => h`
+        <li class="vlist__item">
+          <span class="vlist__main"><strong>${v.title || v.kind}</strong><span class="muted">${v.kind}${v.size ? `, ${Math.max(1, Math.round(v.size / 1024 / 1024))} MB` : ''}${v.link ? ', bağlantı' : ''}</span></span>
+          <span class="sel__actions">
+            ${v.file_key ? h`<a class="btn btn--text btn--sm" href="/v/${v.id}" target="_blank" rel="noopener">İzle</a>` : h`<a class="btn btn--text btn--sm" href="${v.link}" target="_blank" rel="noopener">Aç</a>`}
+            <form method="post" action="${base}/video/${v.id}/sil" data-confirm="Bu video silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit" aria-label="Sil">${icon('trash')}</button></form>
+          </span>
+        </li>`)}</ul>` : ''}
+      <form class="vup" data-video-upload data-endpoint="${base}/video/parca">
+        <div class="appt-row">
+          <div class="field"><label for="v-title">Başlık</label><input id="v-title" type="text" maxlength="120" placeholder="Örn. Düğün klibi" data-v-title></div>
+          <div class="field"><label for="v-kind">Tür</label><select id="v-kind" data-v-kind>${['Klip', 'Düğün filmi', 'Reels', 'Teaser', 'Diğer'].map((k) => h`<option>${k}</option>`)}</select></div>
+        </div>
+        <label class="btn btn--outline btn--sm vup__pick">${icon('upload')}Video seç ve yükle<input type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.m4v" data-v-file></label>
+        <div class="vup__progress" data-v-progress hidden><span class="vup__bar"><span data-v-bar></span></span><span class="vup__text" data-v-text></span></div>
+      </form>
+      <details class="vlink">
+        <summary>Ya da bağlantı ekleyin (Google Drive, YouTube, Vimeo…)</summary>
+        <form class="form" method="post" action="${base}/video/baglanti">
+          ${csrfField(csrf)}
+          <div class="appt-row">
+            <div class="field"><label for="l-title">Başlık</label><input id="l-title" name="title" type="text" maxlength="120"></div>
+            <div class="field"><label for="l-kind">Tür</label><select id="l-kind" name="kind">${['Klip', 'Düğün filmi', 'Reels', 'Teaser', 'Diğer'].map((k) => h`<option>${k}</option>`)}</select></div>
+          </div>
+          <div class="field"><label for="l-link">Bağlantı</label><input id="l-link" name="link" type="text" inputmode="url" placeholder="https://" required></div>
+          <button class="btn btn--outline btn--sm" type="submit">Bağlantıyı ekle</button>
+        </form>
+      </details>
+    </section>
+
     <section class="danger-zone" aria-labelledby="danger-title">
       <h2 class="card__title" id="danger-title">Çifti sil</h2>
       <p class="muted">Çift, tüm fotoğrafları ve favorileri kalıcı olarak silinir.</p>
@@ -741,7 +789,7 @@ function coupleDetail(c, { couple, card, selection = [], events: evs, payments, 
       </form>
     </section>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=3', '/js/admin.js?v=3'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=4', '/js/admin.js?v=3', '/js/video-upload.js?v=1'] });
 }
 
 function calendar(c, { couples, csrf, demoAdmin }) {
@@ -1087,6 +1135,10 @@ function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
           ${field('sources', 'Müşteri kaynakları', (c.appointments?.sources || []).join('\n'), { area: true, rows: 6, max: 500 })}
           ${field('teamRoles', 'Ekip görevleri', (c.appointments?.teamRoles || []).join('\n'), { area: true, rows: 6, max: 500 })}
         </div>
+        <div class="appt-row">
+          ${field('videoStages', 'Video aşamaları', (c.appointments?.videoStages || []).join('\n'), { area: true, rows: 5, max: 400 })}
+          <div></div>
+        </div>
       </fieldset>
 
       <div class="appt-actions"><button class="btn btn--primary" type="submit">Siteyi güncelle</button></div>
@@ -1138,7 +1190,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=6'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=7'] });
 }
 
 module.exports = { dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
