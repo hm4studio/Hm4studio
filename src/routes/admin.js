@@ -579,13 +579,25 @@ function register(router) {
   });
 
   // ── Sunucu alanı: teslim edilen çiftlerin dosyalarını sil (kart, randevu, ödeme ve seçim listesi kalır) ──
-  function clearFiles(couple, withVideos) {
+  // onlySelection: seçim fotoğrafları silinir, düzenlenmiş (teslim) fotoğraflar çiftte kalır. Dönüş: açılan alan (bayt)
+  function clearFiles(couple, withVideos, onlySelection) {
     const favs = db.listFavoritePhotos(couple.id);
     const prev = couple.archived_selection ? couple.archived_selection.split('\n').filter(Boolean) : [];
     const selection = [...prev, ...appt.selectionNames(favs)].join('\n');
-    const photoCount = db.listPhotos(couple.id).length;
-    media.clearCoupleFiles(couple.id, withVideos);
-    db.archiveCoupleFiles(couple.id, { selection, photoCount, withVideos });
+    const u = media.coupleUsage(couple.id);
+    let freed;
+    if (onlySelection) {
+      const sel = db.listPhotos(couple.id, 'secim');
+      freed = media.photosSize(couple.id, sel);
+      media.removePhotoDirs(couple.id, sel);
+      if (withVideos) { freed += u.videos; media.removeCoupleVideos(couple.id); }
+      db.archiveCoupleFiles(couple.id, { selection, photoCount: sel.length, withVideos, onlySelection: true });
+    } else {
+      freed = u.photos + (withVideos ? u.videos : 0);
+      media.clearCoupleFiles(couple.id, withVideos);
+      db.archiveCoupleFiles(couple.id, { selection, photoCount: db.listPhotos(couple.id).length, withVideos });
+    }
+    return freed;
   }
   const gb = (n) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1).replace('.', ',')} GB` : `${Math.max(1, Math.round(n / 1024 ** 2))} MB`);
 
@@ -593,10 +605,8 @@ function register(router) {
     const form = await formGuard(req, res);
     if (!form) return;
     const couple = getCoupleOr404(params.id);
-    const before = media.coupleUsage(couple.id);
     const withVideos = form.videolar === '1';
-    const freed = before.photos + (withVideos ? before.videos : 0);
-    clearFiles(couple, withVideos);
+    const freed = clearFiles(couple, withVideos, form.ne === 'secim');
     setFlash(req, { message: freed ? `${couple.name}: ${gb(freed)} yer açıldı. Kart, randevular, ödemeler ve seçim listesi duruyor.` : `${couple.name}: silinecek dosya yoktu.`, type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
@@ -610,9 +620,7 @@ function register(router) {
     for (const id of ids) {
       const couple = db.getCouple(id);
       if (!couple) continue;
-      const u = media.coupleUsage(id);
-      clearFiles(couple, withVideos);
-      freed += u.photos + (withVideos ? u.videos : 0); n++;
+      freed += clearFiles(couple, withVideos, form.ne === 'secim'); n++;
     }
     setFlash(req, { message: n ? `${n} çiftin dosyaları silindi, ${gb(freed)} yer açıldı.` : 'Çift seçmediniz.', type: n ? 'success' : 'error' });
     redirect(res, '/admin/veriler#alan');

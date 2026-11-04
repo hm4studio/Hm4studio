@@ -83,6 +83,13 @@ function coupleUsage(coupleId) {
   const videos = dirSize(path.join(root, 'videos'));
   return { photos: Math.max(dirSize(root) - videos, 0), videos };
 }
+// Belirli fotoğrafların klasörlerini sil (ör. yalnızca seçim fotoğrafları)
+function removePhotoDirs(coupleId, photos) {
+  for (const p of photos) fs.rmSync(coupleDir(coupleId, p.file_key), { recursive: true, force: true });
+}
+const removeCoupleVideos = (coupleId) => fs.rmSync(path.join(coupleRoot(coupleId), 'videos'), { recursive: true, force: true });
+const photosSize = (coupleId, photos) => photos.reduce((t, p) => t + dirSize(coupleDir(coupleId, p.file_key)), 0);
+
 // Yalnızca dosyaları sil (kayıtlar veritabanında ayrıca temizlenir)
 function clearCoupleFiles(coupleId, withVideos) {
   const root = coupleRoot(coupleId);
@@ -171,7 +178,7 @@ const discardVideoUpload = (uploadId) => fs.rmSync(tmpVideo(uploadId), { force: 
 const removeVideo = (coupleId, fileKey, ext) => fs.rmSync(path.join(videoDir(coupleId), `${fileKey}.${ext}`), { force: true });
 
 module.exports = {
-  dirSize, coupleUsage, clearCoupleFiles,
+  dirSize, coupleUsage, clearCoupleFiles, removePhotoDirs, photosSize, removeCoupleVideos,
   videoDir, appendVideoChunk, finishVideo, discardVideoUpload, removeVideo,
   couplePhotoEntries,
   saveSiteImage,

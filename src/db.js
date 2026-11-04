@@ -329,10 +329,11 @@ module.exports = {
   deleteVideo: (id) => q('DELETE FROM videos WHERE id = ?').run(id),
   videoCount: (coupleId) => q('SELECT COUNT(*) AS n FROM videos WHERE couple_id = ?').get(coupleId).n,
   // Dosyaları temizlenmiş çift: seçim listesi ve sayı saklanır, fotoğraf/video kayıtları silinir
-  archiveCoupleFiles: (id, { selection, photoCount, withVideos }) => {
+  archiveCoupleFiles: (id, { selection, photoCount, withVideos, onlySelection }) => {
     q("UPDATE couples SET archived_at = date('now'), archived_selection = ?, archived_photos = archived_photos + ? WHERE id = ?").run(selection, photoCount, id);
     q('DELETE FROM favorites WHERE couple_id = ?').run(id);
-    q('DELETE FROM photos WHERE couple_id = ?').run(id);
+    if (onlySelection) q("DELETE FROM photos WHERE couple_id = ? AND kind = 'secim'").run(id);
+    else q('DELETE FROM photos WHERE couple_id = ?').run(id);
     if (withVideos) q('DELETE FROM videos WHERE couple_id = ? AND file_key IS NOT NULL').run(id);
   },
   clampStages: (n) => q('UPDATE couples SET stage = ? WHERE stage > ?').run(n - 1, n - 1),

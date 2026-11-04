@@ -1520,3 +1520,4 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .sets__link + .sets__link { border-left: 1px solid var(--rule-2, #d9d9d5); }
 .sets__link[aria-current="page"] { background: var(--graphite, #1a1a1a); color: #fff; }
 .sets__count { font: 400 1.4rem/1.1 var(--serif); }
+.clear-what { display: grid; gap: 0; }

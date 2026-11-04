@@ -802,8 +802,12 @@ function coupleDetail(c, { couple, card, selection = [], videos = [], edited = [
       <p class="muted">Teslim bittiyse yer açmak için yalnızca fotoğraf ve video dosyalarını silin. Çift kartı, randevular, ödemeler ve albüm seçim listesi kalır.</p>
       <form method="post" action="${base}/dosyalari-sil" class="form form--compact" data-confirm="${couple.name} için dosyalar sunucudan kalıcı olarak silinsin mi? Arşivi indirdiniz mi?">
         ${csrfField(csrf)}
+        <div class="clear-what">
+          <label class="check"><input type="radio" name="ne" value="hepsi" checked><span>Tüm fotoğraflar (seçim + düzenlenmiş)</span></label>
+          <label class="check"><input type="radio" name="ne" value="secim"><span>Sadece seçim fotoğrafları (düzenlenmişler çiftte kalsın)</span></label>
+        </div>
         <label class="check"><input type="checkbox" name="videolar" value="1"><span>Videoları da sil</span></label>
-        <button class="btn btn--outline btn--sm btn--danger-text" type="submit">Sadece dosyaları sil</button>
+        <button class="btn btn--outline btn--sm btn--danger-text" type="submit">Dosyaları sil</button>
       </form>
     </section>
 
@@ -1056,6 +1060,10 @@ function dataPage(c, { disk = null, storage = [], diskTotal = 0, backups, season
             </label>
             <span class="store-size">${mb(u.photos)} fotoğraf${u.videos ? h`<br>${mb(u.videos)} video` : ''}</span>
           </li>`)}</ul>
+<div class="clear-what">
+          <label class="check"><input type="radio" name="ne" value="hepsi" checked><span>Tüm fotoğraflar (seçim + düzenlenmiş)</span></label>
+          <label class="check"><input type="radio" name="ne" value="secim"><span>Sadece seçim fotoğrafları (düzenlenmişler çiftte kalsın)</span></label>
+        </div>
         <label class="check"><input type="checkbox" name="videolar" value="1"><span>Videoları da sil</span></label>
         <button class="btn btn--outline btn--sm btn--danger-text" type="submit">Seçilenlerin dosyalarını sil</button>
         <p class="hint">"Teslim" aşamasındaki çiftler önceden işaretli gelir.</p>
