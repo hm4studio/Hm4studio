@@ -5,6 +5,7 @@ const { publicLayout, panelLayout, flash, icon } = require('./components');
 const { adminNav, adminTabs } = require('./admin');
 const { formatDate } = require('./panel');
 const wa = require('../whatsapp');
+const { WA_CONSENT } = require('../kvkk');
 
 const STATUS = {
   yeni: 'Yeni',
@@ -49,7 +50,10 @@ function form(c, { values = {}, error, thanks, services }) {
           </select>
         </div>
         <div class="field"><label for="t-msg">Eklemek istedikleriniz <span class="muted">(isteğe bağlı)</span></label><textarea id="t-msg" name="message" rows="4" maxlength="1500">${values.message || ''}</textarea></div>
-        <p class="hint">Bilgileriniz yalnızca size dönüş yapmak için kullanılır.</p>
+        <div class="consents">
+          <label class="check"><input type="checkbox" name="kvkk" value="1" required${values.kvkk === '1' ? raw(' checked') : ''}><span><a href="/kvkk" target="_blank">Aydınlatma metnini</a> okudum.</span></label>
+          <label class="check"><input type="checkbox" name="waConsent" value="1"${values.waConsent === '1' ? raw(' checked') : ''}><span>${WA_CONSENT} <span class="muted">(İşaretlemezseniz sizi telefonla ararız.)</span></span></label>
+        </div>
         <button class="btn btn--primary" type="submit">Gönder</button>
       </form>`}
     </div>
@@ -74,7 +78,7 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin }) {
         <div class="fb__head">
           <span class="state state--${l.status === 'yeni' ? 'soon' : l.status === 'rezervasyon' ? 'ok' : l.status === 'kayip' ? 'done' : 'upcoming'}">${STATUS[l.status] || l.status}</span>
           <strong>${l.name || 'İsimsiz'}</strong>
-          <span class="fb__meta">${[wa.displayPhone(l.phone), l.event_date ? formatDate(l.event_date) : '', l.place, l.service, l.source === 'whatsapp' ? 'WhatsApp' : 'Site'].filter(Boolean).join(' · ')}</span>
+          <span class="fb__meta">${[wa.displayPhone(l.phone), l.event_date ? formatDate(l.event_date) : '', l.place, l.service, l.source === 'whatsapp' ? 'WhatsApp' : 'Site', l.source !== 'whatsapp' && l.kvkk_at && !l.wa_consent ? 'WhatsApp izni yok, telefonla arayın' : ''].filter(Boolean).join(' · ')}</span>
           <time class="fb__time">${new Date(`${l.created_at.replace(' ', 'T')}Z`).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>
         </div>
         ${l.message ? h`<p class="fb__msg">${l.message}</p>` : ''}

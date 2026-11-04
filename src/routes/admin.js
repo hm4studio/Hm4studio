@@ -454,6 +454,8 @@ function register(router) {
     const template = String(form.template || '').replace(/\r\n/g, '\n').trim().slice(0, 40000);
     o.contract = { title: t('title', 120), company };
     if (form.reset !== '1' && template && template !== contract.DEFAULT_TEMPLATE) o.contract.template = template;
+    const kv = String(form.kvkk || '').replace(/\r\n/g, '\n').trim().slice(0, 30000);
+    o.kvkk = form.kvkkReset !== '1' && kv && kv !== require('../kvkk').DEFAULT_TEXT ? { text: kv } : {};
     saveOver(o);
     setFlash(req, { message: form.reset === '1' ? 'Sözleşme metni ilk hâline döndü.' : 'Sözleşme kaydedildi.', type: 'success' });
     redirect(res, '/admin/sozlesme');

@@ -39,7 +39,8 @@ function loginForm({ action, title, lead, codeLabel, codeName, error, values = {
           <input id="password" name="password" type="password" autocomplete="current-password" required>
         </div>
         <button class="btn btn--primary btn--block" type="submit">Giriş yap</button>
-      </form>`}
+      </form>
+      ${action === '/giris' ? h`<p class="auth__legal"><a href="/kvkk">KVKK aydınlatma metni</a></p>` : ''}`}
     </div>
   </section>`;
 }
@@ -276,7 +277,17 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, edit
           <div><dt>Kalan</dt><dd class="${kalan ? 'is-due' : 'is-done'}">${kalan ? tl(kalan) : 'Ödendi'}</dd></div>
         </dl>
       </section>`;
-    })() : ''}`;
+    })() : ''}
+
+    ${couple.phone ? h`<section class="panel-section" id="izinler" aria-labelledby="wa-title">
+      <div class="panel-section__head"><h2 class="panel-section__title" id="wa-title">WhatsApp bildirimleri</h2></div>
+      <form class="form wa-pref" method="post" action="/panel/whatsapp">
+        <input type="hidden" name="csrf" value="${csrf}">
+        <label class="check"><input type="checkbox" name="waConsent" value="1"${couple.wa_optin ? raw(' checked') : ''}><span>${require('../kvkk').WA_CONSENT}</span></label>
+        <p class="muted">Kapalıyken fotoğraflarınız hazır olduğunda size mesaj gitmez; durumu buradan takip edersiniz. <a href="/kvkk">Aydınlatma metni</a></p>
+        <button class="btn btn--outline btn--sm" type="submit">Kaydet</button>
+      </form>
+    </section>` : ''}`;
   return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=4'] });
 }
 

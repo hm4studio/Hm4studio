@@ -38,6 +38,7 @@ function prune() {
 function nightly() {
   const file = path.join(DIR, `hm4-${today()}.db`);
   if (fs.existsSync(file)) return;
+  try { const n = db.purgeOldLeads(); if (n) console.log(`KVKK: ${n} eski talep silindi`); } catch { /* yok say */ }
   try { dbSnapshot(file); prune(); console.log(`Gece yedeği alındı: ${path.basename(file)}`); } catch (err) { console.error('Yedek alınamadı:', err.message); }
 }
 

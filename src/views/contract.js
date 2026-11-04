@@ -49,7 +49,7 @@ function contractDoc(c, { k, data, back }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${data.title} ${data.randevuNo || ''} — ${data.musteri}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=21">
+<link rel="stylesheet" href="/css/style.css?v=22">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -96,6 +96,7 @@ function signPage(c, { coupleShell, couple, k, data, csrf, flash, values = {} })
         <input type="hidden" name="imza" data-sig-value>
         <p class="field-error" data-sig-error hidden>Lütfen imzanızı çizin.</p>
       </div>
+      <label class="check"><input type="checkbox" name="waConsent" value="1"${values.waConsent === '1' ? raw(' checked') : ''}><span>${require('../kvkk').WA_CONSENT} <span class="muted">(İsteğe bağlı)</span></span></label>
       <label class="check"><input type="checkbox" name="kabul" value="1" required><span>Sözleşmenin tamamını okudum, anladım ve kabul ediyorum.</span></label>
       <button class="btn btn--primary" type="submit">Sözleşmeyi onayla</button>
       <p class="muted ct-form__note">Onay anında tarih, saat ve bağlantı adresiniz (IP) kayda alınır. Onayladıktan sonra metin değiştirilemez.</p>
@@ -140,7 +141,7 @@ function settingsPage(c, { adminNav, adminTabs, flashBlock, csrf, flash, demoAdm
   const page = h`
   <div class="container container--form">
     <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
-    <h1 class="page-title">Sözleşme</h1>
+    <h1 class="page-title">Sözleşme ve KVKK</h1>
     ${flashBlock(flash)}
     <form class="form" method="post" action="/admin/sozlesme">
       ${csrfField(csrf)}
@@ -165,11 +166,17 @@ function settingsPage(c, { adminNav, adminTabs, flashBlock, csrf, flash, demoAdm
         <div class="field"><label for="c-template" class="sr-only">Sözleşme metni</label><textarea id="c-template" name="template" rows="28" maxlength="40000" class="ct-editor">${s.template}</textarea></div>
         <label class="check"><input type="checkbox" name="reset" value="1"><span>Metni ilk hâline döndür</span></label>
       </section>
+      <section class="panel-section" id="kvkk">
+        <div class="panel-section__head"><h2 class="panel-section__title">KVKK aydınlatma metni</h2><a class="btn btn--text btn--sm" href="/kvkk" target="_blank">Sitede gör</a></div>
+        <p class="muted">Sitede /kvkk adresinde yayınlanır; talep formu, çift girişi ve sözleşme sayfası buna bağlanır. <code>{unvan}</code> <code>{sorumlu}</code> <code>{adres}</code> <code>{telefon}</code> <code>{eposta}</code> yukarıdaki firma bilgilerinden dolar.</p>
+        <div class="field"><label for="c-kvkk" class="sr-only">KVKK metni</label><textarea id="c-kvkk" name="kvkk" rows="20" maxlength="30000" class="ct-editor">${require('../kvkk').settings(c).text}</textarea></div>
+        <label class="check"><input type="checkbox" name="kvkkReset" value="1"><span>KVKK metnini ilk hâline döndür</span></label>
+      </section>
       <button class="btn btn--primary" type="submit">Kaydet</button>
       <p class="muted">Değişiklik yalnızca bundan sonra gönderilecek sözleşmeleri etkiler. Gönderilmiş ve onaylanmış sözleşmeler olduğu gibi kalır. Metni bir avukata kontrol ettirmenizi öneririz.</p>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Sözleşme', csrf, nav: adminNav('contract', csrf, demoAdmin), home: '/admin', tabs: adminTabs('contract', demoAdmin), body: page, scripts: ['/js/dashboard.js?v=8'] });
+  return panelLayout(c, { title: 'Sözleşme ve KVKK', csrf, nav: adminNav('contract', csrf, demoAdmin), home: '/admin', tabs: adminTabs('contract', demoAdmin), body: page, scripts: ['/js/dashboard.js?v=8'] });
 }
 
 module.exports = { contractDoc, signPage, adminSection, settingsPage, trTime };

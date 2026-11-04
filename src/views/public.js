@@ -241,4 +241,13 @@ function notFound(c) {
   return publicLayout(c, { title: 'Sayfa bulunamadı', body });
 }
 
-module.exports = { home, portfolioPage, aboutPage, contactPage, notFound };
+function kvkkPage(c) {
+  const body = h`
+  ${pageHero('KVKK', 'Aydınlatma metni', 'Kişisel verilerinizi nasıl işlediğimizi ve haklarınızı açıklıyoruz.')}
+  <section class="section section--flush-top">
+    <div class="container container--narrow ct-text kvkk-text">${require('../kvkk').render(c)}</div>
+  </section>`;
+  return publicLayout(c, { title: 'KVKK aydınlatma metni', body });
+}
+
+module.exports = { kvkkPage, home, portfolioPage, aboutPage, contactPage, notFound };

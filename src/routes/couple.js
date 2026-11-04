@@ -23,6 +23,17 @@ function register(router) {
     return { ...c, contract_state: k ? (k.signed_at ? 'imzali' : 'bekliyor') : '' };
   };
 
+  // WhatsApp bildirim izni (KVKK açık rıza; her değişiklik tarihiyle kaydedilir)
+  router.post('/panel/whatsapp', async (req, res) => {
+    if (!requireCouple(req, res)) return;
+    const form = await readForm(req);
+    checkCsrf(req, form.csrf);
+    const couple = me(req);
+    db.setCoupleWaConsent(couple.id, form.waConsent === '1');
+    setFlash(req, { message: form.waConsent === '1' ? 'WhatsApp bildirimleri açıldı.' : 'WhatsApp bildirimleri kapatıldı.', type: 'success' });
+    redirect(res, '/panel#izinler');
+  });
+
   // ── Sözleşme: oku, bilgileri yaz, imzala ──
   const myContract = (couple) => {
     const k = db.activeContract(couple.id);
@@ -48,7 +59,7 @@ function register(router) {
     const { k, data } = myContract(couple);
     if (k.signed_at) return redirect(res, '/panel/sozlesme');
     const clean = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
-    const values = { ad: clean(form.ad, 80), tc: String(form.tc || '').replace(/\D/g, ''), adres: clean(form.adres, 200), izin: form.izin === 'evet' ? 'evet' : form.izin === 'hayir' ? 'hayir' : '' };
+    const values = { waConsent: form.waConsent === '1' ? '1' : '', ad: clean(form.ad, 80), tc: String(form.tc || '').replace(/\D/g, ''), adres: clean(form.adres, 200), izin: form.izin === 'evet' ? 'evet' : form.izin === 'hayir' ? 'hayir' : '' };
     const imza = String(form.imza || '');
     const errors = [];
     if (values.ad.length < 3) errors.push('Ad soyadınızı yazın.');
@@ -63,7 +74,7 @@ function register(router) {
     const signedAt = new Date().toISOString().slice(0, 19).replace('T', ' ');
     const signer = { ...values, imza, tarih: contractViews.trTime(signedAt).split(' ')[0] };
     const changed = db.signContract(k.id, { ...signer, signedAt, ip: clientIp(req), ua: String(req.headers['user-agent'] || '').slice(0, 300), hash: contract.fingerprint(data, signer) });
-    if (changed) events.contractSigned(couple, values.ad);
+    if (changed) { db.setCoupleWaConsent(couple.id, values.waConsent === '1'); events.contractSigned(couple, values.ad); }
     setFlash(req, { message: changed ? 'Teşekkürler, sözleşmeniz onaylandı.' : 'Sözleşme bu arada güncellendi, lütfen yeniden bakın.', type: changed ? 'success' : 'error' });
     redirect(res, '/panel/sozlesme');
   });

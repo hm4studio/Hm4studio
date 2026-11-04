@@ -45,6 +45,7 @@ function register(router) {
   });
 
   router.get('/hakkimizda', (req, res) => html(res, views.aboutPage(getContent())));
+  router.get('/kvkk', (req, res) => html(res, views.kvkkPage(getContent())));
   router.get('/iletisim', (req, res) => html(res, views.contactPage(getContent())));
 
   // ── Telefon uygulaması açılış ekranı: yalnızca çift / stüdyo girişi ──

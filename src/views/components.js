@@ -80,7 +80,7 @@ function siteFooter(c) {
     </div>
     <div class="container site-footer__base">
       <span>© ${year} ${c.brand.name}</span>
-      <span>Tüm fotoğrafların hakları saklıdır.</span>
+      <span>Tüm fotoğrafların hakları saklıdır. · <a href="/kvkk">KVKK aydınlatma metni</a></span>
     </div>
   </footer>`;
 }
@@ -108,7 +108,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=21">
+<link rel="stylesheet" href="/css/style.css?v=22">
 <link rel="stylesheet" href="/css/tema.css">
 </head>
 <body class="${bodyClass}">

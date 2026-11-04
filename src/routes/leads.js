@@ -66,6 +66,7 @@ function register(router) {
     const fail = (error, status = 400) => html(res, views.form(c, { values, error, services }), status);
     if (!clean(form.name, 80)) return fail('Lütfen adınızı yazın.');
     if (!phone) return fail('Lütfen geçerli bir telefon numarası yazın (örn. 0532 123 45 67).');
+    if (form.kvkk !== '1') return fail('Devam etmek için aydınlatma metnini okuduğunuzu işaretleyin.');
     if (tooMany(req)) return fail('Kısa sürede çok fazla gönderim yapıldı. Biraz sonra tekrar deneyin.', 429);
 
     const lead = {
@@ -76,11 +77,14 @@ function register(router) {
       service: services.includes(form.service) || form.service === 'Diğer' ? form.service : '',
       message: String(form.message || '').trim().slice(0, 1500),
       source: form.kaynak === 'whatsapp' ? 'whatsapp' : 'site',
+      waConsent: form.waConsent === '1',
+      kvkk: true,
     };
     const open = db.openLeadByPhone(phone);
     let id;
     if (open) {
       db.updateLeadDetails(open.id, lead);
+      db.setLeadConsent(open.id, lead.waConsent);
       id = open.id;
     } else {
       id = db.addLead(lead);

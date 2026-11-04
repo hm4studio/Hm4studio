@@ -90,6 +90,7 @@ addColumn('photos', 'kind', "TEXT NOT NULL DEFAULT 'secim'"); // secim: albüm s
 addColumn('couples', 'archived_at', 'TEXT');
 addColumn('couples', 'archived_selection', "TEXT NOT NULL DEFAULT ''");
 addColumn('couples', 'archived_photos', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('couples', 'wa_consent_at', 'TEXT');
 addColumn('couples', 'video_status', "TEXT NOT NULL DEFAULT ''");
 // Randevu kartı alanları
 for (const [col, def] of [
@@ -118,6 +119,10 @@ CREATE TABLE IF NOT EXISTS leads (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS leads_phone ON leads(phone);
+`);
+addColumn('leads', 'wa_consent', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('leads', 'kvkk_at', 'TEXT');
+db.exec(`
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY,
   couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
@@ -380,8 +385,12 @@ module.exports = {
   deletePortfolioItem: (id) => q('DELETE FROM portfolio WHERE id = ?').run(id),
 
   // ── Talepler (yeni müşteri adayları) ──
-  addLead: (l) => Number(q('INSERT INTO leads(name, phone, event_date, place, service, message, source) VALUES(?, ?, ?, ?, ?, ?, ?)')
-    .run(l.name || '', l.phone || '', l.eventDate || null, l.place || '', l.service || '', l.message || '', l.source || 'site').lastInsertRowid),
+  addLead: (l) => Number(q("INSERT INTO leads(name, phone, event_date, place, service, message, source, wa_consent, kvkk_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN datetime('now') END)")
+    .run(l.name || '', l.phone || '', l.eventDate || null, l.place || '', l.service || '', l.message || '', l.source || 'site', l.waConsent ? 1 : 0, l.kvkk ? 1 : 0).lastInsertRowid),
+  setLeadConsent: (id, waConsent) => q("UPDATE leads SET wa_consent = ?, kvkk_at = datetime('now') WHERE id = ?").run(waConsent ? 1 : 0, id),
+  // KVKK: sonuçlanmayan ve 1 yıldır dokunulmamış talepler silinir
+  purgeOldLeads: () => q("DELETE FROM leads WHERE couple_id IS NULL AND status IN ('yeni', 'gorusuldu', 'kayip') AND updated_at < datetime('now', '-1 year')").run().changes,
+  setCoupleWaConsent: (id, on) => q("UPDATE couples SET wa_optin = ?, wa_consent_at = datetime('now') WHERE id = ?").run(on ? 1 : 0, id),
   updateLeadDetails: (id, l) => q("UPDATE leads SET name = COALESCE(NULLIF(?, ''), name), event_date = COALESCE(?, event_date), place = COALESCE(NULLIF(?, ''), place), service = COALESCE(NULLIF(?, ''), service), message = CASE WHEN ? = '' THEN message WHEN message = '' THEN ? ELSE message || char(10) || ? END, updated_at = datetime('now') WHERE id = ?")
     .run(l.name || '', l.eventDate || null, l.place || '', l.service || '', l.message || '', l.message || '', l.message || '', id),
   openLeadByPhone: (phone) => q("SELECT * FROM leads WHERE phone = ? AND status IN ('yeni', 'gorusuldu') ORDER BY id DESC LIMIT 1").get(phone),

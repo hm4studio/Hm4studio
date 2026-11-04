@@ -21,3 +21,20 @@ Tek sunucuda: **site + paneller**, **n8n** (WhatsApp otomasyonları) ve **HTTPS*
 - **Alan adını sonradan bağlamak:** `.env` içinde `SITE_DOMAIN`, `N8N_DOMAIN` ve `SITE_URL`'yi değiştirip yukarıdaki komutu çalıştırın.
 - **n8n ile site arasında:** Sitenin `N8N_WEBHOOK_URL` değeri `http://n8n:5678/webhook/hm4-olay` olabilir;
   n8n akışlarındaki `siteUrl` için `http://site:3000` kullanılabilir (aynı sunucu içi, hızlı ve güvenli).
+
+## Google Drive yedeği (sunucu dışı kopya)
+
+Kurulum (bir kez, Hostinger tarayıcı terminalinde):
+
+    bash /opt/hm4studio/deploy/drive-kur.sh
+
+- Her gece 04:30'da veritabanı (çiftler, randevular, ödemeler, sözleşmeler) ve site görselleri tek bir şifreli dosya olarak Drive'daki **HM4-Yedek** klasörüne gider. Son 60 gün tutulur.
+- Çiftlerin fotoğraf ve videoları bu yedeğe dahil değildir (çok yer kaplar; orijinalleri sizde zaten var).
+- Yedek şifresi `/opt/hm4studio/.env` içindeki `BACKUP_PASSPHRASE` satırıdır. Kurulumda ekranda gösterilir; mutlaka kaydedin.
+- Elle yedek: `bash /opt/hm4studio/deploy/drive-yedek.sh` · Kayıt: `/var/log/hm4-drive.log`
+
+Geri açmak (Mac Terminal'de, Drive'dan indirdiğiniz dosya için):
+
+    openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in hm4-2026-11-04.tar.gz.enc | tar -xz
+
+Şifre sorulur; çıkan `backups/hm4-….db` dosyası tüm veritabanıdır.

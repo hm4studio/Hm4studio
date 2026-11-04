@@ -1583,3 +1583,10 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
   .ct-sign, .ct-table tr { break-inside: avoid; }
   .ct-preview { display: none; }
 }
+.consents { display: grid; gap: 10px; margin: 4px 0 16px; font-size: .86rem; }
+.consents a, .auth__legal a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.auth__legal { text-align: center; font-size: .78rem; margin: 14px 0 0; color: var(--muted, #6e6e6b); }
+.kvkk-text { max-width: 720px; }
+.wa-pref { max-width: 640px; font-size: .9rem; }
+.consents .check, .wa-pref .check, .ct-form .check { align-items: flex-start; min-height: 0; line-height: 1.5; font-size: .86rem; }
+.consents .check input, .wa-pref .check input, .ct-form .check input { flex: none; width: 18px; height: 18px; margin: 2px 0 0; }
