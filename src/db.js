@@ -113,6 +113,32 @@ CREATE TABLE IF NOT EXISTS leads (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS leads_phone ON leads(phone);
+CREATE TABLE IF NOT EXISTS events (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL DEFAULT '',
+  event_date TEXT,
+  start_time TEXT NOT NULL DEFAULT '',
+  city TEXT NOT NULL DEFAULT '',
+  venue TEXT NOT NULL DEFAULT '',
+  package TEXT NOT NULL DEFAULT '',
+  package_detail TEXT NOT NULL DEFAULT '',
+  price INTEGER NOT NULL DEFAULT 0,
+  team TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS events_couple ON events(couple_id);
+CREATE INDEX IF NOT EXISTS events_date ON events(event_date);
+CREATE TABLE IF NOT EXISTS payments (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
+  paid_on TEXT NOT NULL,
+  method TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS payments_couple ON payments(couple_id);
 CREATE TABLE IF NOT EXISTS notifications (
   key TEXT PRIMARY KEY,
   sent_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -120,6 +146,30 @@ CREATE TABLE IF NOT EXISTS notifications (
 `);
 
 const q = (sql) => db.prepare(sql);
+
+// Eski tek-etkinlikli kayıtları yeni yapıya taşı (bir kez çalışır)
+(function migrateSingleEvent() {
+  const rows = q(`SELECT * FROM couples c WHERE NOT EXISTS (SELECT 1 FROM events e WHERE e.couple_id = c.id)
+    AND (c.event_type <> '' OR c.total_amount > 0 OR c.venue <> '')`).all();
+  for (const c of rows) {
+    q('INSERT INTO events(couple_id, event_type, event_date, start_time, city, venue, package, package_detail, price) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(c.id, c.event_type, c.event_date, c.start_time, c.city, c.venue, c.package, c.package_detail, c.total_amount || 0);
+    const paid = c.paid_full ? c.total_amount : c.deposit;
+    if (paid > 0) q("INSERT INTO payments(couple_id, amount, paid_on, note) VALUES(?, ?, date('now'), 'Kapora')").run(c.id, paid);
+  }
+})();
+
+// Kart özeti: etkinlik sayısı, toplam tutar, ödenen, sıradaki etkinlik
+const CARD_SQL = `
+  SELECT c.*,
+    (SELECT COUNT(*) FROM photos p WHERE p.couple_id = c.id) AS photo_count,
+    (SELECT COUNT(*) FROM favorites f WHERE f.couple_id = c.id) AS fav_count,
+    (SELECT COUNT(*) FROM events e WHERE e.couple_id = c.id) AS event_count,
+    (SELECT COALESCE(SUM(price), 0) FROM events e WHERE e.couple_id = c.id) AS total,
+    (SELECT COALESCE(SUM(amount), 0) FROM payments y WHERE y.couple_id = c.id) AS paid,
+    (SELECT group_concat(event_type, ', ') FROM (SELECT event_type FROM events e WHERE e.couple_id = c.id AND event_type <> '' ORDER BY event_date)) AS types,
+    (SELECT MIN(event_date) FROM events e WHERE e.couple_id = c.id AND event_date >= date('now', '+3 hours')) AS next_date
+  FROM couples c`;
 
 module.exports = {
   db,
@@ -139,11 +189,8 @@ module.exports = {
   setAdminPassword: (id, hash) => q('UPDATE admins SET password_hash = ? WHERE id = ?').run(hash, id),
 
   // ── Çiftler ──
-  listCouples: () => q(`
-    SELECT c.*,
-      (SELECT COUNT(*) FROM photos p WHERE p.couple_id = c.id) AS photo_count,
-      (SELECT COUNT(*) FROM favorites f WHERE f.couple_id = c.id) AS fav_count
-    FROM couples c ORDER BY c.created_at DESC, c.id DESC`).all(),
+  listCouples: () => q(`${CARD_SQL} ORDER BY c.created_at DESC, c.id DESC`).all(),
+  getCoupleCard: (id) => q(`${CARD_SQL} WHERE c.id = ?`).get(id),
   getCouple: (id) => q('SELECT * FROM couples WHERE id = ?').get(id),
   getCoupleByCode: (code) => q('SELECT * FROM couples WHERE access_code = ?').get(code),
   createCouple: ({ name, accessCode, hash, eventDate }) =>
@@ -175,6 +222,36 @@ module.exports = {
     .run(a.name, a.fullName, a.partnerName, a.phone || null, a.source, a.eventType, a.eventDate || null, a.startTime, a.city, a.venue,
       a.dueDate || null, a.package, a.packageDetail, a.total, a.deposit, a.paidFull ? 1 : 0,
       a.photoReady ? 1 : 0, a.videoReady ? 1 : 0, a.albumReady ? 1 : 0, a.albumLimit, a.waOptin ? 1 : 0, a.notes, id),
+  updateCard: (id, a) => q(`UPDATE couples SET name = ?, full_name = ?, partner_name = ?, phone = ?, source = ?, due_date = ?,
+      photo_ready = ?, video_ready = ?, album_ready = ?, album_limit = ?, wa_optin = ?, notes = ? WHERE id = ?`)
+    .run(a.name, a.fullName, a.partnerName, a.phone || null, a.source, a.dueDate || null,
+      a.photoReady ? 1 : 0, a.videoReady ? 1 : 0, a.albumReady ? 1 : 0, a.albumLimit, a.waOptin ? 1 : 0, a.notes, id),
+  // Çiftin ana tarihi = son etkinlik (teslim ve hatırlatmalar buna göre)
+  syncCoupleDate: (id) => q('UPDATE couples SET event_date = (SELECT MAX(event_date) FROM events WHERE couple_id = ?) WHERE id = ?').run(id, id),
+
+  // ── Etkinlikler (bir çiftin birden çok tarihi) ──
+  listEvents: (coupleId) => q("SELECT * FROM events WHERE couple_id = ? ORDER BY COALESCE(event_date, '9999'), start_time, id").all(coupleId),
+  getEvent: (id) => q('SELECT * FROM events WHERE id = ?').get(id),
+  eventsBetween: (from, to) => q(`SELECT e.*, c.name AS couple_name, c.stage AS couple_stage, c.phone AS couple_phone FROM events e JOIN couples c ON c.id = e.couple_id
+    WHERE e.event_date BETWEEN ? AND ? ORDER BY e.event_date, e.start_time, e.id`).all(from, to),
+  eventsOn: (date, exceptCoupleId) => q(`SELECT e.*, c.name AS couple_name FROM events e JOIN couples c ON c.id = e.couple_id
+    WHERE e.event_date = ? AND e.couple_id <> ? ORDER BY e.start_time`).all(date, exceptCoupleId || 0),
+  allEvents: () => q(`SELECT e.*, c.name AS couple_name, c.source AS couple_source FROM events e JOIN couples c ON c.id = e.couple_id ORDER BY e.event_date`).all(),
+  addEvent: (coupleId, e) => Number(q(`INSERT INTO events(couple_id, event_type, event_date, start_time, city, venue, package, package_detail, price, team)
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(coupleId, e.eventType, e.eventDate || null, e.startTime, e.city, e.venue, e.package, e.packageDetail, e.price, e.team).lastInsertRowid),
+  updateEvent: (id, e) => q(`UPDATE events SET event_type = ?, event_date = ?, start_time = ?, city = ?, venue = ?, package = ?, package_detail = ?, price = ?, team = ? WHERE id = ?`)
+    .run(e.eventType, e.eventDate || null, e.startTime, e.city, e.venue, e.package, e.packageDetail, e.price, e.team, id),
+  teamNames: () => q("SELECT DISTINCT team FROM events WHERE team <> '' ORDER BY team").all().map((r) => r.team),
+  deleteEvent: (id) => q('DELETE FROM events WHERE id = ?').run(id),
+
+  // ── Ödemeler ──
+  listPayments: (coupleId) => q('SELECT * FROM payments WHERE couple_id = ? ORDER BY paid_on, id').all(coupleId),
+  allPayments: () => q('SELECT * FROM payments ORDER BY paid_on').all(),
+  addPayment: (coupleId, p) => Number(q('INSERT INTO payments(couple_id, amount, paid_on, method, note) VALUES(?, ?, ?, ?, ?)')
+    .run(coupleId, p.amount, p.paidOn, p.method || '', p.note || '').lastInsertRowid),
+  getPayment: (id) => q('SELECT * FROM payments WHERE id = ?').get(id),
+  deletePayment: (id) => q('DELETE FROM payments WHERE id = ?').run(id),
+
   markAlbumInfoSent: (id) => q("UPDATE couples SET album_info_sent_at = date('now') WHERE id = ?").run(id),
   deleteCouple: (id) => q('DELETE FROM couples WHERE id = ?').run(id),
 
@@ -232,7 +309,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM favorites; DELETE FROM photos; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
+    DELETE FROM favorites; DELETE FROM photos; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

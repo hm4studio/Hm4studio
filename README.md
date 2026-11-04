@@ -80,7 +80,21 @@ WhatsApp numarası ülke koduyla, boşluksuz yazılır: `905321234567`.
 
 ## 3. Nasıl çalışır?
 
-**Çift ekleme:** Admin › Çiftler › Yeni çift ekle. Erişim kodu ve şifre **bir kez** gösterilir; çifte iletin.
+**Panel (admin ana sayfası):** Yarının programı (saat, mekân, ekip, istekler), aylık takvim, yaklaşan 30 gün,
+bekleyen bakiye ve arama/süzgeçli çift kartları. **Excel'e aktar** her etkinliği bir satır olarak indirir.
+
+**Yeni randevu:** Panel › Yeni randevu (ya da takvimde bir güne dokunun). Bir kişi kartına birden çok etkinlik eklenir
+(örn. dış çekim, kına, düğün); her etkinliğin kendi tarihi, paketi, tutarı, ekibi ve istekleri olur.
+Aynı gün başka çekim varsa form uyarır. Randevu numarası, çiftin erişim kodu ve şifresi otomatik oluşur;
+şifre **bir kez** gösterilir, çifte iletin.
+
+**Ödemeler:** Kişi kartında Ödemeler bölümünden parça parça ödeme eklenir; kalan bakiye kendiliğinden düşer.
+
+**Randevu belgesi:** Kişi kartında "Randevu belgesi" › Yazdır / PDF kaydet. Çift de kendi panelinden görebilir.
+
+**Rapor:** Ay ay etkinlik sayısı, ciro, tahsilat; müşteri kaynakları ve etkinlik türleri.
+
+Etkinlik türleri, müşteri kaynakları, paket önerileri ve ekip isimleri: `content/site.json` › `appointments`.
 Şifre kaybolursa çiftin sayfasında **Şifre yenile**.
 
 **Fotoğraf yükleme:** Çiftin sayfasında fotoğrafları seçin. Tarayıcı her fotoğrafın küçük (ızgara) ve

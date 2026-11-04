@@ -9,7 +9,7 @@ const db = require('./db');
 const auth = require('./auth');
 const media = require('./media');
 const { getContent } = require('./content');
-const { today, addDays } = require('./jobs');
+const { today, addDays, daysBetween } = require('./jobs');
 
 const PHOTO_DIR = path.join(config.ROOT, 'demo', 'photos');
 const DEMO_ADMIN = 'demo';
@@ -58,9 +58,10 @@ function seed() {
   const unused = auth.hashPassword(crypto.randomBytes(24).toString('hex'));
   const t = today();
   const d = (n) => addDays(t, n);
+  const daysFrom = (iso) => daysBetween(t, iso);
 
   const couples = [
-    { name: 'Elif & Burak', code: 'demo', appt: { fullName: 'Elif Yılmaz', partnerName: 'Burak Kaya', eventType: 'Düğün', startTime: '13:00', city: 'Antalya', venue: '[Düğün salonu]', package: 'Fotoğraf + Video + Albüm', total: 45000, deposit: 15000, source: 'Instagram', photoReady: true }, date: d(-51), due: d(5), stage: Math.min(2, last), limit: 5, locked: false, favs: [2, 3, 5],
+    { name: 'Elif & Burak', code: 'demo', appt: { fullName: 'Elif Yılmaz', partnerName: 'Burak Kaya', eventType: 'Düğün', startTime: '13:00', city: 'Antalya', venue: '[Düğün salonu]', package: 'Fotoğraf + Video + Albüm', total: 45000, deposit: 15000, source: 'Instagram', photoReady: true, team: 'Hasan, Mert', detail: 'Gelin hazırlığından başlanacak. Klip için drone isteniyor.', extra: [{ offset: -4, eventType: 'Dış Çekim', startTime: '17:30', venue: 'Göl kıyısı', package: 'Dış çekim', price: 8000, team: 'Hasan' }, { offset: -1, eventType: 'Kına', startTime: '20:00', venue: '[Kına salonu]', package: 'Fotoğraf + Video', price: 12000, team: 'Hasan, Mert' }] }, date: d(-51), due: d(5), stage: Math.min(2, last), limit: 5, locked: false, favs: [2, 3, 5],
       note: 'Fotoğraflarınızın düzenlenmesi sürüyor; video kurgusuna gelecek hafta başlıyoruz.',
       plan: { prep: 'Gelin evi · [adres]', venue: '[Düğün salonu adı ve adresi]', outdoor: 'Göl kıyısı ve çam ormanı, gün batımı', song: 'Klip için yavaş, akustik bir şarkı', flow: '13:00  Gelin hazırlığı\n15:30  Dış çekim\n19:00  Salon girişi\n21:30  Pasta', people: 'Gelinin annesi ve babaannesi, sağdıç Mert', notes: '', saved: d(-58) } },
     { name: 'Selin & Emre', code: 'demo-2', appt: { fullName: 'Selin Aydın', partnerName: 'Emre Demir', eventType: 'Düğün', startTime: '16:00', city: 'Antalya', venue: '[Mekân adı]', package: 'Fotoğraf + Video', total: 35000, deposit: 10000, paidFull: true, source: 'Tavsiye', photoReady: true, videoReady: true, albumReady: true }, date: d(-70), due: d(-10), stage: last, limit: 4, locked: true, favs: [0, 1, 4],
@@ -69,15 +70,24 @@ function seed() {
     { name: 'Zeynep & Can', code: 'demo-3', appt: { fullName: 'Zeynep Arslan', partnerName: 'Can Öztürk', eventType: 'Nişan', startTime: '18:30', city: 'Muğla', venue: '[Bahçe]', package: 'Fotoğraf', total: 18000, deposit: 6000, source: 'Google', photoReady: true }, date: d(-40), due: d(-3), stage: Math.min(3, last), limit: 60, note: 'Video kurgusu sürüyor.' },
     { name: 'Ayşe & Mehmet', code: 'demo-4', appt: { fullName: 'Ayşe Çelik', partnerName: 'Mehmet Şahin', eventType: 'Kına', startTime: '19:00', city: 'Antalya', venue: '[Kına salonu]', package: 'Fotoğraf + Video', total: 30000, deposit: 10000, source: 'WhatsApp' }, date: d(12), due: d(42), stage: 0, limit: 60, plan: { venue: 'Kına gecesi · [mekân]', saved: d(-2) } },
     { name: 'Merve & Onur', code: 'demo-5', appt: { fullName: 'Merve Koç', partnerName: 'Onur Yıldız', eventType: 'Dış Çekim', startTime: '17:00', city: 'Antalya', venue: 'Konyaaltı sahili', package: 'Fotoğraf', total: 12000, deposit: 0, source: 'Instagram' }, date: d(25), due: d(55), stage: 0, limit: 60 },
-    { name: 'Deniz & Kaan', code: 'demo-6', appt: { fullName: 'Deniz Acar', partnerName: 'Kaan Polat', eventType: 'Nişan', startTime: '20:00', city: 'Antalya', venue: '[Otel bahçesi]', package: 'Fotoğraf + Video', total: 22000, deposit: 7000, source: 'Instagram' }, date: d(3), due: d(33), stage: 0, limit: 60 },
-    { name: 'Gizem & Arda', code: 'demo-7', appt: { fullName: 'Gizem Tunç', partnerName: 'Arda Erdem', eventType: 'Düğün', startTime: '14:00', city: 'Burdur', venue: '[Düğün salonu]', package: 'Fotoğraf + Video + Albüm', total: 50000, deposit: 20000, source: 'Tavsiye' }, date: d(8), due: d(53), stage: 0, limit: 80 },
+    { name: 'Deniz & Kaan', code: 'demo-6', appt: { fullName: 'Deniz Acar', partnerName: 'Kaan Polat', eventType: 'Nişan', startTime: '20:00', city: 'Antalya', venue: '[Otel bahçesi]', package: 'Fotoğraf + Video', total: 22000, deposit: 7000, source: 'Instagram', team: 'Mert', detail: 'Yüzük takma anı mutlaka çekilsin.' }, date: d(1), due: d(33), stage: 0, limit: 60 },
+    { name: 'Gizem & Arda', code: 'demo-7', appt: { fullName: 'Gizem Tunç', partnerName: 'Arda Erdem', eventType: 'Düğün', startTime: '14:00', city: 'Burdur', venue: '[Düğün salonu]', package: 'Fotoğraf + Video + Albüm', total: 50000, deposit: 20000, source: 'Tavsiye', team: 'Hasan, Mert', extra: [{ offset: -4, eventType: 'Dış Çekim', startTime: '16:00', venue: 'Salda Gölü', package: 'Dış çekim', price: 10000, team: 'Hasan' }, { offset: -1, eventType: 'Kına', startTime: '19:30', venue: '[Kına evi]', package: 'Fotoğraf', price: 9000 }] }, date: d(8), due: d(53), stage: 0, limit: 80 },
   ];
 
   let photoCount = 0;
   for (const k of couples) {
     const id = db.createCouple({ name: k.name, accessCode: k.code, hash: unused, eventDate: k.date });
     db.setCoupleStage(id, k.stage, k.note || '');
-    db.updateAppointment(id, { albumLimit: k.limit, waOptin: false, packageDetail: '', notes: '', ...k.appt, name: k.name, eventDate: k.date, dueDate: k.due });
+    const x = k.appt;
+    db.updateCard(id, { name: k.name, fullName: x.fullName, partnerName: x.partnerName, phone: null, source: x.source, dueDate: k.due,
+      photoReady: x.photoReady, videoReady: x.videoReady, albumReady: x.albumReady, albumLimit: k.limit, waOptin: false, notes: '' });
+    // Ana etkinlik + varsa önceki günlerdeki ek etkinlikler (dış çekim, kına…)
+    const evs = [...(x.extra || []).map((e) => ({ ...e, eventDate: d(e.offset + (k.date === t ? 0 : daysFrom(k.date))) })),
+      { eventType: x.eventType, eventDate: k.date, startTime: x.startTime, city: x.city, venue: x.venue, package: x.package, packageDetail: x.detail || '', price: x.total, team: x.team || '' }];
+    for (const e of evs) db.addEvent(id, { eventType: '', startTime: '', city: x.city, venue: '', package: '', packageDetail: '', price: 0, team: '', ...e });
+    db.syncCoupleDate(id);
+    if (x.deposit) db.addPayment(id, { amount: x.deposit, paidOn: addDays(k.date, -60), method: 'IBAN', note: 'Kapora' });
+    if (x.paidFull) db.addPayment(id, { amount: evs.reduce((s2, e) => s2 + (e.price || 0), 0) - x.deposit, paidOn: addDays(k.date, 20), method: 'IBAN', note: 'Kalan bakiye' });
     db.setRefNo(id, db.nextRefNo(k.date.slice(0, 4)));
     db.setAlbum(id, { limit: k.limit, locked: false });
     if (k.plan) db.setPlan(id, k.plan);

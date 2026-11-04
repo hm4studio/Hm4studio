@@ -81,32 +81,60 @@ function register(router) {
     if (!requireAdmin(req, res)) return;
     const ay = query.get('ay');
     const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ay || '') ? ay : today().slice(0, 7);
-    html(res, views.dashboard(getContent(), { couples: db.listCouples(), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const t = today();
+    html(res, views.dashboard(getContent(), { couples: db.listCouples(), monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
-  // Yeni randevu formu (takvimden tarih, talepten bilgiler gelebilir)
+  // Yeni kişi kartı formu (takvimden tarih, talepten bilgiler gelebilir)
   router.get('/admin/randevu/yeni', (req, res, { query }) => {
     if (!requireAdmin(req, res)) return;
-    const values = { waOptin: 1, albumLimit: 60, eventDate: cleanDate(query.get('tarih')) || '' };
+    const values = { waOptin: 1, albumLimit: 60, ev0_date: appt.cleanDate(query.get('tarih')) || '', depositDate: today() };
     let talepId = null;
     const lead = query.get('talep') ? db.getLead(Number(query.get('talep')) || 0) : null;
     if (lead && !lead.couple_id) {
       talepId = lead.id;
       Object.assign(values, {
-        fullName: lead.name, phone: lead.phone ? wa.displayPhone(lead.phone) : '', eventDate: lead.event_date || values.eventDate,
-        venue: lead.place, source: lead.source === 'whatsapp' ? 'WhatsApp' : 'Site formu',
-        eventType: (getContent().appointments?.eventTypes || []).find((t) => lead.service && lead.service.includes(t)) || '',
+        fullName: lead.name, phone: lead.phone ? wa.displayPhone(lead.phone) : '', ev0_date: lead.event_date || values.ev0_date,
+        ev0_venue: lead.place, source: lead.source === 'whatsapp' ? 'WhatsApp' : 'Site formu',
+        ev0_type: (getContent().appointments?.eventTypes || []).find((t) => lead.service && lead.service.includes(t)) || '',
         notes: lead.message,
       });
     }
-    html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true }));
+    html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, teamNames: db.teamNames() }));
   });
+
+  // Etkinlikleri kaydet: gönderilenleri güncelle/ekle, formdan kaldırılanları sil
+  function saveEvents(coupleId, list) {
+    const existing = new Map(db.listEvents(coupleId).map((e) => [e.id, e]));
+    const kept = new Set();
+    for (const e of list) {
+      if (e.id && existing.has(e.id)) { db.updateEvent(e.id, e); kept.add(e.id); } else db.addEvent(coupleId, e);
+    }
+    for (const id of existing.keys()) if (!kept.has(id)) db.deleteEvent(id);
+    db.syncCoupleDate(coupleId);
+  }
+
+  // Aynı gün başka çekim var mı?
+  function conflictText(coupleId, list) {
+    const out = [];
+    for (const e of list) {
+      if (!e.eventDate) continue;
+      for (const o of db.eventsOn(e.eventDate, coupleId)) out.push(`${appt.shortDate(e.eventDate)}: ${o.couple_name} (${o.event_type || 'etkinlik'}${o.start_time ? ' ' + o.start_time : ''})`);
+    }
+    return out.length ? `Dikkat, aynı gün başka çekim var: ${[...new Set(out)].join(' · ')}` : '';
+  }
+
+  function defaultDue(a, list, c) {
+    if (a.dueDate) return a.dueDate;
+    const last = list.map((e) => e.eventDate).filter(Boolean).sort().pop();
+    return last ? addDays(last, Number(c.appointments?.defaultDeliveryDays) || 45) : null;
+  }
 
   router.post('/admin/ciftler', async (req, res) => {
     const form = await formGuard(req, res);
     if (!form) return;
     const c = getContent();
-    const { a, errors } = appt.readForm(form, c);
+    const { a, events: list, errors } = appt.readForm(form, c);
     if (errors.length) {
       return html(res, views.appointmentPage(c, { values: form, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, errors, talepId: form.talep, back: '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true }), 400);
     }
@@ -115,25 +143,29 @@ function register(router) {
     let code = `${base}-${crypto.randomInt(1000, 9999)}`;
     while (db.getCoupleByCode(code) || db.findAdminLogin(code)) code = `${base}-${crypto.randomInt(1000, 9999)}`;
     const password = auth.friendlyPassword(10);
-    const id = db.createCouple({ name: a.name, accessCode: code, hash: auth.hashPassword(password), eventDate: a.eventDate });
-    if (!a.dueDate && a.eventDate) a.dueDate = addDays(a.eventDate, Number(c.appointments?.defaultDeliveryDays) || 45);
-    db.updateAppointment(id, a);
-    db.setRefNo(id, db.nextRefNo((a.eventDate || today()).slice(0, 4)));
+    const id = db.createCouple({ name: a.name, accessCode: code, hash: auth.hashPassword(password), eventDate: null });
+    a.dueDate = defaultDue(a, list, c);
+    db.updateCard(id, a);
+    saveEvents(id, list);
+    if (a.deposit > 0) db.addPayment(id, { amount: a.deposit, paidOn: a.depositDate || today(), note: 'Kapora' });
+    const first = list.map((e) => e.eventDate).filter(Boolean).sort()[0];
+    db.setRefNo(id, db.nextRefNo((first || today()).slice(0, 4)));
     const lead = form.talep ? db.getLead(Number(form.talep) || 0) : null;
     if (lead && !lead.couple_id) db.setLeadStatus(lead.id, 'rezervasyon', id);
+    const warn = conflictText(id, list);
     setFlash(req, {
-      message: `${a.name} için randevu oluşturuldu.`,
-      type: 'success',
+      message: `${a.name} için randevu oluşturuldu.${warn ? ' ' + warn : ''}`,
+      type: warn ? 'error' : 'success',
       credentials: { url: `${config.siteUrl}/uygulama`, code, password },
     });
     redirect(res, `/admin/ciftler/${id}`);
   });
 
-  // Randevu bilgilerini düzenle
+  // Kişi kartını ve etkinliklerini düzenle
   router.get('/admin/ciftler/:id/duzenle', (req, res, { params }) => {
     if (!requireAdmin(req, res)) return;
     const couple = getCoupleOr404(params.id);
-    html(res, views.appointmentPage(getContent(), { values: appt.formValues(couple), action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req) }));
+    html(res, views.appointmentPage(getContent(), { values: appt.formValues(couple, db.listEvents(couple.id)), action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), teamNames: db.teamNames() }));
   });
 
   router.post('/admin/ciftler/:id/bilgi', async (req, res, { params }) => {
@@ -141,38 +173,97 @@ function register(router) {
     if (!form) return;
     const couple = getCoupleOr404(params.id);
     const c = getContent();
-    const { a, errors } = appt.readForm(form, c);
+    const { a, events: list, errors } = appt.readForm(form, c);
+    const paidSoFar = db.listPayments(couple.id).reduce((s, p) => s + p.amount, 0);
+    const total = list.reduce((s, e) => s + e.price, 0);
+    if (total > 0 && paidSoFar > total) errors.push(`Alınan ödemeler (${appt.tl(paidSoFar)}) toplam tutarı aşıyor.`);
     if (errors.length) {
       return html(res, views.appointmentPage(c, { values: form, action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, errors, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req) }), 400);
     }
-    if (!a.dueDate && a.eventDate) a.dueDate = addDays(a.eventDate, Number(c.appointments?.defaultDeliveryDays) || 45);
-    db.updateAppointment(couple.id, a);
-    if (!couple.ref_no) db.setRefNo(couple.id, db.nextRefNo((a.eventDate || today()).slice(0, 4)));
-    setFlash(req, { message: 'Randevu bilgileri kaydedildi.', type: 'success' });
+    a.dueDate = a.dueDate || couple.due_date || defaultDue(a, list, c);
+    db.updateCard(couple.id, a);
+    saveEvents(couple.id, list);
+    if (!couple.ref_no) db.setRefNo(couple.id, db.nextRefNo(today().slice(0, 4)));
+    const warn = conflictText(couple.id, list);
+    setFlash(req, { message: `Kaydedildi.${warn ? ' ' + warn : ''}`, type: warn ? 'error' : 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
 
-  // Tüm randevular: Excel'de açılan CSV
+  // Formda tarih seçilince anlık çakışma kontrolü
+  router.get('/admin/cakisma', (req, res, { query }) => {
+    if (req.session?.kind !== 'admin') throw new HttpError(401, 'Oturum gerekli');
+    const date = appt.cleanDate(query.get('tarih'));
+    const list = date ? db.eventsOn(date, Number(query.get('haric')) || 0) : [];
+    json(res, { ok: true, items: list.map((e) => ({ name: e.couple_name, type: e.event_type, time: e.start_time })) });
+  });
+
+  // ── Ödemeler ──
+  router.post('/admin/ciftler/:id/odeme', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const amount = appt.money(form.amount);
+    const card = db.getCoupleCard(couple.id);
+    const left = Math.max((card.total || 0) - (card.paid || 0), 0);
+    if (!amount) setFlash(req, { message: 'Ödeme tutarını yazın.', type: 'error' });
+    else if (card.total && amount > left) setFlash(req, { message: `Tutar kalan bakiyeden (${appt.tl(left)}) büyük olamaz.`, type: 'error' });
+    else {
+      db.addPayment(couple.id, { amount, paidOn: appt.cleanDate(form.paidOn) || today(), method: cleanText(form.method, 30), note: cleanText(form.note, 120) });
+      setFlash(req, { message: `${appt.tl(amount)} ödeme kaydedildi.`, type: 'success' });
+    }
+    redirect(res, `/admin/ciftler/${couple.id}#odemeler`);
+  });
+
+  router.post('/admin/ciftler/:id/odeme/:pid/sil', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const p = db.getPayment(toId(params.pid));
+    if (!p || p.couple_id !== couple.id) throw new HttpError(404, 'Bulunamadı');
+    db.deletePayment(p.id);
+    setFlash(req, { message: 'Ödeme kaydı silindi.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}#odemeler`);
+  });
+
+  // ── Randevu belgesi (yazdır / PDF olarak kaydet) ──
+  router.get('/admin/ciftler/:id/belge', (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    const couple = getCoupleOr404(params.id);
+    html(res, views.appointmentDoc(getContent(), { card: db.getCoupleCard(couple.id), events: db.listEvents(couple.id), payments: db.listPayments(couple.id), back: `/admin/ciftler/${couple.id}` }));
+  });
+
+  // ── Aylık rapor ──
+  router.get('/admin/rapor', (req, res, { query }) => {
+    if (!requireAdmin(req, res)) return;
+    const y = Number(query.get('yil')) || Number(today().slice(0, 4));
+    html(res, views.report(getContent(), { year: y, events: db.allEvents(), payments: db.allPayments(), couples: db.listCouples(), csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
+  // Tüm etkinlikler: Excel'de açılan CSV (her etkinlik bir satır)
   router.get('/admin/randevular.csv', (req, res) => {
     if (!requireAdmin(req, res)) return;
     const stages = getContent().stages;
+    const cards = new Map(db.listCouples().map((k) => [k.id, k]));
+    const d = appt.shortDate;
     const cols = [
       ['Randevu No', (k) => k.ref_no], ['Ad Soyad', (k) => k.full_name], ['Eş Adı', (k) => k.partner_name],
-      ['Telefon', (k) => (k.phone ? wa.displayPhone(k.phone) : '')], ['Etkinlik Türü', (k) => k.event_type],
-      ['Etkinlik Tarihi', (k) => (k.event_date ? k.event_date.split('-').reverse().join('.') : '')], ['Başlangıç Saati', (k) => k.start_time],
-      ['Şehir', (k) => k.city], ['Mekân', (k) => k.venue], ['Paket', (k) => k.package], ['Paket Detayı', (k) => k.package_detail],
-      ['Toplam Tutar', (k) => k.total_amount], ['Kapora', (k) => k.deposit], ['Kalan Bakiye', (k) => appt.payment(k)[2]],
+      ['Telefon', (k) => (k.phone ? wa.displayPhone(k.phone) : '')], ['Etkinlik Türü', (k, e) => e.event_type],
+      ['Etkinlik Tarihi', (k, e) => d(e.event_date)], ['Başlangıç Saati', (k, e) => e.start_time],
+      ['Şehir', (k, e) => e.city], ['Mekân', (k, e) => e.venue], ['Paket', (k, e) => e.package], ['Paket Detayı', (k, e) => e.package_detail],
+      ['Etkinlik Tutarı', (k, e) => e.price], ['Ekip', (k, e) => e.team],
+      ['Kart Toplamı', (k) => k.total], ['Alınan Ödeme', (k) => k.paid], ['Kalan Bakiye', (k) => appt.payment(k)[2]],
       ['Ödeme Durumu', (k) => appt.payment(k)[1]], ['Aşama', (k) => stages[k.stage] || ''],
       ['Fotoğraf Hazır', (k) => (k.photo_ready ? 'Evet' : 'Hayır')], ['Video Hazır', (k) => (k.video_ready ? 'Evet' : 'Hayır')],
-      ['Albüm Hazır', (k) => (k.album_ready ? 'Evet' : 'Hayır')], ['Yüklenen Fotoğraf', (k) => k.photo_count],
-      ['Teslim Tarihi', (k) => (k.due_date ? k.due_date.split('-').reverse().join('.') : '')], ['Müşteri Kaynağı', (k) => k.source], ['Notlar', (k) => k.notes],
+      ['Albüm Hazır', (k) => (k.album_ready ? 'Evet' : 'Hayır')], ['Teslim Tarihi', (k) => d(k.due_date)],
+      ['Müşteri Kaynağı', (k) => k.source], ['Notlar', (k) => k.notes],
     ];
     const cell = (v) => {
       let s = String(v ?? '');
       if (/^[=+\-@]/.test(s)) s = `'${s}`; // Excel formül enjeksiyonuna karşı
       return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const lines = [cols.map((x) => x[0]).join(';'), ...db.listCouples().map((k) => cols.map((x) => cell(x[1](k))).join(';'))];
+    const rows = db.allEvents().map((e) => [cards.get(e.couple_id), e]).filter(([k]) => k);
+    const lines = [cols.map((x) => x[0]).join(';'), ...rows.map(([k, e]) => cols.map((x) => cell(x[1](k, e))).join(';'))];
     res.writeHead(200, {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="hm4-randevular-${today()}.csv"`,
@@ -196,6 +287,9 @@ function register(router) {
       csrf: req.session.csrf,
       flash: takeFlash(req),
       loginUrl: `${config.siteUrl}/uygulama`,
+      card: db.getCoupleCard(couple.id),
+      events: db.listEvents(couple.id),
+      payments: db.listPayments(couple.id),
       demoAdmin: demo.isDemoAdmin(req),
     }));
   });
@@ -212,7 +306,7 @@ function register(router) {
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
 
-  // Albüm seçimi kilidini aç / kapat
+  // ── Ödemeler ──
   router.post('/admin/ciftler/:id/album-kilit', async (req, res, { params }) => {
     const form = await formGuard(req, res);
     if (!form) return;

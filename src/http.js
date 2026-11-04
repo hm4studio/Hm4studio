@@ -73,7 +73,11 @@ async function readForm(req) {
   const buf = await readBody(req, 1024 * 1024);
   const params = new URLSearchParams(buf.toString('utf8'));
   const out = {};
-  for (const [k, v] of params) out[k] = v;
+  for (const [k, v] of params) {
+    // "ekip[]" gibi adlar çoklu seçimdir: diziye toplanır
+    if (k.endsWith('[]')) (out[k.slice(0, -2)] ||= []).push(v);
+    else out[k] = v;
+  }
   return out;
 }
 

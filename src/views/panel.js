@@ -190,7 +190,7 @@ function planView(couple) {
   </section>`;
 }
 
-function couplePanel(c, { couple, photos, totalCount, favCount, view, csrf, flash: f }) {
+function couplePanel(c, { couple, events = [], photos, totalCount, favCount, view, csrf, flash: f }) {
   const nav = h`<div class="panel-nav"><span class="panel-nav__who">${couple.name}</span>${config.demoMode ? h`<a class="panel-nav__link" href="/gorus?alan=${encodeURIComponent('Çift paneli')}">${icon('star')}<span>Görüş bildir</span></a>` : ''}${logoutForm(csrf)}</div>`;
   const body = h`
   <div class="container">
@@ -203,6 +203,7 @@ function couplePanel(c, { couple, photos, totalCount, favCount, view, csrf, flas
 
     <nav class="subnav" aria-label="Panel bölümleri">
       <a class="chip" href="#durum">İş durumu</a>
+      ${events.length ? h`<a class="chip" href="#randevular">Randevular</a>` : ''}
       <a class="chip" href="#fotograflar">Fotoğraflar ve albüm</a>
       <a class="chip" href="#plan">Çekim günü planı</a>
     </nav>
@@ -215,6 +216,21 @@ function couplePanel(c, { couple, photos, totalCount, favCount, view, csrf, flas
     </div>
 
     <div id="durum">${statusBar(c.stages, couple.stage, couple.stage_note)}</div>
+
+    ${events.length ? h`<section class="panel-section" id="randevular" aria-labelledby="ev-title">
+      <div class="panel-section__head appt-card__head">
+        <h2 class="panel-section__title" id="ev-title">Randevularınız</h2>
+        <a class="btn btn--outline btn--sm" href="/panel/belge">${icon('download')}Randevu belgesi</a>
+      </div>
+      <ul class="jobs">${events.map((e) => {
+        const dt = e.event_date ? new Date(`${e.event_date}T12:00:00`) : null;
+        return h`<li class="job">
+          <div class="job__date" aria-hidden="true">${dt ? h`<span class="job__day">${dt.getDate()}</span><span class="job__mon">${dt.toLocaleDateString('tr-TR', { month: 'short' })}</span>` : h`<span class="job__day">—</span>`}</div>
+          <div class="job__main"><strong>${e.event_type || 'Etkinlik'}${e.start_time ? ` · ${e.start_time}` : ''}</strong>
+            <span class="muted">${[e.venue, e.city].filter(Boolean).join(', ')}</span></div>
+        </li>`;
+      })}</ul>
+    </section>` : ''}
 
     <section class="panel-section" id="fotograflar" aria-labelledby="gallery-title">
       <div class="panel-section__head">

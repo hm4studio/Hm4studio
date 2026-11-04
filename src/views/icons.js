@@ -18,6 +18,7 @@ const paths = {
   menu: '<path d="M4 7.5h16M4 12h16M4 16.5h16"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  chart: '<path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   upload: '<path d="M12 16V5"/><path d="M7.5 9.5L12 5l4.5 4.5"/><path d="M5 19.5h14"/>',
   trash: '<path d="M4.5 7h15"/><path d="M9.5 7V4.5h5V7"/><path d="M6.5 7l1 13h9l1-13"/>',

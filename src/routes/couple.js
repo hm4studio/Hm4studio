@@ -9,6 +9,7 @@ const { html, json, redirect, readForm, readJson, sendFile, HttpError } = requir
 const { PLAN_FIELDS, today } = require('../jobs');
 const events = require('../events');
 const views = require('../views/panel');
+const adminViews = require('../views/admin');
 const { requireCouple, checkCsrf, toId, setFlash, takeFlash } = require('./guards');
 
 function register(router) {
@@ -21,6 +22,7 @@ function register(router) {
     const view = query.get('g') === 'fav' ? 'fav' : 'all';
     html(res, views.couplePanel(getContent(), {
       couple,
+      events: db.listEvents(couple.id),
       photos: view === 'fav' ? favs : all,
       totalCount: all.length,
       favCount: favs.length,
@@ -75,6 +77,14 @@ function register(router) {
     events.planSaved({ id: req.session.userId });
     setFlash(req, { message: 'Planınız kaydedildi. HM4 Studio ekibi görebilir.', type: 'success' });
     redirect(res, '/panel#plan');
+  });
+
+  // Randevu belgesi (çift kendi bilgilerini görür, yazdırabilir)
+  router.get('/panel/belge', (req, res) => {
+    if (!requireCouple(req, res)) return;
+    const couple = db.getCouple(req.session.userId);
+    if (!couple) throw new HttpError(404, 'Bulunamadı');
+    html(res, adminViews.appointmentDoc(getContent(), { card: db.getCoupleCard(couple.id), events: db.listEvents(couple.id), payments: db.listPayments(couple.id), back: '/panel', forCouple: true }));
   });
 
   // Gizli fotoğraf dosyaları: yalnızca admin veya fotoğrafın sahibi çift erişebilir

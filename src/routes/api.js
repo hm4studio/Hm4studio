@@ -57,11 +57,12 @@ function dueReminders() {
 
     // 1) Çekimden önce plan formu hatırlatması (plan henüz kaydedilmediyse)
     const planSaved = (() => { try { return Boolean(JSON.parse(c.plan_json || '{}').saved); } catch { return false; } })();
-    if (c.event_date && !planSaved) {
-      const left = daysBetween(t, c.event_date);
+    const shoot = c.next_date; // sıradaki etkinlik (bir çiftin birden çok tarihi olabilir)
+    if (shoot && !planSaved) {
+      const left = daysBetween(t, shoot);
       const offsets = [...(rules.planHatirlatmaGunOnce || [7, 2])].sort((a, b) => b - a);
       const applicable = offsets.filter((n) => left > 0 && left <= n);
-      const keys = applicable.map((n) => `plan:${c.id}:${n}:${c.event_date}`);
+      const keys = applicable.map((n) => `plan:${c.id}:${n}:${shoot}`);
       if (applicable.length && keys.some((k) => !db.wasNotified(k))) {
         items.push({ type: 'plan', keys, couple: who, whatsapp: wa.templateMessage(c.phone, 'plan', { ad: c.name, gun: left, link: wa.panelLink() }) });
         continue;

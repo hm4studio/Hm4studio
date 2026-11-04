@@ -1,5 +1,7 @@
 'use strict';
-// Randevu kartı: form okuma, ödeme hesabı ve ortak yardımcılar.
+// Kişi kartı ve etkinlikleri: form okuma, ödeme hesabı, ortak yardımcılar.
+// Bir kişi kartında birden çok etkinlik olabilir (ör. 13 Temmuz dış çekim, 16 Temmuz kına, 17 Temmuz düğün);
+// her etkinliğin kendi paketi, fiyatı, ekibi ve istekleri vardır.
 const wa = require('./whatsapp');
 
 const clean = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -22,46 +24,68 @@ function displayName(fullName, partnerName) {
   return a && b ? `${a} & ${b}` : (fullName || partnerName || '').trim();
 }
 
-// Formdan randevu alanları; hatalar Türkçe mesaj listesi olarak döner
+const EVENT_FIELDS = ['id', 'type', 'date', 'time', 'city', 'venue', 'package', 'detail', 'price', 'team'];
+
+// Formdaki etkinlik blokları: ev0_type, ev0_date … ev5_type
+function readEvents(form, content) {
+  const o = content.appointments || {};
+  const idx = [...new Set(Object.keys(form).map((k) => /^ev(\d{1,2})_/.exec(k)?.[1]).filter(Boolean))].map(Number).sort((a, b) => a - b);
+  const list = [];
+  for (const i of idx.slice(0, 20)) {
+    const f = (name) => form[`ev${i}_${name}`];
+    const e = {
+      id: Number(f('id')) || null,
+      eventType: (o.eventTypes || []).includes(f('type')) ? f('type') : '',
+      eventDate: cleanDate(f('date')),
+      startTime: cleanTime(f('time')),
+      city: clean(f('city'), 60),
+      venue: clean(f('venue'), 160),
+      package: clean(f('package'), 80),
+      packageDetail: cleanArea(f('detail'), 1500),
+      price: money(f('price')),
+      team: clean(f('team'), 120),
+    };
+    const empty = !e.eventType && !e.eventDate && !e.venue && !e.package && !e.price && !e.packageDetail;
+    if (!empty) list.push(e);
+  }
+  return list;
+}
+
+// Kişi kartı alanları + etkinlikler; hatalar Türkçe mesaj listesi
 function readForm(form, content) {
   const o = content.appointments || {};
-  const pick = (v, list) => (list && list.includes(v) ? v : '');
   const a = {
     fullName: clean(form.fullName, 80),
     partnerName: clean(form.partnerName, 80),
     phoneRaw: clean(form.phone, 20),
-    source: pick(form.source, o.sources),
-    eventType: pick(form.eventType, o.eventTypes),
-    eventDate: cleanDate(form.eventDate),
-    startTime: cleanTime(form.startTime),
-    city: clean(form.city, 60),
-    venue: clean(form.venue, 160),
+    source: (o.sources || []).includes(form.source) ? form.source : '',
     dueDate: cleanDate(form.dueDate),
-    package: clean(form.package, 80),
-    packageDetail: cleanArea(form.packageDetail, 1000),
-    total: money(form.total),
-    deposit: money(form.deposit),
-    paidFull: form.paidFull === '1',
     photoReady: form.photoReady === '1',
     videoReady: form.videoReady === '1',
     albumReady: form.albumReady === '1',
     albumLimit: Math.min(Math.max(Number.parseInt(form.albumLimit, 10) || 60, 1), 1000),
     waOptin: form.waOptin === '1',
     notes: cleanArea(form.notes, 3000),
+    deposit: money(form.deposit),
+    depositDate: cleanDate(form.depositDate),
   };
   a.phone = wa.normalizePhone(a.phoneRaw);
   a.name = displayName(a.fullName, a.partnerName);
+  const events = readEvents(form, content);
   const errors = [];
   if (!a.fullName) errors.push('Ad soyad yazın.');
   if (a.phoneRaw && !a.phone) errors.push('Telefon numarası geçersiz (örn. 0532 123 45 67).');
-  if (a.deposit > a.total && a.total > 0) errors.push('Kapora toplam tutardan büyük olamaz.');
-  return { a, errors };
+  if (!events.length) errors.push('En az bir etkinlik ekleyin (tür veya tarih).');
+  events.forEach((e, n) => { if (!e.eventDate) errors.push(`${n + 1}. etkinliğin tarihini seçin.`); });
+  const total = events.reduce((s, e) => s + e.price, 0);
+  if (a.deposit > total && total > 0) errors.push('Kapora toplam tutardan büyük olamaz.');
+  return { a, events, errors };
 }
 
-// Ödeme durumu kendiliğinden: [anahtar, etiket, kalan]
+// Ödeme durumu: [anahtar, etiket, kalan]. k.total = etkinlik fiyatları toplamı, k.paid = alınan ödemeler
 function payment(k) {
-  const total = k.total_amount || 0;
-  const paid = k.paid_full ? total : Math.min(k.deposit || 0, total || k.deposit || 0);
+  const total = k.total || 0;
+  const paid = k.paid || 0;
   const remaining = Math.max(total - paid, 0);
   if (!total) return ['none', 'Tutar girilmedi', 0];
   if (remaining === 0) return ['paid', 'Ödendi', 0];
@@ -72,15 +96,27 @@ function payment(k) {
 const tl = (n) => `${Number(n || 0).toLocaleString('tr-TR')} ₺`;
 
 // Kayıttaki değerleri forma geri doldurmak için
-function formValues(k) {
+function formValues(k, events = []) {
   if (!k) return {};
-  return {
+  const v = {
     fullName: k.full_name || k.name, partnerName: k.partner_name, phone: k.phone ? wa.displayPhone(k.phone) : '',
-    source: k.source, eventType: k.event_type, eventDate: k.event_date || '', startTime: k.start_time, city: k.city,
-    venue: k.venue, dueDate: k.due_date || '', package: k.package, packageDetail: k.package_detail,
-    total: k.total_amount || '', deposit: k.deposit || '', paidFull: k.paid_full, photoReady: k.photo_ready,
-    videoReady: k.video_ready, albumReady: k.album_ready, albumLimit: k.album_limit, waOptin: k.wa_optin, notes: k.notes,
+    source: k.source, dueDate: k.due_date || '', photoReady: k.photo_ready, videoReady: k.video_ready,
+    albumReady: k.album_ready, albumLimit: k.album_limit, waOptin: k.wa_optin, notes: k.notes,
   };
+  events.forEach((e, i) => Object.assign(v, {
+    [`ev${i}_id`]: e.id, [`ev${i}_type`]: e.event_type, [`ev${i}_date`]: e.event_date || '', [`ev${i}_time`]: e.start_time,
+    [`ev${i}_city`]: e.city, [`ev${i}_venue`]: e.venue, [`ev${i}_package`]: e.package, [`ev${i}_detail`]: e.package_detail,
+    [`ev${i}_price`]: e.price || '', [`ev${i}_team`]: e.team,
+  }));
+  return v;
 }
 
-module.exports = { readForm, payment, tl, displayName, formValues, money };
+// Formda kaç etkinlik bloğu var (yeniden gösterimde)
+function eventIndexes(values) {
+  const idx = [...new Set(Object.keys(values).map((k) => /^ev(\d{1,2})_/.exec(k)?.[1]).filter(Boolean))].map(Number).sort((a, b) => a - b);
+  return idx.length ? idx : [0];
+}
+
+const shortDate = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
+
+module.exports = { readForm, payment, tl, displayName, formValues, eventIndexes, money, shortDate, EVENT_FIELDS, cleanDate };

@@ -42,7 +42,7 @@
   }
 
   // ── Durum çubuğu ──
-  document.querySelectorAll('.status__fill[data-pct], .album-bar__fill[data-pct], .ccard__fill[data-pct]').forEach((el) => {
+  document.querySelectorAll('[data-pct]').forEach((el) => {
     requestAnimationFrame(() => { el.style.width = `${Number(el.dataset.pct) || 0}%`; });
   });
 

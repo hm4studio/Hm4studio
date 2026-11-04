@@ -76,6 +76,7 @@
     "eventTypes": ["Düğün", "Nişan", "Kına", "Söz", "Dış Çekim", "Diğer"],
     "sources": ["Instagram", "WhatsApp", "Tavsiye", "Google", "Site formu", "Diğer"],
     "packages": ["[ÖRNEK] Fotoğraf", "[ÖRNEK] Fotoğraf + Video", "[ÖRNEK] Fotoğraf + Video + Albüm"],
+    "team": ["[ÖRNEK] Fotoğrafçı 1", "[ÖRNEK] Videocu 1"],
     "defaultDeliveryDays": 45
   },
 
