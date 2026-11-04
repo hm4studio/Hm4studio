@@ -38,6 +38,12 @@ function register(router) {
     html(res, views.portfolioPage(c, { portfolio: portfolioItems(), instagram: await getInstagramPosts(12) }));
   });
 
+  // Sitenin renk ayarı (Ayarlar › Site)
+  router.get('/css/tema.css', (req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-cache' });
+    res.end(require('../theme').themeCss(getContent()));
+  });
+
   router.get('/hakkimizda', (req, res) => html(res, views.aboutPage(getContent())));
   router.get('/iletisim', (req, res) => html(res, views.contactPage(getContent())));
 

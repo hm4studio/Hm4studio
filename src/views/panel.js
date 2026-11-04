@@ -21,7 +21,7 @@ function demoTry(kind) {
 
 function loginForm({ action, title, lead, codeLabel, codeName, error, values = {}, note, demoKind }) {
   return h`
-  <section class="auth">
+  <section class="auth pui">
     <div class="auth__card">
       <span class="auth__icon">${icon('lock')}</span>
       <h1 class="auth__title">${title}</h1>

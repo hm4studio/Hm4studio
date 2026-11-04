@@ -134,7 +134,26 @@
     updateSum();
   });
 
-  form.addEventListener('input', (e) => { if (e.target.matches('[data-ev-price], [data-deposit]')) updateSum(); });
+  // Paket seçilince fiyat ve içerik kendiliğinden dolar (boşsa)
+  let pkgs = [];
+  try { pkgs = JSON.parse(form.dataset.packages || '[]'); } catch { /* yok say */ }
+  form.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-ev-package]')) return;
+    const p = pkgs.find((x) => x.n === e.target.value.trim());
+    if (!p) return;
+    const block = e.target.closest('[data-ev]');
+    const price = block.querySelector('[data-ev-price]');
+    const detail = block.querySelector('[name$="_detail"]');
+    const type = block.querySelector('select[name$="_type"]');
+    if (p.p && (!num(price.value) || price.dataset.auto === '1')) { price.value = p.p.toLocaleString('tr-TR'); price.dataset.auto = '1'; }
+    if (p.d && (!detail.value.trim() || detail.dataset.auto === '1')) { detail.value = p.d; detail.dataset.auto = '1'; }
+    if (p.t && type && !type.value) type.value = p.t;
+    updateSum();
+  });
+  form.addEventListener('input', (e) => {
+    if (e.target.matches('[data-ev-price], [name$="_detail"]')) delete e.target.dataset.auto;
+    if (e.target.matches('[data-ev-price], [data-deposit]')) updateSum();
+  });
   form.addEventListener('change', (e) => { if (e.target.matches('[data-ev-date]')) checkDate(e.target); });
   evList.querySelectorAll('[data-ev-date]').forEach((el) => el.value && checkDate(el));
   renumber();

@@ -77,9 +77,24 @@ function removePortfolioPhoto(fileKey) {
   for (const v of ['thumb', 'display']) fs.rmSync(path.join(portfolioDir, `${fileKey}-${v}.jpg`), { force: true });
 }
 
+// Site görselleri (logo, hakkımızda fotoğrafı): herkese açık /media/site/
+const siteDir = path.join(config.publicMediaDir, 'site');
+function saveSiteImage(fileKey, buf, ext) {
+  fs.mkdirSync(siteDir, { recursive: true });
+  const name = `${fileKey}.${ext}`;
+  fs.writeFileSync(path.join(siteDir, name), buf);
+  return `/media/site/${name}`;
+}
+function removeSiteImage(url) {
+  const m = /^\/media\/site\/([a-f0-9]{32}\.(jpg|png|webp))$/.exec(String(url || ''));
+  if (m) fs.rmSync(path.join(siteDir, m[1]), { force: true });
+}
+
 const portfolioUrl = (fileKey, variant) => `/media/portfolio/${fileKey}-${variant}.jpg`;
 
 module.exports = {
+  saveSiteImage,
+  removeSiteImage,
   detectType, splitParts,
   coupleDir, saveCouplePhoto, removeCouplePhoto, removeCoupleFolder,
   savePortfolioPhoto, removePortfolioPhoto, portfolioUrl,

@@ -7,20 +7,18 @@ const { jobStatus, daysBetween, today, addDays } = require('../jobs');
 const { displayPhone, taskText } = require('../whatsapp');
 const { payment, tl, shortDate, eventIndexes } = require('../appointments');
 
+const SETTINGS_KEYS = ['account', 'feedback', 'portfolio', 'team', 'packages', 'site'];
 function adminNav(active, csrf, demoAdmin = false) {
   const items = [
     { href: '/admin', label: 'Panel', key: 'couples', icon: 'users' },
     { href: '/admin/talepler', label: 'Talepler', key: 'leads', icon: 'whatsapp' },
     { href: '/admin/takvim', label: 'Takvim', key: 'calendar', icon: 'clock' },
-    { href: '/admin/ekip', label: 'Ekip', key: 'team', icon: 'users' },
     { href: '/admin/rapor', label: 'Rapor', key: 'report', icon: 'chart' },
-    { href: '/admin/portfolyo', label: 'Portfolyo', key: 'portfolio', icon: 'image' },
-    // Görüşler ziyaretçilerin özel yorumlarıdır; demo stüdyo hesabına gösterilmez
-    ...(demoAdmin ? [] : [{ href: '/admin/gorusler', label: 'Görüşler', key: 'feedback', icon: 'star' }]),
-    { href: '/admin/hesap', label: 'Hesap', key: 'account', icon: 'settings' },
+    { href: '/admin/hesap', label: 'Ayarlar', key: 'settings', icon: 'settings' },
   ];
+  const cur = SETTINGS_KEYS.includes(active) ? 'settings' : active;
   return h`<nav class="panel-nav" aria-label="Yönetim menüsü">
-    ${items.map((i) => h`<a class="panel-nav__link" href="${i.href}"${i.key === active ? raw(' aria-current="page"') : ''}>${icon(i.icon)}<span>${i.label}</span></a>`)}
+    ${items.map((i) => h`<a class="panel-nav__link" href="${i.href}"${i.key === cur ? raw(' aria-current="page"') : ''}>${icon(i.icon)}<span>${i.label}</span></a>`)}
     ${logoutForm(csrf)}
   </nav>`;
 }
@@ -31,7 +29,8 @@ function adminTabs(active, demoAdmin = false) {
     { href: '/admin', label: 'Panel', icon: 'users', active: active === 'couples' },
     { href: '/admin/talepler', label: 'Talepler', icon: 'whatsapp', active: active === 'leads' },
     { href: '/admin/takvim', label: 'Takvim', icon: 'clock', active: active === 'calendar' },
-    { href: '/admin/hesap', label: 'Daha', icon: 'settings', active: ['account', 'feedback', 'portfolio', 'report', 'team'].includes(active) },
+    { href: '/admin/rapor', label: 'Rapor', icon: 'chart', active: active === 'report' },
+    { href: '/admin/hesap', label: 'Ayarlar', icon: 'settings', active: SETTINGS_KEYS.includes(active) },
   ];
 }
 
@@ -284,7 +283,7 @@ function dashboard(c, { couples, monthEvents, upcoming, ym, csrf, flash: f, demo
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=4'] });
+  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=5'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -310,7 +309,7 @@ function eventBlock(c, values, i, n, team = []) {
       <div class="field"><label for="${id('venue')}">Mekân</label><input id="${id('venue')}" name="${id('venue')}" type="text" maxlength="160" value="${v('venue')}"></div>
     </div>
     <div class="appt-row">
-      <div class="field"><label for="${id('package')}">Paket</label><input id="${id('package')}" name="${id('package')}" type="text" maxlength="80" list="pkg-list" value="${v('package')}"></div>
+      <div class="field"><label for="${id('package')}">Paket</label><input id="${id('package')}" name="${id('package')}" type="text" maxlength="80" list="pkg-list" value="${v('package')}" data-ev-package autocomplete="off"></div>
       <div class="field"><label for="${id('price')}">Tutar (₺)</label><input id="${id('price')}" name="${id('price')}" type="text" inputmode="numeric" placeholder="0" value="${v('price')}" data-money data-ev-price></div>
     </div>
     ${(() => {
@@ -341,10 +340,10 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
     <a class="back-link" href="${back}">${icon('left')}Geri</a>
     <h1 class="page-title">${title}</h1>
     ${errors.length ? h`<div class="flash flash--error" role="alert">${errors.map((e) => h`<div>${e}</div>`)}</div>` : ''}
-    <form class="form appt-form" method="post" action="${action}" data-appt-form data-couple="${coupleId}">
+    <form class="form appt-form" method="post" action="${action}" data-appt-form data-couple="${coupleId}" data-packages="${JSON.stringify(packages.map((x) => ({ n: x.name, p: x.price, d: x.detail, t: x.event_type })))}">
       ${csrfField(csrf)}
       ${talepId ? h`<input type="hidden" name="talep" value="${talepId}">` : ''}
-      <datalist id="pkg-list">${packages.map((x) => h`<option value="${x}">`)}</datalist>
+      <datalist id="pkg-list">${packages.map((x) => h`<option value="${x.name}">${x.price ? tl(x.price) : ''}</option>`)}</datalist>
 
       <fieldset class="appt-group">
         <legend>Kişi</legend>
@@ -398,7 +397,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=4'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=5'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -478,7 +477,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=10">
+<link rel="stylesheet" href="/css/style.css?v=12">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -514,7 +513,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
     ${[contact.phone, contact.email, contact.instagram ? '@' + String(contact.instagram).replace(/^@/, '') : ''].filter(Boolean).join(' · ')}
   </footer>
 </main>
-<script src="/js/dashboard.js?v=4" defer></script>
+<script src="/js/dashboard.js?v=5" defer></script>
 </body></html>`);
 }
 
@@ -677,7 +676,7 @@ function coupleDetail(c, { couple, card, events: evs, payments, photos, totalCou
       </form>
     </section>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=2', '/js/admin.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=2', '/js/admin.js?v=2'] });
 }
 
 function calendar(c, { couples, csrf, demoAdmin }) {
@@ -782,7 +781,7 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       </ul>` : h`<div class="empty-box">${icon('image')}<p>Henüz portfolyo fotoğrafı yok.</p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=1'] });
+  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=2'] });
 }
 
 // Ekip: personel ekle, düzenle, sil; her kişinin görevleri
@@ -804,6 +803,7 @@ function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) 
     </form>`;
   const body = h`
   <div class="container">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
     <div class="panel-title-row"><h1 class="page-title">Ekip</h1></div>
     ${flashBlock(f)}
     <div class="team-grid">
@@ -836,40 +836,183 @@ function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) 
 }
 
 function account(c, { admin, csrf, flash: f, demoAdmin }) {
+  const links = [
+    { href: '/admin/site', title: 'Site', text: 'Kapak, duyuru bandı, logo, hakkımızda, iletişim ve hizmetler.' },
+    { href: '/admin/paketler', title: 'Paketler', text: 'Paket adları, fiyatları ve içerikleri. Randevu formunda seçince fiyat kendiliğinden gelir.' },
+    { href: '/admin/ekip', title: 'Ekip', text: 'Personel, görevleri ve iletişim bilgileri.' },
+    { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitede görünen fotoğraflar ve anasayfa kapağı.' },
+    ...(demoAdmin ? [] : [{ href: '/admin/gorusler', title: 'Görüşler', text: 'Demo ziyaretçilerinin bıraktığı görüşler.' }]),
+  ];
   const body = h`
-  <div class="container container--narrow">
-    <h1 class="page-title">Hesap</h1>
+  <div class="container container--form">
+    <h1 class="page-title">Ayarlar</h1>
     ${flashBlock(f)}
-    <section class="card">
-      <h2 class="card__title">Şifre değiştir</h2>
-      <p class="muted">Kullanıcı adı: <strong>${admin.username}</strong></p>
+    <ul class="set-links">${links.map((l) => h`<li><a href="${l.href}"><span class="set-links__title">${l.title}</span><span class="set-links__text">${l.text}</span>${icon('right')}</a></li>`)}</ul>
+
+    <section class="panel-section">
+      <div class="panel-section__head"><h2 class="panel-section__title">Şifre</h2></div>
+      <p class="muted">Kullanıcı adı: ${admin.username}</p>
       <form class="form" method="post" action="/admin/hesap">
         ${csrfField(csrf)}
-        <div class="field"><label for="cur">Mevcut şifre</label><input id="cur" name="current" type="password" autocomplete="current-password" required></div>
-        <div class="field"><label for="new">Yeni şifre <span class="muted">(en az 10 karakter)</span></label><input id="new" name="next" type="password" autocomplete="new-password" minlength="10" required></div>
+        <div class="appt-row">
+          <div class="field"><label for="cur">Mevcut şifre</label><input id="cur" name="current" type="password" autocomplete="current-password" required></div>
+          <div class="field"><label for="new">Yeni şifre (en az 10 karakter)</label><input id="new" name="next" type="password" autocomplete="new-password" minlength="10" required></div>
+        </div>
         <button class="btn btn--primary" type="submit">Şifreyi değiştir</button>
       </form>
     </section>
-    <section class="card account-logout">
-      <h2 class="card__title">Diğer bölümler</h2>
-      <div class="account-links">
-        <a class="btn btn--outline btn--sm" href="/admin/ekip">${icon('users')}Ekip</a>
-        <a class="btn btn--outline btn--sm" href="/admin/rapor">${icon('chart')}Aylık rapor</a>
-        <a class="btn btn--outline btn--sm" href="/admin/portfolyo">${icon('image')}Portfolyo</a>
-      </div>
-    </section>
-    ${demoAdmin ? '' : h`<section class="card account-logout">
-      <h2 class="card__title">Görüşler</h2>
-      <p class="muted">Demo ziyaretçilerinin bıraktığı görüşleri okuyun.</p>
-      <a class="btn btn--outline btn--sm" href="/admin/gorusler">Görüşleri aç ${icon('arrow')}</a>
-    </section>`}
-    <section class="card account-logout">
-      <h2 class="card__title">Oturum</h2>
-      <p class="muted">Bu cihazda yönetim panelinden çıkış yapın.</p>
-      ${logoutForm(csrf, 'Çıkış yap')}
+    <section class="panel-section">
+      <div class="panel-section__head"><h2 class="panel-section__title">Oturum</h2></div>
+      ${logoutForm(csrf, 'Bu cihazda çıkış yap')}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Hesap', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
+  return panelLayout(c, { title: 'Ayarlar', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
 }
 
-module.exports = { teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+// Site ayarları: sitede görünen her şey panelden
+function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
+  const b = c.brand || {}, ban = c.banner || {}, hero = c.hero || {}, intro = c.intro || {}, about = c.about || {}, k = c.contact || {};
+  const svc = [...(c.services || [])];
+  while (svc.length < 6) svc.push({ title: '', text: '' });
+  const field = (id, label, value, opts = {}) => h`<div class="field"><label for="${id}">${label}</label>${opts.area
+    ? h`<textarea id="${id}" name="${id}" rows="${opts.rows || 3}" maxlength="${opts.max || 600}" placeholder="${opts.ph || ''}">${value || ''}</textarea>`
+    : h`<input id="${id}" name="${id}" type="${opts.type || 'text'}" maxlength="${opts.max || 120}" value="${value || ''}" placeholder="${opts.ph || ''}"${opts.type === 'tel' ? raw(' inputmode="tel"') : ''}>`}${opts.hint ? h`<p class="hint">${opts.hint}</p>` : ''}</div>`;
+  const imageSlot = (slot, title, url, hint) => h`
+    <div class="img-slot">
+      <div class="img-slot__preview${slot === 'logo' ? ' is-logo' : ''}">${url ? h`<img src="${url}" alt="">` : h`<span>${slot === 'logo' ? 'Logo yok, marka adı yazıyla görünür' : 'Görsel yok'}</span>`}</div>
+      <div class="img-slot__side">
+        <p class="img-slot__title">${title}</p>
+        <p class="hint">${hint}</p>
+        <form class="uploader uploader--inline" data-uploader data-endpoint="/admin/site/gorsel">
+          <input type="hidden" data-category value="${slot}">
+          ${slot === 'logo' ? h`<input type="checkbox" data-keep-original checked hidden>` : ''}
+          <label class="btn btn--outline btn--sm uploader__drop">${icon('upload')}${url ? 'Değiştir' : 'Yükle'}<input type="file" accept="image/jpeg,image/png,image/webp" data-files></label>
+          <ul class="uploader__list" data-list aria-live="polite"></ul>
+        </form>
+        ${url ? h`<form method="post" action="/admin/site/gorsel-kaldir" data-confirm="Görsel kaldırılsın mı?">${csrfField(csrf)}<input type="hidden" name="slot" value="${slot}"><button class="btn btn--text btn--sm btn--danger-text" type="submit">Kaldır</button></form>` : ''}
+      </div>
+    </div>`;
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <div class="panel-title-row"><h1 class="page-title">Site</h1><a class="btn btn--outline btn--sm" href="/" target="_blank" rel="noopener">Siteyi aç</a></div>
+    ${flashBlock(f)}
+
+    <section class="appt-group site-group">
+      <h2 class="site-group__title">Görseller</h2>
+      ${imageSlot('logo', 'Logo', b.logo, 'Şeffaf zeminli PNG önerilir, en fazla 2 MB.')}
+      ${imageSlot('about', 'Hakkımızda fotoğrafı', about.image, 'Dikey bir ekip veya çalışma fotoğrafı.')}
+      <div class="img-slot">
+        <div class="img-slot__preview">${heroUrl ? h`<img src="${heroUrl}" alt="">` : h`<span>Kapak yok</span>`}</div>
+        <div class="img-slot__side">
+          <p class="img-slot__title">Anasayfa kapağı</p>
+          <p class="hint">Portfolyodaki bir fotoğrafta "Kapak yap"a dokunarak değiştirilir.</p>
+          <a class="btn btn--outline btn--sm" href="/admin/portfolyo">Portfolyoya git</a>
+        </div>
+      </div>
+    </section>
+
+    <form class="form appt-form" method="post" action="/admin/site">
+      ${csrfField(csrf)}
+      <fieldset class="appt-group">
+        <legend>Marka</legend>
+        <div class="appt-row">${field('brandName', 'Marka adı', b.name, { max: 60 })}${field('tagline', 'Kısa tanım', b.tagline, { max: 80 })}</div>
+        <div class="appt-row">
+          <div class="field"><label for="logoPosition">Logo konumu</label><select id="logoPosition" name="logoPosition"><option value="left"${b.logoPosition !== 'center' ? raw(' selected') : ''}>Solda, menü sağda</option><option value="center"${b.logoPosition === 'center' ? raw(' selected') : ''}>Ortada, menü altında</option></select></div>
+          <div class="field"><span class="ev-team__label">Vurgu rengi</span>
+            <div class="swatches">${Object.entries(accents).map(([key, a]) => h`<label class="swatch" title="${a.label}"><input type="radio" name="accent" value="${key}"${(c.theme?.accent || 'kina') === key ? raw(' checked') : ''}><span class="swatch__dot" data-sw="${key}"></span><span class="sr-only">${a.label}</span></label>`)}</div>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>Duyuru bandı</legend>
+        <p class="appt-help">Sitenin en üstünde ince bir şerit. Örneğin: "2027 sezonu için tarihler açıldı."</p>
+        <label class="check"><input type="checkbox" name="bannerOn" value="1"${ban.on ? raw(' checked') : ''}><span>Bandı göster</span></label>
+        ${field('bannerText', 'Metin', ban.text, { max: 160 })}
+        <div class="appt-row">${field('bannerLinkText', 'Bağlantı yazısı', ban.linkText, { max: 30, ph: 'Uygunluk sor' })}${field('bannerLink', 'Bağlantı', ban.link, { max: 200, ph: '/talep' })}</div>
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>Anasayfa</legend>
+        ${field('heroTitle', 'Kapak başlığı', hero.title, { max: 90 })}
+        ${field('heroText', 'Kapak metni', hero.text, { area: true, max: 300 })}
+        <div class="appt-row">${field('introTitle', 'Giriş başlığı', intro.title, { max: 90 })}</div>
+        ${field('introText', 'Giriş metni', intro.text, { area: true, rows: 4, max: 600 })}
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>Hizmetler</legend>
+        <p class="appt-help">En fazla 6 hizmet. Başlığı boş bırakılan satır sitede görünmez.</p>
+        ${svc.slice(0, 6).map((x, i) => h`<div class="svc-row">${field(`svc${i}_title`, `${i + 1}. başlık`, x.title, { max: 60 })}${field(`svc${i}_text`, 'Açıklama', x.text, { max: 240 })}</div>`)}
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>Hakkımızda</legend>
+        ${field('aboutLead', 'Giriş cümlesi', about.lead, { max: 240 })}
+        ${field('aboutText', 'Metin', (about.paragraphs || []).join('\n\n'), { area: true, rows: 8, max: 3000, hint: 'Paragrafları boş bir satırla ayırın.' })}
+      </fieldset>
+
+      <fieldset class="appt-group">
+        <legend>İletişim</legend>
+        ${field('contactText', 'İletişim sayfası metni', k.text, { area: true, max: 300 })}
+        <div class="appt-row">${field('phone', 'Telefon', k.phoneDisplay && !/X/.test(k.phoneDisplay) ? k.phoneDisplay : '', { type: 'tel', max: 20, ph: '0532 123 45 67' })}${field('whatsapp', 'WhatsApp numarası', k.whatsapp && !/X/.test(k.whatsapp) ? displayPhone(k.whatsapp) : '', { type: 'tel', max: 20, ph: '0532 123 45 67' })}</div>
+        ${field('whatsappMessage', 'WhatsApp hazır mesajı', k.whatsappMessage, { max: 200 })}
+        <div class="appt-row">${field('email', 'E-posta', k.email, { max: 120, ph: 'iletisim@hm4studio.com' })}${field('instagram', 'Instagram kullanıcı adı', k.instagram, { max: 60, ph: 'hm4studio' })}</div>
+        ${field('regions', 'Çalışma bölgeleri', (k.regions || []).join('\n'), { area: true, rows: 3, hint: 'Her satıra bir bölge.' })}
+        ${field('hours', 'Çalışma saatleri', k.hours, { max: 120 })}
+      </fieldset>
+
+      <div class="appt-actions"><button class="btn btn--primary" type="submit">Siteyi güncelle</button></div>
+    </form>
+  </div>`;
+  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=2'] });
+}
+
+// Paketler: ad, fiyat, içerik; randevu formunda seçilince fiyat ve içerik dolar
+function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
+  const types = c.appointments?.eventTypes || [];
+  const form = (x, action, submit) => h`
+    <form class="form" method="post" action="${action}">
+      ${csrfField(csrf)}
+      <div class="field"><label for="k-name">Paket adı</label><input id="k-name" name="name" type="text" required maxlength="80" value="${x.name || ''}" placeholder="Örn. Düğün · Fotoğraf + Video"></div>
+      <div class="appt-row">
+        <div class="field"><label for="k-price">Fiyat (₺)</label><input id="k-price" name="price" type="text" inputmode="numeric" value="${x.price ? x.price.toLocaleString('tr-TR') : ''}" data-money></div>
+        <div class="field"><label for="k-type">Etkinlik türü</label><select id="k-type" name="eventType"><option value="">Hepsi</option>${types.map((t) => h`<option${t === x.event_type ? raw(' selected') : ''}>${t}</option>`)}</select></div>
+      </div>
+      <div class="field"><label for="k-detail">İçerik</label><textarea id="k-detail" name="detail" rows="5" maxlength="1500" placeholder="Fotoğraf sayısı, çekim süresi, klip, albüm ölçüsü…">${x.detail || ''}</textarea></div>
+      <label class="check"><input type="checkbox" name="active" value="1"${x.active === 0 ? '' : raw(' checked')}><span>Randevu formunda göster</span></label>
+      <div class="appt-actions"><button class="btn btn--primary" type="submit">${submit}</button>${pkg ? h`<a class="btn btn--text" href="/admin/paketler">Vazgeç</a>` : ''}</div>
+    </form>`;
+  const body = h`
+  <div class="container">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <h1 class="page-title">Paketler</h1>
+    ${flashBlock(f)}
+    <div class="team-grid">
+      <section>
+        <div class="panel-section__head"><h2 class="panel-section__title">Paket listesi <span class="sec-count">${packages.length}</span></h2></div>
+        ${packages.length ? h`<ul class="pkg-list">${packages.map((x) => h`
+          <li class="pkg${x.active ? '' : ' is-off'}${pkg && pkg.id === x.id ? ' is-current' : ''}">
+            <div class="pkg__main">
+              <span class="pkg__name">${x.name}</span>
+              <span class="pkg__meta">${x.event_type || 'Tüm etkinlikler'}${x.used ? `, ${x.used} randevuda kullanıldı` : ''}${x.active ? '' : ', gizli'}</span>
+              ${x.detail ? h`<p class="pkg__detail">${x.detail}</p>` : ''}
+            </div>
+            <span class="pkg__price">${x.price ? tl(x.price) : '—'}</span>
+            <div class="team-row__actions">
+              <a class="btn btn--text btn--sm" href="/admin/paketler?duzenle=${x.id}">Düzenle</a>
+              <form method="post" action="/admin/paketler/${x.id}/sil" data-confirm="${x.name} silinsin mi? Bu paketle yapılmış randevular etkilenmez.">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit" aria-label="Sil">${icon('trash')}</button></form>
+            </div>
+          </li>`)}</ul>` : h`<p class="sec-empty">Henüz paket yok. Sağdaki formdan ilk paketinizi ekleyin.</p>`}
+      </section>
+      <section>
+        <div class="panel-section__head"><h2 class="panel-section__title">${pkg ? 'Paketi düzenle' : 'Paket ekle'}</h2></div>
+        ${pkg ? form(pkg, `/admin/paketler/${pkg.id}`, 'Kaydet') : form({}, '/admin/paketler', 'Paketi ekle')}
+      </section>
+    </div>
+  </div>`;
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=5'] });
+}
+
+module.exports = { sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

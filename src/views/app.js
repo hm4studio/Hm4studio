@@ -22,10 +22,10 @@ function appLogin(c, { error, values = {}, heroUrl }) {
 <meta name="apple-mobile-web-app-title" content="${c.brand.name}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=10">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="/css/style.css?v=12">
 </head>
-<body class="app-body">
+<body class="app-body pui">
 <main class="app-login" id="main">
   <div class="app-login__media" aria-hidden="true">
     ${heroUrl ? h`<img src="${heroUrl}" alt="">` : ''}

@@ -101,7 +101,7 @@ function register(router) {
         notes: lead.message,
       });
     }
-    html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.packageNames() }));
+    html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }));
   });
 
   // Etkinlikleri kaydet: gönderilenleri güncelle/ekle, formdan kaldırılanları sil
@@ -143,7 +143,7 @@ function register(router) {
     const c = getContent();
     const { a, events: list, errors } = appt.readForm(form, c);
     if (errors.length) {
-      return html(res, views.appointmentPage(c, { values: form, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, errors, talepId: form.talep, back: '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.packageNames() }), 400);
+      return html(res, views.appointmentPage(c, { values: form, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, errors, talepId: form.talep, back: '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }), 400);
     }
     // Çiftin panel girişi: kod ve şifre otomatik
     const base = slugify(a.name) || 'cift';
@@ -172,7 +172,7 @@ function register(router) {
   router.get('/admin/ciftler/:id/duzenle', (req, res, { params }) => {
     if (!requireAdmin(req, res)) return;
     const couple = getCoupleOr404(params.id);
-    html(res, views.appointmentPage(getContent(), { values: appt.formValues(couple, db.listEvents(couple.id), db.eventMemberIds), action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), team: db.listTeam(), packages: db.packageNames() }));
+    html(res, views.appointmentPage(getContent(), { values: appt.formValues(couple, db.listEvents(couple.id), db.eventMemberIds), action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }));
   });
 
   router.post('/admin/ciftler/:id/bilgi', async (req, res, { params }) => {
@@ -185,7 +185,7 @@ function register(router) {
     const total = list.reduce((s, e) => s + e.price, 0);
     if (total > 0 && paidSoFar > total) errors.push(`Alınan ödemeler (${appt.tl(paidSoFar)}) toplam tutarı aşıyor.`);
     if (errors.length) {
-      return html(res, views.appointmentPage(c, { values: form, action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, errors, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), team: db.listTeam(), packages: db.packageNames() }), 400);
+      return html(res, views.appointmentPage(c, { values: form, action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, errors, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }), 400);
     }
     a.dueDate = a.dueDate || couple.due_date || defaultDue(a, list, c);
     db.updateCard(couple.id, a);
@@ -252,6 +252,122 @@ function register(router) {
     db.deleteMember(member.id);
     setFlash(req, { message: `${member.name} ekipten silindi.`, type: 'success' });
     redirect(res, '/admin/ekip');
+  });
+
+  // ── Site ayarları (site.json'un üzerine yazılır) ──
+  const siteOver = () => { try { return JSON.parse(db.getSetting('site_overrides') || '{}') || {}; } catch { return {}; } };
+  const saveOver = (o) => db.setSetting('site_overrides', JSON.stringify(o));
+
+  router.get('/admin/site', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const { ACCENTS } = require('../theme');
+    html(res, views.sitePage(getContent(), { accents: ACCENTS, heroUrl: heroUrl(getContent()), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
+  router.post('/admin/site', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const { ACCENTS } = require('../theme');
+    const t = (k, n) => cleanText(form[k], n);
+    const area = (k, n) => String(form[k] || '').replace(/\r\n/g, '\n').trim().slice(0, n);
+    const o = siteOver();
+    const phone = wa.normalizePhone(form.phone);
+    const wapp = wa.normalizePhone(form.whatsapp);
+    const errors = [];
+    if (String(form.phone || '').trim() && !phone) errors.push('Telefon numarası geçersiz.');
+    if (String(form.whatsapp || '').trim() && !wapp) errors.push('WhatsApp numarası geçersiz.');
+    const link = String(form.bannerLink || '').trim();
+    if (link && !/^(https:\/\/|\/)[^\s"'<>]*$/.test(link)) errors.push('Duyuru bağlantısı "/" veya "https://" ile başlamalı.');
+    if (errors.length) { setFlash(req, { message: errors.join(' '), type: 'error' }); return redirect(res, '/admin/site'); }
+    const services = [];
+    for (let i = 0; i < 6; i++) {
+      const title = t(`svc${i}_title`, 60);
+      if (title) services.push({ title, text: t(`svc${i}_text`, 240) });
+    }
+    Object.assign(o, {
+      brand: { ...(o.brand || {}), name: t('brandName', 60) || 'HM4 Studio', tagline: t('tagline', 80), logoPosition: form.logoPosition === 'center' ? 'center' : 'left' },
+      theme: { accent: ACCENTS[form.accent] ? form.accent : 'kina' },
+      banner: { on: form.bannerOn === '1', text: t('bannerText', 160), link, linkText: t('bannerLinkText', 30) },
+      hero: { title: t('heroTitle', 90), text: t('heroText', 300) },
+      intro: { title: t('introTitle', 90), text: area('introText', 600) },
+      services,
+      about: { ...(o.about || {}), lead: t('aboutLead', 240), paragraphs: area('aboutText', 3000).split(/\n\s*\n/).map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 8) },
+      contact: {
+        text: t('contactText', 300), phone: phone ? `+${phone}` : '', phoneDisplay: phone ? wa.displayPhone(phone) : '',
+        whatsapp: wapp || '', whatsappMessage: t('whatsappMessage', 200), email: t('email', 120), instagram: t('instagram', 60).replace(/^@/, ''),
+        regions: area('regions', 600).split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 8), hours: t('hours', 120),
+      },
+    });
+    saveOver(o);
+    setFlash(req, { message: 'Site güncellendi.', type: 'success' });
+    redirect(res, '/admin/site');
+  });
+
+  // Logo veya hakkımızda fotoğrafı (tarayıcıda küçültülür; logo şeffaflığı korunsun diye orijinali saklanır)
+  router.post('/admin/site/gorsel', async (req, res) => {
+    apiGuard(req);
+    const slot = String(req.headers['x-category'] || '');
+    if (!['logo', 'about'].includes(slot)) throw new HttpError(400, 'Geçersiz alan.');
+    const body = await readBody(req, config.maxUploadBytes);
+    const parts = media.splitParts(req, body);
+    const useOriginal = slot === 'logo' && parts.original && ['png', 'webp', 'jpg'].includes(parts.originalExt);
+    if (slot === 'logo' && parts.original && parts.original.length > 2 * 1024 * 1024) throw new HttpError(413, 'Logo dosyası 2 MB\'tan küçük olmalı.');
+    const url = media.saveSiteImage(newKey(), useOriginal ? parts.original : parts.display, useOriginal ? parts.originalExt : 'jpg');
+    const o = siteOver();
+    if (slot === 'logo') { media.removeSiteImage(o.brand?.logo); o.brand = { ...(o.brand || {}), logo: url }; }
+    else { media.removeSiteImage(o.about?.image); o.about = { ...(o.about || {}), image: url }; }
+    saveOver(o);
+    json(res, { ok: true, url });
+  });
+
+  router.post('/admin/site/gorsel-kaldir', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const o = siteOver();
+    if (form.slot === 'logo') { media.removeSiteImage(o.brand?.logo); o.brand = { ...(o.brand || {}), logo: '' }; }
+    if (form.slot === 'about') { media.removeSiteImage(o.about?.image); o.about = { ...(o.about || {}), image: '' }; }
+    saveOver(o);
+    setFlash(req, { message: 'Görsel kaldırıldı.', type: 'success' });
+    redirect(res, '/admin/site');
+  });
+
+  // ── Paketler ──
+  function readPackage(form) {
+    const types = getContent().appointments?.eventTypes || [];
+    return { name: cleanText(form.name, 80), price: appt.money(form.price), detail: String(form.detail || '').replace(/\r\n/g, '\n').trim().slice(0, 1500), eventType: types.includes(form.eventType) ? form.eventType : '', active: form.active === '1' };
+  }
+  router.get('/admin/paketler', (req, res, { query }) => {
+    if (!requireAdmin(req, res)) return;
+    const pkg = Number(query.get('duzenle')) ? db.getPackage(Number(query.get('duzenle'))) : null;
+    html(res, views.packagesPage(getContent(), { packages: db.listPackages(), pkg, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/paketler', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const x = readPackage(form);
+    if (!x.name) setFlash(req, { message: 'Paket adını yazın.', type: 'error' });
+    else { db.addPackage(x); setFlash(req, { message: `${x.name} eklendi.`, type: 'success' }); }
+    redirect(res, '/admin/paketler');
+  });
+  router.post('/admin/paketler/:id', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const pkg = db.getPackage(toId(params.id));
+    if (!pkg) throw new HttpError(404, 'Bulunamadı');
+    const x = readPackage(form);
+    if (!x.name) { setFlash(req, { message: 'Paket adını yazın.', type: 'error' }); return redirect(res, `/admin/paketler?duzenle=${pkg.id}`); }
+    db.updatePackage(pkg.id, x);
+    setFlash(req, { message: `${x.name} güncellendi. Mevcut randevulardaki tutarlar değişmez.`, type: 'success' });
+    redirect(res, '/admin/paketler');
+  });
+  router.post('/admin/paketler/:id/sil', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const pkg = db.getPackage(toId(params.id));
+    if (!pkg) throw new HttpError(404, 'Bulunamadı');
+    db.deletePackage(pkg.id);
+    setFlash(req, { message: `${pkg.name} silindi. Bu paketle yapılmış randevular etkilenmez.`, type: 'success' });
+    redirect(res, '/admin/paketler');
   });
 
   // ── Ödemeler ──
@@ -363,57 +479,7 @@ function register(router) {
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
 
-  // ── Ekip ──
-  function readMember(form) {
-    const roles = getContent().appointments?.teamRoles || [];
-    const phoneRaw = cleanText(form.phone, 20);
-    return {
-      name: cleanText(form.name, 60), role: roles.includes(form.role) ? form.role : '', phoneRaw, phone: wa.normalizePhone(phoneRaw),
-      notes: String(form.notes || '').trim().slice(0, 1000), active: form.active === '1', waOptin: form.waOptin === '1',
-    };
-  }
-
-  router.get('/admin/ekip', (req, res, { query }) => {
-    if (!requireAdmin(req, res)) return;
-    const editId = Number(query.get('duzenle')) || null;
-    const member = editId ? db.getMember(editId) : null;
-    html(res, views.teamPage(getContent(), { team: db.listTeam(), member, memberEvents: member ? db.memberEvents(member.id) : [], csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
-  });
-
-  router.post('/admin/ekip', async (req, res) => {
-    const form = await formGuard(req, res);
-    if (!form) return;
-    const m = readMember(form);
-    if (!m.name) setFlash(req, { message: 'İsim yazın.', type: 'error' });
-    else if (m.phoneRaw && !m.phone) setFlash(req, { message: 'Telefon numarası geçersiz (örn. 0532 123 45 67).', type: 'error' });
-    else { db.addMember(m); setFlash(req, { message: `${m.name} ekibe eklendi.`, type: 'success' }); }
-    redirect(res, '/admin/ekip');
-  });
-
-  router.post('/admin/ekip/:id', async (req, res, { params }) => {
-    const form = await formGuard(req, res);
-    if (!form) return;
-    const member = db.getMember(toId(params.id));
-    if (!member) throw new HttpError(404, 'Bulunamadı');
-    const m = readMember(form);
-    if (!m.name) { setFlash(req, { message: 'İsim yazın.', type: 'error' }); return redirect(res, `/admin/ekip?duzenle=${member.id}`); }
-    if (m.phoneRaw && !m.phone) { setFlash(req, { message: 'Telefon numarası geçersiz (örn. 0532 123 45 67).', type: 'error' }); return redirect(res, `/admin/ekip?duzenle=${member.id}`); }
-    db.updateMember(member.id, m);
-    setFlash(req, { message: `${m.name} güncellendi.`, type: 'success' });
-    redirect(res, '/admin/ekip');
-  });
-
-  router.post('/admin/ekip/:id/sil', async (req, res, { params }) => {
-    const form = await formGuard(req, res);
-    if (!form) return;
-    const member = db.getMember(toId(params.id));
-    if (!member) throw new HttpError(404, 'Bulunamadı');
-    db.deleteMember(member.id);
-    setFlash(req, { message: `${member.name} ekipten silindi.`, type: 'success' });
-    redirect(res, '/admin/ekip');
-  });
-
-  // ── Ödemeler ──
+  // Albüm seçimi kilidini aç / kapat
   router.post('/admin/ciftler/:id/album-kilit', async (req, res, { params }) => {
     const form = await formGuard(req, res);
     if (!form) return;

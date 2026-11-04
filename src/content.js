@@ -8,7 +8,33 @@ const FILE = path.join(config.ROOT, 'content', 'site.json');
 let cache = null;
 let cacheMtime = 0;
 
+// Panelden yapılan "Site" ayarları veritabanında durur ve site.json'un üzerine yazılır
+let db = null;
+const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+function merge(base, over) {
+  if (!isObj(over)) return base;
+  const out = { ...base };
+  for (const [k, v] of Object.entries(over)) out[k] = isObj(v) && isObj(base[k]) ? merge(base[k], v) : v;
+  return out;
+}
+let mergedKey = null;
+let merged = null;
+
 function getContent() {
+  const base = baseContent();
+  let raw = '';
+  try { db ||= require('./db'); raw = db.getSetting('site_overrides') || ''; } catch { /* veritabanı yoksa yalnızca dosya */ }
+  const key = `${cacheMtime}|${raw}`;
+  if (merged && key === mergedKey) return merged;
+  let over = null;
+  try { over = raw ? JSON.parse(raw) : null; } catch { over = null; }
+  mergedKey = key;
+  merged = merge(base, over);
+  return merged;
+}
+
+// Panel ayarlarını içermeyen dosya içeriği (Site ayarları sayfasında "varsayılan" olarak)
+function baseContent() {
   try {
     const mtime = fs.statSync(FILE).mtimeMs;
     if (!cache || mtime !== cacheMtime) {
@@ -37,4 +63,4 @@ function getWhatsapp() {
   return waCache;
 }
 
-module.exports = { getContent, getWhatsapp };
+module.exports = { getContent, baseContent, getWhatsapp };

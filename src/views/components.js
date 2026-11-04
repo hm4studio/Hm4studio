@@ -34,9 +34,16 @@ function brandMark(c) {
     : h`<span class="brand__name" lang="en">${c.brand.name}</span>`;
 }
 
+// Duyuru bandı (Ayarlar › Site): kampanya, yeni sezon tarihleri vb.
+function siteBanner(c) {
+  const b = c.banner || {};
+  if (!b.on || !b.text) return '';
+  return h`<div class="site-banner"><div class="container site-banner__inner"><span>${b.text}</span>${b.link ? h`<a href="${b.link}">${b.linkText || 'İncele'}</a>` : ''}</div></div>`;
+}
+
 function siteHeader(c, active, overlay) {
   return h`
-  <header class="site-header${overlay ? ' site-header--overlay' : ''}" data-header>
+  <header class="site-header${overlay ? ' site-header--overlay' : ''}${c.brand.logoPosition === 'center' ? ' site-header--center' : ''}" data-header>
     <div class="container site-header__inner">
       <a class="brand" href="/" aria-label="${c.brand.name} — Anasayfa">${brandMark(c)}</a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" data-nav-toggle>
@@ -101,7 +108,8 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=10">
+<link rel="stylesheet" href="/css/style.css?v=12">
+<link rel="stylesheet" href="/css/tema.css">
 </head>
 <body class="${bodyClass}">
 <a class="skip-link" href="#main">İçeriğe geç</a>`;
@@ -111,6 +119,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 function publicLayout(c, { title, description, active, overlayHeader = false, body }) {
   return String(h`${head({ title: title ? `${title} — ${c.brand.name}` : c.seo.title, description: description || c.seo.description })}
 ${demoBanner()}
+${siteBanner(c)}
 ${siteHeader(c, active, overlayHeader)}
 <main id="main">${body}</main>
 ${siteFooter(c)}
@@ -132,7 +141,7 @@ function tabbar(items) {
 
 // Çift ve admin panelleri için sade iskelet
 function panelLayout(c, { title, csrf, nav, body, scripts = [], tabs = [], home = '/' }) {
-  return String(h`${head({ title: `${title} — ${c.brand.name}`, csrf, bodyClass: home === '/admin' ? 'panel-body admin-ui' : 'panel-body' })}
+  return String(h`${head({ title: `${title} — ${c.brand.name}`, csrf, bodyClass: home === '/admin' ? 'panel-body pui is-admin' : 'panel-body pui' })}
 ${demoBanner()}
 <header class="panel-header">
   <div class="container panel-header__inner">

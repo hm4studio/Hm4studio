@@ -61,7 +61,15 @@ Kurulum adımları: **`n8n/BENIOKU.md`** · Meta şablon metinleri: **`n8n/SABLO
 Mesaj metinleri: **`content/whatsapp.json`** · Gelen talepler: **Admin › Talepler**.
 Sitedeki **/talep** formu ("Uygunluk sorun") n8n kurulmasa da çalışır; talepler yine panele düşer.
 
-## 2. Değiştirmeniz gereken yerler
+## 2. Siteyi panelden düzenleme
+
+**Ayarlar › Site:** logo, hakkımızda fotoğrafı, vurgu rengi, logo konumu, duyuru bandı, kapak başlığı ve metni,
+hizmetler, hakkımızda metni ve iletişim bilgileri. Kaydedince site hemen güncellenir. Bu ayarlar veritabanında
+durur ve `content/site.json` dosyasındaki değerlerin üzerine yazılır.
+
+**Ayarlar › Paketler:** paket adı, fiyatı ve içeriği. Randevu formunda paket seçilince fiyat ve içerik kendiliğinden dolar.
+
+## 2b. Dosyadan değiştirilebilecek yerler
 
 | Ne | Nerede |
 |---|---|

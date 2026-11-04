@@ -149,6 +149,15 @@ CREATE TABLE IF NOT EXISTS team (
   wa_optin INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS packages (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  price INTEGER NOT NULL DEFAULT 0,
+  detail TEXT NOT NULL DEFAULT '',
+  event_type TEXT NOT NULL DEFAULT '',
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS event_team (
   event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   member_id INTEGER NOT NULL REFERENCES team(id) ON DELETE CASCADE,
@@ -278,6 +287,12 @@ module.exports = {
     q('UPDATE events SET team = ? WHERE id = ?').run(names || '', eventId);
     return want.filter((id) => !before.has(id));
   },
+  // ── Paketler ──
+  listPackages: () => q(`SELECT p.*, (SELECT COUNT(*) FROM events e WHERE e.package = p.name) AS used FROM packages p ORDER BY p.active DESC, p.event_type, p.price, p.name`).all(),
+  getPackage: (id) => q('SELECT * FROM packages WHERE id = ?').get(id),
+  addPackage: (x) => Number(q('INSERT INTO packages(name, price, detail, event_type, active) VALUES(?, ?, ?, ?, ?)').run(x.name, x.price, x.detail, x.eventType, x.active ? 1 : 0).lastInsertRowid),
+  updatePackage: (id, x) => q('UPDATE packages SET name = ?, price = ?, detail = ?, event_type = ?, active = ? WHERE id = ?').run(x.name, x.price, x.detail, x.eventType, x.active ? 1 : 0, id),
+  deletePackage: (id) => q('DELETE FROM packages WHERE id = ?').run(id),
   packageNames: () => q("SELECT package, COUNT(*) AS n FROM events WHERE package <> '' GROUP BY package ORDER BY n DESC LIMIT 30").all().map((r) => r.package),
   teamNames: () => q("SELECT DISTINCT team FROM events WHERE team <> '' ORDER BY team").all().map((r) => r.team),
   deleteEvent: (id) => q('DELETE FROM events WHERE id = ?').run(id),
@@ -347,7 +362,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM favorites; DELETE FROM photos; DELETE FROM event_team; DELETE FROM team; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
+    DELETE FROM favorites; DELETE FROM photos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');
