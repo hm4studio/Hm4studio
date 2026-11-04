@@ -20,14 +20,14 @@ require('./src/demo').start();
 // İsteğe bağlı: .env / barındırma panelindeki ADMIN_USERNAME + ADMIN_PASSWORD ile ilk yönetici hesabını oluştur
 (function bootstrapAdmin() {
   const db = require('./src/db');
-  const u = (process.env.ADMIN_USERNAME || 'hm4studio').trim(), p = process.env.ADMIN_PASSWORD;
+  const u = (process.env.ADMIN_USERNAME || 'hm4studio').trim(), p = (process.env.ADMIN_PASSWORD || '').trim();
   // ADMIN_RESET_PASSWORD=1: şifre unutulduysa, mevcut hesabın şifresi ADMIN_PASSWORD ile değiştirilir
   const reset = process.env.ADMIN_RESET_PASSWORD === '1';
   if (!u || !p || u === 'demo') return;
-  const existing = db.getAdminByUsername(u);
+  const existing = db.findAdminLogin(u);
   if (existing && !reset) return;
   if (p.length < 10) { console.warn('ADMIN_PASSWORD en az 10 karakter olmalı; yönetici oluşturulmadı.'); return; }
-  db.upsertAdmin(u, auth.hashPassword(p));
+  if (existing) db.setAdminPassword(existing.id, auth.hashPassword(p)); else db.upsertAdmin(u, auth.hashPassword(p));
   if (existing) db.deleteSessionsFor('admin', existing.id);
   console.log(existing ? `"${u}" yönetici şifresi sıfırlandı. ADMIN_RESET_PASSWORD ayarını şimdi kaldırın.` : `"${u}" yönetici hesabı oluşturuldu.`);
 })();

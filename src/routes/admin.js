@@ -65,7 +65,8 @@ function register(router) {
     if (auth.isRateLimited(req)) {
       return html(res, view({ error: 'Çok fazla hatalı deneme. 15 dakika sonra tekrar deneyin.', values: { code: username } }), 429);
     }
-    const admin = db.getAdminByUsername(username);
+    // Büyük/küçük harf fark etmez (iPad ilk harfi büyük yazabiliyor)
+    const admin = username ? db.findAdminLogin(username) : null;
     const ok = auth.verifyPassword(form.password || '', admin ? admin.password_hash : auth.DUMMY_HASH);
     if (!admin || !ok) {
       auth.recordFailure(req);
