@@ -1,5 +1,5 @@
 {
-  "_aciklama": "WhatsApp mesaj metinleri. 'otomatikCevap' metinleri serbesttir (müşteri yazdıktan sonraki 24 saatte gönderilir). 'sablonlar' Meta'da onaylatacağınız 7 şablonun ADI ve değişken sırasıdır; metinleri Meta panelinde aynen girersiniz (n8n/SABLONLAR.md). {ad}, {link} gibi alanlar otomatik doldurulur.",
+  "_aciklama": "WhatsApp mesaj metinleri. 'otomatikCevap' metinleri serbesttir (müşteri yazdıktan sonraki 24 saatte gönderilir). 'sablonlar' Meta'da onaylatacağınız 8 şablonun ADI ve değişken sırasıdır; metinleri Meta panelinde aynen girersiniz (n8n/SABLONLAR.md). {ad}, {link} gibi alanlar otomatik doldurulur.",
   "dil": "tr",
   "yorumLinki": "[Google işletme yorum bağlantınız]",
   "otomatikCevap": {
@@ -9,6 +9,17 @@
     "talepAlindi": "Bilgileriniz bize ulaştı, teşekkürler {ad}! Uygunluğu kontrol edip size buradan yazacağız."
   },
   "sablonlar": {
+    "randevu": {
+      "ad": "hm4_randevu_olustu",
+      "degiskenler": [
+        "ad",
+        "no",
+        "tarih",
+        "link",
+        "kod",
+        "sifre"
+      ]
+    },
     "sozlesme": {
       "ad": "hm4_sozlesme_onay",
       "degiskenler": [

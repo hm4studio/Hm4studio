@@ -44,7 +44,7 @@ function flashBlock(f) {
   ${flash(f.message, f.type)}
   ${cr ? h`
   <div class="credentials creds" role="status">
-    <p class="creds__title">Çiftin giriş bilgileri</p>
+    <p class="creds__title">Çiftin giriş bilgileri${cr.sent ? h` <span class="muted">· WhatsApp'tan otomatik gönderildi</span>` : ''}</p>
     <div class="creds__grid">
       <div><span class="creds__label">Erişim kodu</span><span class="creds__value">${cr.code}</span></div>
       <div><span class="creds__label">Şifre</span><span class="creds__value">${cr.password}</span></div>

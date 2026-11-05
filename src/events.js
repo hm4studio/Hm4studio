@@ -84,6 +84,20 @@ function photosUploaded(coupleId, kind = 'secim') {
   }, waitMs).unref());
 }
 
+// Yeni randevu: "randevunuz oluşturuldu" + panel giriş bilgileri tek mesajda (bir kez). Gönderildiyse true döner.
+function appointmentCreated(coupleId, { link, code, password }) {
+  const c = db.getCouple(coupleId);
+  const key = `randevu:${coupleId}`;
+  if (!config.n8nWebhookUrl || !canMessage(c) || db.wasNotified(key)) return false;
+  db.markNotified(key);
+  const first = db.listEvents(c.id).filter((e) => e.event_date).sort((x, y) => x.event_date.localeCompare(y.event_date))[0];
+  const tarih = first
+    ? `${first.event_type || 'Çekim'} · ${new Date(`${first.event_date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}${first.start_time ? `, ${first.start_time}` : ''}`
+    : 'Tarih belirlenecek';
+  post({ event: 'randevu_olusturuldu', at: new Date().toISOString(), couple: coupleInfo(c), whatsapp: wa.templateMessage(c.phone, 'randevu', { ad: c.name, no: c.ref_no || '-', tarih, link, kod: code, sifre: password }) });
+  return true;
+}
+
 // Ekipten birine etkinlik görevi verildi: o kişiye WhatsApp mesajı (aynı görev için tarih değişmedikçe bir kez)
 function teamAssigned(eventId, memberIds) {
   if (!config.n8nWebhookUrl || !memberIds.length) return;
@@ -154,4 +168,4 @@ function videoStatusChanged(coupleId, status) {
   safePush(() => push.toCouple(coupleId, { title: 'Video çalışmanız güncellendi', body: `Güncel durum: ${status}.`, url: '/panel/video', tag: 'video-durum' }));
 }
 
-module.exports = { contractSent, videoAdded, videoStatusChanged, contractSigned, teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };
+module.exports = { appointmentCreated, contractSent, videoAdded, videoStatusChanged, contractSigned, teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };

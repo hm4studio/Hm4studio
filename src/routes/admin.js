@@ -178,10 +178,12 @@ function register(router) {
     const lead = form.talep ? db.getLead(Number(form.talep) || 0) : null;
     if (lead && !lead.couple_id) db.setLeadStatus(lead.id, 'rezervasyon', id);
     const warn = conflictText(id, list);
+    const link = auth.loginLink(id, hash);
+    const sent = events.appointmentCreated(id, { link, code, password });
     setFlash(req, {
-      message: `${a.name} için randevu oluşturuldu.${assigned ? ` ${assigned} ekip görevi verildi${config.n8nWebhookUrl ? ' ve WhatsApp mesajı gönderildi' : ''}.` : ''}${warn ? ' ' + warn : ''}`,
+      message: `${a.name} için randevu oluşturuldu.${sent ? ' Randevu ve giriş bilgileri çifte WhatsApp\'tan gönderildi.' : ''}${assigned ? ` ${assigned} ekip görevi verildi${config.n8nWebhookUrl ? ' ve WhatsApp mesajı gönderildi' : ''}.` : ''}${warn ? ' ' + warn : ''}`,
       type: warn ? 'error' : 'success',
-      credentials: { url: `${config.siteUrl}/uygulama`, link: auth.loginLink(id, hash), code, password, phone: a.phone, name: a.name },
+      credentials: { url: `${config.siteUrl}/uygulama`, link, sent, code, password, phone: a.phone, name: a.name },
     });
     redirect(res, `/admin/ciftler/${id}`);
   });

@@ -1,6 +1,6 @@
 # WhatsApp mesaj şablonları (Meta onayı için)
 
-Toplam **7 şablon** var: çifte 6, ekibe 1. Her çifte en fazla 5 mesaj gider (teslim mesajı iki şablondan biridir).
+Toplam **8 şablon** var: çifte 7, ekibe 1. Her çifte en fazla 6 mesaj gider (teslim mesajı iki şablondan biridir).
 Müşteri size son 24 saat içinde yazmadıysa WhatsApp yalnızca **Meta'nın onayladığı şablonlarla** mesaj göndermenize izin verir.
 
 Nerede oluşturulur: **Meta Business Suite › WhatsApp Manager › Mesaj şablonları › Şablon oluştur**
@@ -16,6 +16,7 @@ Onay genelde birkaç dakika ile birkaç saat sürer. Şablon adlarını değişt
 
 | # | Ne zaman | Kime | Şablon |
 |---|---|---|---|
+| 0 | Randevu oluşturulunca: randevu bilgisi + panel giriş bilgileri (bir kez) | Çift | `hm4_randevu_olustu` |
 | 1 | Sözleşme gönderilince (bir kez) | Çift | `hm4_sozlesme_onay` |
 | 2 | Çekimden 3 gün önce, gün planı doldurulmadıysa | Çift | `hm4_plan_hatirlatma` |
 | 3 | Seçim fotoğrafları ilk yüklendiğinde (bir kez) | Çift | `hm4_fotograflar_hazir` |
@@ -25,6 +26,23 @@ Onay genelde birkaç dakika ile birkaç saat sürer. Şablon adlarını değişt
 | 6 | Ekipten biri etkinliğe atanınca ve çekimden 3 gün önce | Ekip üyesi | `hm4_ekip_gorev` |
 
 ---
+
+### 0. `hm4_randevu_olustu` — Kategori: **Yardımcı (Utility)**
+Yeni randevuyu kaydettiğinizde, kişi kartında WhatsApp izni açık ve telefonu varsa otomatik gider.
+```
+Merhaba {{1}}, randevunuz oluşturuldu.
+Randevu no: {{2}}
+İlk çekim: {{3}}
+
+Panelinize bu bağlantıya dokunarak girebilirsiniz: {{4}}
+
+Uygulamayı ana ekrana eklerseniz giriş bilgileriniz:
+Erişim kodu: {{5}}
+Şifre: {{6}}
+
+HM4 Studio
+```
+Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` HM4-2026-014 · `{{3}}` Düğün · 17 Temmuz 2026 Cuma, 14:00 · `{{4}}` https://siteniz.com/g/12-abc · `{{5}}` ayse-mehmet · `{{6}}` HM4-K7P-3QX
 
 ### 1. `hm4_sozlesme_onay` — Kategori: **Yardımcı (Utility)**
 ```

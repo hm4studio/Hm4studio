@@ -4,7 +4,7 @@
 
 ```
  WhatsApp ──► Meta ──► n8n ──► Site (talep kaydı, otomatik cevap hazırlar) ──► n8n ──► WhatsApp
- Sitede olay (sözleşme, seçim fotoğrafları, teslim, talep, ekip görevi) ──► n8n ──► WhatsApp
+ Sitede olay (yeni randevu, sözleşme, seçim fotoğrafları, teslim, talep, ekip görevi) ──► n8n ──► WhatsApp
  Her sabah 10:30: n8n ──► Site "bugün kime hatırlatma?" ──► WhatsApp ──► Site "gönderildi"
 ```
 
@@ -22,6 +22,7 @@
 | Biri işletme numarasına ilk kez yazınca | Yazan kişi | Serbest metin: karşılama + "Uygunluk sorun" formu; talep panele düşer |
 | Kayıtlı çift yazınca | Çift | Serbest metin: panel bağlantısı |
 | WhatsApp'tan gelen kişi formu doldurunca | Kişi | Serbest metin: "bilgileriniz alındı" |
+| Randevu oluşturulunca: randevu + panel giriş bilgileri | Çift | `hm4_randevu_olustu` |
 | Sözleşme gönderilince (bir kez) | Çift | `hm4_sozlesme_onay` |
 | Çekimden 3 gün önce, gün planı yoksa | Çift | `hm4_plan_hatirlatma` |
 | Seçim fotoğrafları ilk yüklendiğinde (bir kez) | Çift | `hm4_fotograflar_hazir` |
@@ -60,7 +61,7 @@ Yeniden çalıştırmak güvenlidir.
    **Varlık ata** (uygulama + WhatsApp hesabı) › **Anahtar oluştur**.
    İzinler: `whatsapp_business_messaging`, `whatsapp_business_management`.
 5. **Ödeme yöntemi** ekleyin (şablon mesajları ücretlidir; müşteri yazdıktan sonraki 24 saatte verilen cevaplar ücretsizdir).
-6. `n8n/SABLONLAR.md`'deki **7 şablonu** oluşturup onaya gönderin.
+6. `n8n/SABLONLAR.md`'deki **8 şablonu** oluşturup onaya gönderin.
 
 ### 3 · WhatsApp'ı bağlayın
 
