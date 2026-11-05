@@ -25,13 +25,16 @@ say "3/4 · Kimlik bilgisi ve akışlar içe aktarılıyor"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 umask 077
 printf '[{"id":"hm4SiteKey000001","name":"HM4 Site","type":"httpHeaderAuth","data":{"name":"Authorization","value":"Bearer %s"}}]' "$N8N_API_KEY" > "$TMP/creds.json"
-"${DC[@]}" cp "$TMP/creds.json" n8n:/tmp/hm4-creds.json >/dev/null
+# Dosyalar n8n'in içine kendi kullanıcısıyla (node) yazılır; "docker cp" root sahipli kopyalar ve n8n okuyamaz
+put() { "${DC[@]}" exec -T n8n sh -c "umask 077; cat > '$2'" < "$1"; }
+"${DC[@]}" exec -T -u root n8n sh -c 'rm -f /tmp/hm4-*.json /tmp/1-*.json /tmp/2-*.json /tmp/3-*.json' || true
+put "$TMP/creds.json" /tmp/hm4-creds.json
 "${DC[@]}" exec -T n8n n8n import:credentials --input=/tmp/hm4-creds.json
 "${DC[@]}" exec -T n8n rm -f /tmp/hm4-creds.json
 for f in "$DIR"/n8n/*.json; do
-  "${DC[@]}" cp "$f" "n8n:/tmp/$(basename "$f")" >/dev/null
-  "${DC[@]}" exec -T n8n n8n import:workflow --input="/tmp/$(basename "$f")"
-  "${DC[@]}" exec -T n8n rm -f "/tmp/$(basename "$f")"
+  put "$f" /tmp/hm4-akis.json
+  "${DC[@]}" exec -T n8n n8n import:workflow --input=/tmp/hm4-akis.json
+  "${DC[@]}" exec -T n8n rm -f /tmp/hm4-akis.json
 done
 
 say "4/4 · Site ve n8n yeniden başlatılıyor"

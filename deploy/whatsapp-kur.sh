@@ -28,7 +28,8 @@ setenv WHATSAPP_PHONE_NUMBER_ID "$PNID"
 TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
 umask 077
 printf '[{"id":"hm4WhatsApp00001","name":"WhatsApp Cloud API","type":"httpHeaderAuth","data":{"name":"Authorization","value":"Bearer %s"}}]' "$TOKEN" > "$TMP/c.json"
-"${DC[@]}" cp "$TMP/c.json" n8n:/tmp/hm4-wa.json >/dev/null
+"${DC[@]}" exec -T -u root n8n rm -f /tmp/hm4-wa.json || true
+"${DC[@]}" exec -T n8n sh -c "umask 077; cat > /tmp/hm4-wa.json" < "$TMP/c.json"
 "${DC[@]}" exec -T n8n n8n import:credentials --input=/tmp/hm4-wa.json
 "${DC[@]}" exec -T n8n rm -f /tmp/hm4-wa.json
 
