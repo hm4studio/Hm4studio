@@ -537,7 +537,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=22">
+<link rel="stylesheet" href="/css/style.css?v=23">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -1011,11 +1011,15 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
       </form>
     </section>
     <section class="panel-section">
+      <div class="panel-section__head"><h2 class="panel-section__title">Telefon bildirimleri</h2></div>
+      <div class="pushbox" data-push data-off-text="Yeni talep geldiğinde, sözleşme onaylandığında ve albüm seçimi bittiğinde bu cihaza bildirim gelsin." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>
+    </section>
+    <section class="panel-section">
       <div class="panel-section__head"><h2 class="panel-section__title">Oturum</h2></div>
       ${logoutForm(csrf, 'Bu cihazda çıkış yap')}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Ayarlar', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
+  return panelLayout(c, { title: 'Ayarlar', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/push.js?v=1'] });
 }
 
 // Veriler: sezon arşivleri ve veritabanı yedekleri

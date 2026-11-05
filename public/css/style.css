@@ -1590,3 +1590,12 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .wa-pref { max-width: 640px; font-size: .9rem; }
 .consents .check, .wa-pref .check, .ct-form .check { align-items: flex-start; min-height: 0; line-height: 1.5; font-size: .86rem; }
 .consents .check input, .wa-pref .check input, .ct-form .check input { flex: none; width: 18px; height: 18px; margin: 2px 0 0; }
+
+/* ── Telefon bildirimleri ── */
+.pushbox { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin: 0 0 24px; border: 1px solid var(--rule-2, #d9d9d5); background: var(--white, #fff); }
+.pushbox[data-state="on"] { border-color: var(--rule, #e8e8e5); background: transparent; padding: 10px 0; border-width: 0 0 1px; }
+.pushbox__icon svg { width: 18px; height: 18px; display: block; }
+.pushbox__text { flex: 1; margin: 0; font-size: .86rem; line-height: 1.45; }
+.pushbox .btn { flex: none; }
+.panel-section .pushbox { margin-bottom: 0; }
+@media (max-width: 480px) { .pushbox { flex-wrap: wrap; } .pushbox__text { flex-basis: calc(100% - 40px); } .pushbox .btn { margin-left: 32px; } }

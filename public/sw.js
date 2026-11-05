@@ -4,12 +4,12 @@
    - Sayfalar her zaman sunucudan istenir; internet yoksa sade bir "çevrimdışı" sayfası gösterilir.
    - Çiftlerin özel fotoğrafları (/m/...) ve panel sayfaları ASLA önbelleğe alınmaz:
      paylaşılan bir cihazda başkası göremesin. */
-const VERSION = 'hm4-v22';
+const VERSION = 'hm4-v23';
 const STATIC_CACHE = `${VERSION}-static`;
 const MEDIA_CACHE = `${VERSION}-media`;
 const PRECACHE = [
   '/offline.html',
-  '/css/style.css?v=20',
+  '/css/style.css?v=23',
   '/js/site.js?v=6',
   '/js/pwa.js?v=2',
   '/images/icon-192.png',
@@ -66,4 +66,30 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/media/portfolio/')) {
     event.respondWith(staleWhileRevalidate(req, MEDIA_CACHE, 120));
   }
+});
+
+// ── Telefon bildirimleri ──
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { body: event.data && event.data.text() }; }
+  const title = data.title || 'HM4 Studio';
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || '',
+    icon: '/images/icon-192.png',
+    badge: '/images/icon-192.png',
+    tag: data.tag || undefined,
+    data: { url: data.url || '/uygulama' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || '/uygulama', self.location.origin).href;
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const w of wins) {
+      if (new URL(w.url).origin === self.location.origin && 'focus' in w) { await w.focus(); if ('navigate' in w) await w.navigate(target).catch(() => {}); return; }
+    }
+    await self.clients.openWindow(target);
+  })());
 });

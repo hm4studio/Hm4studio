@@ -196,6 +196,15 @@ CREATE TABLE IF NOT EXISTS contracts (
   cancelled_at TEXT
 );
 CREATE INDEX IF NOT EXISTS contracts_couple ON contracts(couple_id);
+CREATE TABLE IF NOT EXISTS push_subs (
+  endpoint TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  device TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 CREATE TABLE IF NOT EXISTS notifications (
   key TEXT PRIMARY KEY,
   sent_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -411,6 +420,12 @@ module.exports = {
   signContract: (id, f) => q(`UPDATE contracts SET signed_at = ?, signer_name = ?, signer_tc = ?, signer_address = ?, consent = ?, signature = ?, ip = ?, user_agent = ?, hash = ?
     WHERE id = ? AND signed_at IS NULL AND cancelled_at IS NULL`).run(f.signedAt, f.ad, f.tc, f.adres, f.izin, f.imza, f.ip, f.ua, f.hash, id).changes,
 
+  // ── Telefon bildirimi abonelikleri ──
+  addPushSub: (s) => q(`INSERT INTO push_subs(endpoint, kind, user_id, p256dh, auth, device) VALUES(?, ?, ?, ?, ?, ?)
+    ON CONFLICT(endpoint) DO UPDATE SET kind = excluded.kind, user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, device = excluded.device`).run(s.endpoint, s.kind, s.userId, s.p256dh, s.auth, s.device || ''),
+  deleteOwnPushSub: (endpoint, kind, userId) => q('DELETE FROM push_subs WHERE endpoint = ? AND kind = ? AND user_id = ?').run(endpoint, kind, userId),
+  deletePushSub: (endpoint) => q('DELETE FROM push_subs WHERE endpoint = ?').run(endpoint),
+  listPushSubs: (kind, userId) => (kind === 'admin' ? q("SELECT * FROM push_subs WHERE kind = 'admin'").all() : q('SELECT * FROM push_subs WHERE kind = ? AND user_id = ?').all(kind, userId)),
   // ── Gönderilen bildirimler (aynı mesaj iki kez gitmesin) ──
   wasNotified: (key) => Boolean(q('SELECT 1 FROM notifications WHERE key = ?').get(key)),
   markNotified: (key) => q('INSERT OR IGNORE INTO notifications(key) VALUES(?)').run(key),
@@ -427,7 +442,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM contracts; DELETE FROM favorites; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
+    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

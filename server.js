@@ -15,6 +15,7 @@ require('./src/routes/admin').register(router);
 require('./src/routes/feedback').register(router);
 require('./src/routes/leads').register(router);
 require('./src/routes/api').register(router);
+require('./src/routes/push').register(router);
 require('./src/demo').start();
 require('./src/backup').start();
 

@@ -17,6 +17,7 @@ const paths = {
   arrow: '<path d="M4.5 12h15"/><path d="M14 6.5l5.5 5.5-5.5 5.5"/>',
   menu: '<path d="M4 7.5h16M4 12h16M4 16.5h16"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
+  bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   chart: '<path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/>',
   play: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5v5l4.5-2.5z"/>',

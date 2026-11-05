@@ -476,6 +476,7 @@ function register(router) {
       return redirect(res, `/admin/ciftler/${couple.id}#sozlesme`);
     }
     db.createContract(couple.id, JSON.stringify(contractData(couple)));
+    events.contractSent(couple.id);
     setFlash(req, { message: 'Sözleşme çiftin paneline gönderildi. WhatsApp ile haber verebilirsiniz.', type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}#sozlesme`);
   });
@@ -560,6 +561,7 @@ function register(router) {
     const kind = VIDEO_KINDS.includes(decodeURIComponent(String(req.headers['x-kind'] || ''))) ? decodeURIComponent(String(req.headers['x-kind'])) : 'Klip';
     const title = cleanText(decodeURIComponent(String(req.headers['x-title'] || '')), 120);
     const id = db.addVideo({ coupleId: couple.id, title, kind, fileKey, ext: done.ext, size: done.size });
+    events.videoAdded(couple.id, title);
     json(res, { ok: true, id });
   });
 
@@ -570,6 +572,7 @@ function register(router) {
     const link = String(form.link || '').trim();
     if (!/^https:\/\/[^\s"'<>]{4,500}$/.test(link)) { setFlash(req, { message: 'Bağlantı https:// ile başlamalı.', type: 'error' }); return redirect(res, `/admin/ciftler/${couple.id}#video`); }
     db.addVideo({ coupleId: couple.id, title: cleanText(form.title, 120), kind: VIDEO_KINDS.includes(form.kind) ? form.kind : 'Klip', link });
+    events.videoAdded(couple.id, cleanText(form.title, 120));
     setFlash(req, { message: 'Video bağlantısı eklendi.', type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}#video`);
   });
@@ -750,6 +753,7 @@ function register(router) {
     const vstat = vlist.includes(form.videoStatus) ? form.videoStatus : '';
     db.setVideoStatus(couple.id, vstat);
     if (stage !== couple.stage) events.stageChanged(couple, stage);
+    if (vstat !== (couple.video_status || '')) events.videoStatusChanged(couple.id, vstat);
     setFlash(req, { message: `Aşama güncellendi: ${stages[stage]}`, type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });

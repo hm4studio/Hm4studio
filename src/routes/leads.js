@@ -96,6 +96,11 @@ function register(router) {
       if (lead.source === 'whatsapp') ev.whatsapp = wa.textMessage(phone, 'talepAlindi', { ad: lead.name.split(' ')[0] });
       events.post(ev);
     }
+    if (!open) {
+      try {
+        require('../push').toAdmin({ title: 'Yeni talep', body: [lead.name, lead.eventDate ? lead.eventDate.split('-').reverse().join('.') : '', lead.service].filter(Boolean).join(' · '), url: '/admin/talepler', tag: `talep-${id}` }).catch(() => {});
+      } catch (err) { console.error('Bildirim:', err.message); }
+    }
     redirect(res, '/talep?tamam=1');
   });
 

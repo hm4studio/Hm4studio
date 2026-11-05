@@ -234,6 +234,8 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, edit
       ${couple.event_date ? h`<p class="muted">${formatDate(couple.event_date)}</p>` : ''}
     </section>
 
+    <div class="pushbox" data-push data-off-text="Fotoğraflarınız ve videonuz hazır olunca telefonunuza haber verelim." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>
+
     ${couple.contract_state === 'bekliyor' ? h`<a class="ct-callout" href="/panel/sozlesme"><span><strong>Sözleşmeniz onayınızı bekliyor</strong><span>Okuyup birkaç dakikada onaylayabilirsiniz.</span></span>${icon('right')}</a>` : ''}
 
     <div class="install" data-install hidden>
@@ -288,7 +290,7 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, edit
         <button class="btn btn--outline btn--sm" type="submit">Kaydet</button>
       </form>
     </section>` : ''}`;
-  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=4'] });
+  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=4', '/js/push.js?v=1'] });
 }
 
 // Fotoğraflar: galeri, albüm seçimi, indirme
