@@ -207,6 +207,31 @@ function pagesFor(couple) {
   return COUPLE_PAGES;
 }
 
+// Sağ alttaki yapay zekâ asistanı
+function aiBot(c) {
+  const wa = c.contact?.whatsapp ? `https://wa.me/${String(c.contact.whatsapp).replace(/\D/g, '')}` : '';
+  const chips = ['Albüm seçimini nasıl yaparım?', 'Fotoğraflarım ne zaman hazır olur?', 'Sözleşmeyi nasıl onaylarım?', 'Fotoğrafları nasıl indiririm?'];
+  return h`<div class="aibot" data-aibot>
+    <button class="aibot__fab" type="button" data-aibot-toggle aria-expanded="false" aria-controls="aibot-panel">${icon('chat')}<span class="sr-only">Asistana sor</span></button>
+    <section class="aibot__panel" id="aibot-panel" data-aibot-panel role="dialog" aria-label="Asistan" hidden>
+      <header class="aibot__head">
+        <div><strong>${c.brand?.name || 'HM4 Studio'} asistan</strong><span>Randevunuz, fotoğraflarınız ve panel hakkında</span></div>
+        <button class="aibot__close" type="button" data-aibot-toggle aria-label="Kapat">${icon('close')}</button>
+      </header>
+      <div class="aibot__log" data-aibot-log aria-live="polite">
+        <div class="aibot__msg is-bot">Merhaba! Randevunuz, fotoğraflarınız ya da paneli kullanmak hakkında sorabilirsiniz.</div>
+      </div>
+      <div class="aibot__chips" data-aibot-chips>${chips.map((x) => h`<button type="button" data-aibot-chip>${x}</button>`)}</div>
+      <form class="aibot__form" data-aibot-form>
+        <label class="sr-only" for="aibot-q">Sorunuz</label>
+        <input id="aibot-q" type="text" maxlength="800" autocomplete="off" placeholder="Sorunuzu yazın…" required>
+        <button class="aibot__send" type="submit" aria-label="Gönder">${icon('send')}</button>
+      </form>
+      <p class="aibot__foot">Yapay zekâ (OpenAI) ile yanıtlanır, hata yapabilir. Kimlik no veya kart bilgisi yazmayın. <a href="/kvkk">KVKK</a>${wa ? h` <a href="${wa}" target="_blank" rel="noopener">Stüdyoya yazın</a>` : ''}</p>
+    </section>
+  </div>`;
+}
+
 function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
   const nav = h`<div class="panel-nav"><span class="panel-nav__who">${couple.name}</span>${config.demoMode ? h`<a class="panel-nav__link" href="/gorus?alan=${encodeURIComponent('Çift paneli')}">${icon('star')}<span>Görüş bildir</span></a>` : ''}${logoutForm(csrf)}</div>`;
   const content = h`
@@ -216,13 +241,14 @@ function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
     </nav>
     ${f ? flash(f.message, f.type) : ''}
     ${body}
-  </div>`;
+  </div>
+  ${config.openaiKey ? aiBot(c) : ''}`;
   const tabs = [
     ...pagesFor(couple).map((p) => ({ href: p.href, label: p.label, icon: p.icon, active: p.key === page })),
     { form: '/cikis', csrf, label: 'Çıkış', icon: 'logout' },
   ];
   const title = (pagesFor(couple).find((p) => p.key === page) || {}).label || 'Panelim';
-  return panelLayout(c, { title, csrf, nav, body: content, scripts, tabs, home: '/panel' });
+  return panelLayout(c, { title, csrf, nav, body: content, scripts: config.openaiKey ? [...scripts, '/js/assistant.js?v=1'] : scripts, tabs, home: '/panel' });
 }
 
 // Durum: iş durumu, randevular, ödeme

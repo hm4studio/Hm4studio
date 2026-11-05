@@ -17,6 +17,8 @@ const paths = {
   arrow: '<path d="M4.5 12h15"/><path d="M14 6.5l5.5 5.5-5.5 5.5"/>',
   menu: '<path d="M4 7.5h16M4 12h16M4 16.5h16"/>',
   lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
+  chat: '<path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-6.5L6 19.5V16H7a2.5 2.5 0 0 1-2.5-2.5z"/>',
+  send: '<path d="M4.5 12L19.5 5l-4.5 14-3-5.5z"/><path d="M12 13.5l7.5-8.5"/>',
   bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   chart: '<path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/>',

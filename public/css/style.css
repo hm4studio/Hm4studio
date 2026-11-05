@@ -1599,3 +1599,35 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .pushbox .btn { flex: none; }
 .panel-section .pushbox { margin-bottom: 0; }
 @media (max-width: 480px) { .pushbox { flex-wrap: wrap; } .pushbox__text { flex-basis: calc(100% - 40px); } .pushbox .btn { margin-left: 32px; } }
+
+/* ── Yapay zekâ asistanı ── */
+.aibot__fab { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 60; width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--graphite, #1a1a1a); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 6px 24px rgba(0, 0, 0, .2); }
+.aibot__fab svg { width: 22px; height: 22px; }
+.aibot.is-open .aibot__fab { display: none; }
+.aibot__panel { position: fixed; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 61; width: min(380px, calc(100vw - 32px)); height: min(560px, calc(100dvh - 120px)); display: flex; flex-direction: column; background: var(--paper, #fcfcfb); border: 1px solid var(--rule-2, #d9d9d5); box-shadow: 0 18px 48px rgba(0, 0, 0, .18); }
+.aibot__panel[hidden] { display: none; }
+.aibot__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--rule, #e8e8e5); }
+.aibot__head div { display: grid; gap: 2px; }
+.aibot__head strong { font-size: .95rem; font-weight: 600; }
+.aibot__head span { font-size: .76rem; color: var(--pencil, #6e6e6b); }
+.aibot__close { border: 0; background: none; padding: 4px; cursor: pointer; color: inherit; }
+.aibot__close svg { width: 18px; height: 18px; display: block; }
+.aibot__log { flex: 1; overflow-y: auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; overscroll-behavior: contain; }
+.aibot__msg { max-width: 85%; padding: 9px 12px; font-size: .88rem; line-height: 1.5; white-space: pre-line; border-radius: 12px; }
+.aibot__msg.is-bot { align-self: flex-start; background: var(--white, #fff); border: 1px solid var(--rule, #e8e8e5); border-bottom-left-radius: 4px; }
+.aibot__msg.is-me { align-self: flex-end; background: var(--graphite, #1a1a1a); color: #fff; border-bottom-right-radius: 4px; }
+.aibot__msg.is-wait { color: var(--faint, #a3a3a0); }
+.aibot__chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 10px; }
+.aibot__chips button { border: 1px solid var(--rule-2, #d9d9d5); background: var(--white, #fff); border-radius: 999px; padding: 6px 11px; font: inherit; font-size: .78rem; cursor: pointer; color: inherit; }
+.aibot__form { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--rule, #e8e8e5); }
+.aibot__form input { flex: 1; min-width: 0; border: 1px solid var(--rule-2, #d9d9d5); border-radius: 999px; padding: 10px 14px; font: inherit; font-size: 16px; background: var(--white, #fff); }
+.aibot__send { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--graphite, #1a1a1a); color: #fff; display: grid; place-items: center; cursor: pointer; }
+.aibot__send:disabled { opacity: .4; }
+.aibot__send svg { width: 18px; height: 18px; }
+.aibot__foot { margin: 0; padding: 0 16px 12px; font-size: .7rem; color: var(--pencil, #6e6e6b); line-height: 1.4; }
+.aibot__foot a { color: inherit; text-decoration: underline; }
+@media (max-width: 699px) {
+  body:has(.tabbar) .aibot__fab { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+  .aibot__panel { inset: auto 0 0 0; width: 100%; height: min(78dvh, 640px); border-width: 1px 0 0; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+.aibot__chips[hidden] { display: none; }

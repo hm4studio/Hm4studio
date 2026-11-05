@@ -62,5 +62,9 @@ module.exports = {
   waPhoneNumberId: env.WHATSAPP_PHONE_NUMBER_ID || '',
   waVerifyToken: env.WHATSAPP_VERIFY_TOKEN || '',
   waApiVersion: env.WHATSAPP_API_VERSION || 'v23.0',
+  // Çift panelindeki yapay zekâ asistanı (anahtar yoksa asistan görünmez)
+  openaiKey: env.OPENAI_API_KEY || '',
+  openaiModel: env.OPENAI_MODEL || 'gpt-4.1-mini',
+  openaiBase: (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
   sessionDays: 14,
 };

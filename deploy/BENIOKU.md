@@ -38,3 +38,10 @@ Geri açmak (Mac Terminal'de, Drive'dan indirdiğiniz dosya için):
     openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in hm4-2026-11-04.tar.gz.enc | tar -xz
 
 Şifre sorulur; çıkan `backups/hm4-….db` dosyası tüm veritabanıdır.
+
+## Çift panelindeki yapay zekâ asistanı
+
+    bash /opt/hm4studio/deploy/asistan-kur.sh
+
+OpenAI anahtarını sorar (ekranda görünmez), `.env`'e yazar ve siteyi yeniden başlatır. Kapatmak için aynı komutu çalıştırıp boş bırakın.
+Model `.env` içindeki `OPENAI_MODEL` ile değiştirilebilir (varsayılan gpt-4.1-mini). Çift başına saatte 30, günde 80 soru sınırı vardır.

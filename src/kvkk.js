@@ -31,7 +31,7 @@ const DEFAULT_TEXT = `## Veri sorumlusu
 - KVKK m. 5/1 ve m. 9: açık rıza (tanıtım amaçlı paylaşım, WhatsApp ile iletişim ve yurt dışında bulunan hizmet sağlayıcılara aktarım)
 
 ## Aktarım
-Kişisel verileriniz yalnızca yukarıdaki amaçlarla ve gerektiği ölçüde; çekimde görevli ekip üyelerimizle, web sitesi ve verilerin barındırıldığı sunucu hizmet sağlayıcısıyla, yedekleme hizmet sağlayıcısıyla (yedekler şifrelenerek saklanır), mali müşavirimizle ve talep hâlinde yetkili kamu kurumlarıyla paylaşılabilir. WhatsApp ile iletişim, Meta Platforms'un yurt dışındaki sunucuları üzerinden gerçekleşir ve açık rızanıza dayanır.
+Kişisel verileriniz yalnızca yukarıdaki amaçlarla ve gerektiği ölçüde; çekimde görevli ekip üyelerimizle, web sitesi ve verilerin barındırıldığı sunucu hizmet sağlayıcısıyla, yedekleme hizmet sağlayıcısıyla (yedekler şifrelenerek saklanır), mali müşavirimizle ve talep hâlinde yetkili kamu kurumlarıyla paylaşılabilir. WhatsApp ile iletişim, Meta Platforms'un yurt dışındaki sunucuları üzerinden gerçekleşir ve açık rızanıza dayanır. Çift panelindeki yapay zekâ asistanını kullanırsanız, yazdığınız sorular ve yanıt için gerekli randevu ve iş durumu bilgileriniz (kimlik no, adres ve imza hariç) OpenAI'ın yurt dışındaki sunucularına iletilir; asistanı kullanmak isteğe bağlıdır ve konuşmalar tarafımızca saklanmaz.
 
 ## Toplama yöntemi
 Veriler; web sitesindeki talep formu, WhatsApp yazışmaları, telefon görüşmeleri, çift paneli ve çekim günü elektronik ortamda ve sözlü olarak toplanır.

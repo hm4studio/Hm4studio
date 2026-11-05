@@ -77,6 +77,7 @@ N8N_API_KEY=$(openssl rand -hex 24)
 N8N_WEBHOOK_URL=
 WHATSAPP_PHONE_NUMBER_ID=
 WHATSAPP_VERIFY_TOKEN=hm4-$(openssl rand -hex 6)
+OPENAI_API_KEY=
 EOF
   chmod 600 "$ENV_FILE"
 fi

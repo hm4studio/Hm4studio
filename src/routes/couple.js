@@ -23,6 +23,27 @@ function register(router) {
     return { ...c, contract_state: k ? (k.signed_at ? 'imzali' : 'bekliyor') : '' };
   };
 
+  // Yapay zekâ asistanı (sağ alttaki balon)
+  router.post('/panel/asistan', async (req, res) => {
+    if (req.session?.kind !== 'couple') throw new HttpError(401, 'Oturum gerekli');
+    checkCsrf(req);
+    const assistant = require('../assistant');
+    if (!assistant.enabled()) throw new HttpError(404, 'Asistan kapalı');
+    const body = await readJson(req);
+    const msgs = (Array.isArray(body.messages) ? body.messages : []).slice(-12)
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
+      .map((m) => ({ role: m.role, content: m.content.trim().slice(0, m.role === 'user' ? 800 : 1500) }))
+      .filter((m) => m.content);
+    if (!msgs.length || msgs[msgs.length - 1].role !== 'user') throw new HttpError(400, 'Soru boş');
+    const couple = me(req);
+    if (assistant.overLimit(couple.id)) return json(res, { reply: 'Bugün çok fazla soru sordunuz. Acil bir durum varsa bize WhatsApp’tan yazın.' });
+    try {
+      json(res, { reply: await assistant.answer(couple, msgs) || 'Bunu yanıtlayamadım, bize WhatsApp’tan yazabilirsiniz.' });
+    } catch (err) {
+      json(res, { reply: err.message === 'yogun' ? 'Şu an çok yoğunum, birkaç dakika sonra tekrar dener misiniz?' : 'Şu an yanıt veremiyorum. Sorunuzu bize WhatsApp’tan iletebilirsiniz.', error: true });
+    }
+  });
+
   // WhatsApp bildirim izni (KVKK açık rıza; her değişiklik tarihiyle kaydedilir)
   router.post('/panel/whatsapp', async (req, res) => {
     if (!requireCouple(req, res)) return;
