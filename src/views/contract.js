@@ -101,7 +101,7 @@ function signPage(c, { coupleShell, couple, k, data, csrf, flash, values = {} })
       <button class="btn btn--primary" type="submit">Sözleşmeyi onayla</button>
       <p class="muted ct-form__note">Onay anında tarih, saat ve bağlantı adresiniz (IP) kayda alınır. Onayladıktan sonra metin değiştirilemez.</p>
     </form>`}`;
-  return coupleShell(c, { couple, page: 'sozlesme', csrf, flash, body: page, scripts: ['/js/contract.js?v=1'] });
+  return coupleShell(c, { couple, page: 'sozlesme', csrf, flash, body: page, scripts: ['/js/contract.js?v=2'] });
 }
 
 // Admin: çift sayfasındaki sözleşme bölümü
@@ -137,6 +137,7 @@ function adminSection({ coupleId, k, csrf, phone, loginUrl, coupleName }) {
 function settingsPage(c, { adminNav, adminTabs, flashBlock, csrf, flash, demoAdmin }) {
   const s = contract.settings(c);
   const co = s.company;
+  const sig = contract.studioSignature();
   const f = (id, label, val, extra = '') => h`<div class="field"><label for="c-${id}">${label}</label><input id="c-${id}" name="${id}" type="text" maxlength="160" value="${val || ''}"${raw(extra)}></div>`;
   const page = h`
   <div class="container container--form">
@@ -175,8 +176,25 @@ function settingsPage(c, { adminNav, adminTabs, flashBlock, csrf, flash, demoAdm
       <button class="btn btn--primary" type="submit">Kaydet</button>
       <p class="muted">Değişiklik yalnızca bundan sonra gönderilecek sözleşmeleri etkiler. Gönderilmiş ve onaylanmış sözleşmeler olduğu gibi kalır. Metni bir avukata kontrol ettirmenizi öneririz.</p>
     </form>
+
+    <section class="panel-section" id="imza">
+      <div class="panel-section__head"><h2 class="panel-section__title">Yetkili imzası</h2></div>
+      <p class="muted">Bir kez çizin; çiftlere gönderilen her sözleşmede ${co.sorumlu} adının altında görünür.</p>
+      ${sig ? h`<div class="ct-cursig"><img src="${sig}" alt="Kayıtlı imza"><form method="post" action="/admin/sozlesme/imza" data-confirm="Kayıtlı imza silinsin mi?">${csrfField(csrf)}<input type="hidden" name="sil" value="1"><button class="btn btn--text btn--sm btn--danger-text" type="submit">İmzayı sil</button></form></div>` : ''}
+      <form class="form ct-form" method="post" action="/admin/sozlesme/imza" data-sign-form>
+        ${csrfField(csrf)}
+        <div class="field">
+          <label for="s-pad">${sig ? 'Yeniden çiz' : 'İmzanızı çizin'}</label>
+          <div class="sigpad"><canvas id="s-pad" data-sigpad aria-label="İmza alanı"></canvas><span class="sigpad__hint" data-sig-hint>Buraya imzanızı çizin</span></div>
+          <div class="sigpad__tools"><button class="btn btn--text btn--sm" type="button" data-sig-clear>Temizle</button></div>
+          <input type="hidden" name="imza" data-sig-value>
+          <p class="field-error" data-sig-error hidden>Lütfen imzanızı çizin.</p>
+        </div>
+        <button class="btn btn--primary" type="submit">İmzayı kaydet</button>
+      </form>
+    </section>
   </div>`;
-  return panelLayout(c, { title: 'Sözleşme ve KVKK', csrf, nav: adminNav('contract', csrf, demoAdmin), home: '/admin', tabs: adminTabs('contract', demoAdmin), body: page, scripts: ['/js/dashboard.js?v=8'] });
+  return panelLayout(c, { title: 'Sözleşme ve KVKK', csrf, nav: adminNav('contract', csrf, demoAdmin), home: '/admin', tabs: adminTabs('contract', demoAdmin), body: page, scripts: ['/js/dashboard.js?v=8', '/js/contract.js?v=2'] });
 }
 
 module.exports = { contractDoc, signPage, adminSection, settingsPage, trTime };

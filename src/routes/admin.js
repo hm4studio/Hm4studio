@@ -460,6 +460,16 @@ function register(router) {
     setFlash(req, { message: form.reset === '1' ? 'Sözleşme metni ilk hâline döndü.' : 'Sözleşme kaydedildi.', type: 'success' });
     redirect(res, '/admin/sozlesme');
   });
+  router.post('/admin/sozlesme/imza', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    if (form.sil === '1') { db.setSetting('contract_signature', ''); setFlash(req, { message: 'Kayıtlı imza silindi.', type: 'success' }); return redirect(res, '/admin/sozlesme#imza'); }
+    const imza = String(form.imza || '');
+    if (!contract.validSignature(imza)) { setFlash(req, { message: 'Lütfen imzanızı çizin.', type: 'error' }); return redirect(res, '/admin/sozlesme#imza'); }
+    db.setSetting('contract_signature', imza);
+    setFlash(req, { message: 'İmzanız kaydedildi. Gönderilen sözleşmelerde görünecek.', type: 'success' });
+    redirect(res, '/admin/sozlesme#imza');
+  });
   const contractData = (couple) => contract.snapshotData(getContent(), db.getCoupleCard(couple.id), db.listEvents(couple.id), db.listPayments(couple.id));
   router.get('/admin/ciftler/:id/sozlesme', (req, res, { params, query }) => {
     if (!requireAdmin(req, res)) return;

@@ -114,6 +114,10 @@ function validTc(tc) {
 }
 
 const tl = (n) => `${Number(n || 0).toLocaleString('tr-TR')} TL`;
+// Stüdyo yetkilisinin imzası (Ayarlar › Sözleşme'de bir kez çizilir; gönderilen her sözleşmeye eklenir)
+const studioSignature = () => { try { return require('./db').getSetting('contract_signature') || ''; } catch { return ''; } };
+const validSignature = (s) => /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(s) && s.length >= 1500 && s.length <= 600000;
+
 const shortDate = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
 
 // Çifte gönderilen anın verileri (sözleşme metniyle birlikte saklanır, sonradan değişmez)
@@ -125,7 +129,7 @@ function snapshotData(c, card, events, payments) {
   return {
     title: s.title,
     template: s.template,
-    company: s.company,
+    company: { ...s.company, imza: studioSignature() },
     musteri: card.full_name || card.name,
     es: card.partner_name || '',
     telefon: card.phone ? String(card.phone).replace(/^90(\d{3})(\d{3})(\d{2})(\d{2})$/, '0$1 $2 $3 $4') : '',
@@ -163,7 +167,7 @@ function render(data, signer = {}) {
       <tr><td>Kalan ödeme tarihi</td><td class="num">${data.kalanTarih}</td></tr>
     </tbody></table>`,
     IMZA: () => h`<div class="ct-sign">
-      <div><p class="ct-k">HM4 Studio yetkilisi</p><p>${co.sorumlu}</p></div>
+      <div><p class="ct-k">${co.unvan || 'HM4 Studio'} yetkilisi</p><p>${co.sorumlu}</p>${(co.imza || studioSignature()) ? h`<img class="ct-sig" src="${co.imza || studioSignature()}" alt="Yetkili imzası">` : ''}</div>
       <div><p class="ct-k">Müşteri</p><p>${signer.ad || '……………………'}</p>${signer.imza ? h`<img class="ct-sig" src="${signer.imza}" alt="Müşteri imzası">` : h`<p class="muted">İmza bekleniyor</p>`}</div>
     </div>`,
   };
@@ -190,4 +194,4 @@ function fingerprint(snapshot, signer) {
   return crypto.createHash('sha256').update(JSON.stringify({ snapshot, ad: signer.ad, tc: signer.tc, adres: signer.adres, izin: signer.izin, tarih: signer.tarih, imza: signer.imza })).digest('hex');
 }
 
-module.exports = { DEFAULT_TEMPLATE, DEFAULT_COMPANY, settings, validTc, snapshotData, render, fingerprint };
+module.exports = { studioSignature, validSignature, DEFAULT_TEMPLATE, DEFAULT_COMPANY, settings, validTc, snapshotData, render, fingerprint };
