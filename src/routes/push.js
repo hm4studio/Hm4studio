@@ -24,7 +24,7 @@ function register(router) {
     const k = s.keys || {};
     if (!validEndpoint(s.endpoint) || !/^[A-Za-z0-9_-]{80,100}$/.test(k.p256dh || '') || !/^[A-Za-z0-9_-]{16,30}$/.test(k.auth || '')) throw new HttpError(400, 'Geçersiz abonelik');
     db.addPushSub({ endpoint: s.endpoint, kind, userId, p256dh: k.p256dh, auth: k.auth, device: String(req.headers['user-agent'] || '').slice(0, 200) });
-    if (body.test) await push.notify(kind, userId, { title: 'Bildirimler açık', body: kind === 'admin' ? 'Yeni talep ve onaylar artık telefonunuza gelecek.' : 'İşinizdeki gelişmeleri artık buradan haber vereceğiz.', tag: 'hos-geldin' });
+    if (body.test) await push.notify(kind, userId, { title: 'Bildirimler etkinleştirildi', body: kind === 'admin' ? 'Yeni talepler, sözleşme onayları ve albüm seçimleri bu cihaza iletilecek.' : 'Çalışmanızla ilgili gelişmeleri bundan sonra bu kanaldan ileteceğiz.', tag: 'hos-geldin' });
     json(res, { ok: true });
   });
 

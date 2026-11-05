@@ -38,7 +38,7 @@ function stageChanged(couple, stageIndex) {
   const stages = getContent().stages;
   const last = stageIndex >= stages.length - 1;
   const note = db.getCouple(couple.id)?.stage_note || '';
-  safePush(() => push.toCouple(couple.id, { title: last ? 'İşiniz tamamlandı' : 'İşinizde yeni aşama', body: `${stages[stageIndex] || ''}${note ? ` · ${note}` : ''}`, url: '/panel', tag: 'asama' }));
+  safePush(() => push.toCouple(couple.id, { title: last ? 'Çalışmanız tamamlandı' : 'Çalışmanızın durumu güncellendi', body: last ? `Tüm teslimatlarınız panelinizde hazır.${note ? ` ${note}` : ''}` : `Çalışmanız “${stages[stageIndex] || ''}” aşamasına geçti.${note ? ` ${note}` : ''}`, url: '/panel', tag: 'asama' }));
   if (!config.n8nWebhookUrl) return;
   const c = db.getCouple(couple.id);
   const payload = { event: 'asama_degisti', at: new Date().toISOString(), couple: coupleInfo(c), stage: stageIndex, stageName: stages[stageIndex] || '', note: c.stage_note || '' };
@@ -64,8 +64,8 @@ function photosUploaded(coupleId) {
     if (!db.wasNotified(pkey)) {
       db.markNotified(pkey);
       safePush(() => push.toCouple(c.id, edited
-        ? { title: 'Düzenlenmiş fotoğraflarınız hazır', body: `${edited} fotoğraf panelinizde. Dilediğiniz zaman indirebilirsiniz.`, url: '/panel/fotograflar?g=duzenli', tag: 'foto' }
-        : { title: 'Fotoğraflarınız yüklendi', body: 'Albümünüz için seçime başlayabilirsiniz.', url: '/panel/fotograflar', tag: 'foto' }));
+        ? { title: 'Fotoğraflarınız teslim edildi', body: `Düzenlenmiş ${edited} fotoğrafınız panelinizde. Dilediğiniz zaman görüntüleyip indirebilirsiniz.`, url: '/panel/fotograflar?g=duzenli', tag: 'foto' }
+        : { title: 'Fotoğraflarınız seçime hazır', body: 'Albümünüz için fotoğraf seçimine panelinizden başlayabilirsiniz.', url: '/panel/fotograflar', tag: 'foto' }));
     }
     if (!config.n8nWebhookUrl) return;
     const count = db.listPhotos(c.id).length;
@@ -103,14 +103,14 @@ function teamAssigned(eventId, memberIds) {
 
 function albumLocked(couple) {
   const c = db.getCouple(couple.id);
-  safePush(() => push.toAdmin({ title: 'Albüm seçimi tamamlandı', body: `${c.name}: ${db.favoriteCount(c.id)} fotoğraf seçti.`, url: `/admin/ciftler/${c.id}`, tag: `album-${c.id}` }));
+  safePush(() => push.toAdmin({ title: 'Albüm seçimi tamamlandı', body: `${c.name} albüm seçimini tamamladı (${db.favoriteCount(c.id)} fotoğraf).`, url: `/admin/ciftler/${c.id}`, tag: `album-${c.id}` }));
   if (!config.n8nWebhookUrl) return;
   post({ event: 'album_tamamlandi', at: new Date().toISOString(), couple: coupleInfo(c), selected: db.favoriteCount(c.id), limit: c.album_limit });
 }
 
 function planSaved(couple) {
   const c = db.getCouple(couple.id);
-  safePush(() => push.toAdmin({ title: 'Gün planı geldi', body: `${c.name} çekim günü planını doldurdu.`, url: `/admin/ciftler/${c.id}`, tag: `plan-${c.id}` }));
+  safePush(() => push.toAdmin({ title: 'Çekim günü planı iletildi', body: `${c.name} çekim günü planını gönderdi.`, url: `/admin/ciftler/${c.id}`, tag: `plan-${c.id}` }));
   if (!config.n8nWebhookUrl) return;
   post({ event: 'plan_kaydedildi', at: new Date().toISOString(), couple: coupleInfo(c) });
 }
@@ -128,21 +128,21 @@ function flushPhotoTimers() {
 
 // Çift sözleşmeyi onayladı (n8n üzerinden size bildirim gönderilebilir)
 function contractSigned(couple, signerName) {
-  safePush(() => push.toAdmin({ title: 'Sözleşme onaylandı', body: `${couple.name} · ${signerName}`, url: `/admin/ciftler/${couple.id}#sozlesme`, tag: `soz-${couple.id}` }));
+  safePush(() => push.toAdmin({ title: 'Sözleşme onaylandı', body: `${couple.name} sözleşmeyi onayladı (imzalayan: ${signerName}).`, url: `/admin/ciftler/${couple.id}#sozlesme`, tag: `soz-${couple.id}` }));
   if (!config.n8nWebhookUrl) return;
   post({ event: 'sozlesme_onaylandi', at: new Date().toISOString(), couple: coupleInfo(couple), signerName });
 }
 
 // Çifte: sözleşme gönderildi, video eklendi, video durumu değişti
 function contractSent(coupleId) {
-  safePush(() => push.toCouple(coupleId, { title: 'Sözleşmeniz hazır', body: 'Okuyup birkaç dakikada onaylayabilirsiniz.', url: '/panel/sozlesme', tag: 'sozlesme' }));
+  safePush(() => push.toCouple(coupleId, { title: 'Sözleşmeniz onayınıza sunuldu', body: 'Hizmet sözleşmenizi panelinizden inceleyip onaylayabilirsiniz.', url: '/panel/sozlesme', tag: 'sozlesme' }));
 }
 function videoAdded(coupleId, title) {
-  safePush(() => push.toCouple(coupleId, { title: 'Videonuz hazır', body: title ? `${title} panelinize eklendi.` : 'Yeni bir video panelinize eklendi.', url: '/panel/video', tag: 'video' }));
+  safePush(() => push.toCouple(coupleId, { title: 'Videonuz teslim edildi', body: title ? `“${title}” panelinize eklendi. İzleyebilir ve indirebilirsiniz.` : 'Yeni videonuz panelinize eklendi. İzleyebilir ve indirebilirsiniz.', url: '/panel/video', tag: 'video' }));
 }
 function videoStatusChanged(coupleId, status) {
   if (!status) return;
-  safePush(() => push.toCouple(coupleId, { title: 'Video durumu', body: status, url: '/panel/video', tag: 'video-durum' }));
+  safePush(() => push.toCouple(coupleId, { title: 'Video çalışmanız güncellendi', body: `Güncel durum: ${status}.`, url: '/panel/video', tag: 'video-durum' }));
 }
 
 module.exports = { contractSent, videoAdded, videoStatusChanged, contractSigned, teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };
