@@ -1,7 +1,7 @@
 # WhatsApp mesaj şablonları (Meta onayı için)
 
-Toplam **10 şablon** var. Müşteri size son 24 saat içinde yazmadıysa WhatsApp yalnızca **Meta'nın onayladığı şablonlarla**
-mesaj göndermenize izin verir. Bildirimler, hatırlatmalar ve ekip görev mesajları bu yüzden şablonla gider.
+Toplam **7 şablon** var: çifte 6, ekibe 1. Her çifte en fazla 5 mesaj gider (teslim mesajı iki şablondan biridir).
+Müşteri size son 24 saat içinde yazmadıysa WhatsApp yalnızca **Meta'nın onayladığı şablonlarla** mesaj göndermenize izin verir.
 
 Nerede oluşturulur: **Meta Business Suite › WhatsApp Manager › Mesaj şablonları › Şablon oluştur**
 
@@ -14,21 +14,35 @@ Her şablon için:
 Onay genelde birkaç dakika ile birkaç saat sürer. Şablon adlarını değiştirirseniz
 `content/whatsapp.json` içindeki `sablonlar` bölümünü de güncelleyin.
 
+| # | Ne zaman | Kime | Şablon |
+|---|---|---|---|
+| 1 | Sözleşme gönderilince (bir kez) | Çift | `hm4_sozlesme_onay` |
+| 2 | Çekimden 3 gün önce, gün planı doldurulmadıysa | Çift | `hm4_plan_hatirlatma` |
+| 3 | Seçim fotoğrafları ilk yüklendiğinde (bir kez) | Çift | `hm4_fotograflar_hazir` |
+| 4 | İş "Teslim" aşamasına geçince, video yoksa | Çift | `hm4_teslim_hazir` |
+| 4 | İş "Teslim" aşamasına geçince, video varsa | Çift | `hm4_teslim_video_hazir` |
+| 5 | Teslimden 7 gün sonra (bir kez) | Çift | `hm4_yorum_iste` |
+| 6 | Ekipten biri etkinliğe atanınca ve çekimden 3 gün önce | Ekip üyesi | `hm4_ekip_gorev` |
+
 ---
 
-### 1. `hm4_asama_guncellendi` — Kategori: **Yardımcı (Utility)**
-Ne zaman: Panelden çiftin iş aşamasını değiştirdiğinizde.
-
+### 1. `hm4_sozlesme_onay` — Kategori: **Yardımcı (Utility)**
 ```
-Merhaba {{1}}, çalışmanızın durumu güncellendi: {{2}}. Ayrıntıları HM4 Studio panelinizden görüntüleyebilirsiniz: {{3}}
+Merhaba {{1}}, hizmet sözleşmeniz onayınıza sunuldu. Sözleşmeyi panelinizden inceleyip onaylayabilirsiniz: {{2}}
 
 HM4 Studio
 ```
-Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` Düzenleme · `{{3}}` https://siteniz.com/uygulama
+Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` https://siteniz.com/uygulama
 
-### 2. `hm4_fotograflar_hazir` — Kategori: **Yardımcı (Utility)**
-Ne zaman: Çiftin galerisine **seçim için** fotoğraf yüklediğinizde (son yüklemeden 15 dk sonra, günde en fazla bir kez).
+### 2. `hm4_plan_hatirlatma` — Kategori: **Yardımcı (Utility)**
+```
+Merhaba {{1}}, çekiminize {{2}} gün kaldı. Çekim günü planınızı panelinizden tamamlayabilirsiniz: {{3}}
 
+HM4 Studio
+```
+Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` 3 · `{{3}}` https://siteniz.com/uygulama
+
+### 3. `hm4_fotograflar_hazir` — Kategori: **Yardımcı (Utility)**
 ```
 Merhaba {{1}}, fotoğraflarınız seçime hazır. Albümünüz için fotoğraf seçimine panelinizden başlayabilirsiniz: {{2}}
 
@@ -36,30 +50,24 @@ HM4 Studio
 ```
 Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` https://siteniz.com/uygulama
 
-### 3. `hm4_plan_hatirlatma` — Kategori: **Yardımcı (Utility)**
-Ne zaman: Çekime 7 ve 2 gün kala, çift gün planını henüz doldurmadıysa.
-
+### 4a. `hm4_teslim_hazir` — Kategori: **Yardımcı (Utility)**
 ```
-Merhaba {{1}}, çekiminize {{2}} gün kaldı. Hazırlıklarımızı eksiksiz yapabilmemiz için çekim günü planınızı (mekân, saat akışı, önemli kişiler) panelinizden iletmenizi rica ederiz: {{3}}
+Merhaba {{1}}, düzenlenmiş fotoğraflarınız teslim edildi. Panelinizden görüntüleyip indirebilirsiniz: {{2}}
 
 HM4 Studio
 ```
-Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` 7 · `{{3}}` https://siteniz.com/uygulama
+Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` https://siteniz.com/uygulama
 
-### 4. `hm4_album_hatirlatma` — Kategori: **Yardımcı (Utility)**
-Ne zaman: Fotoğraflar yüklendikten 5 gün sonra albüm seçimi hâlâ tamamlanmadıysa.
-
+### 4b. `hm4_teslim_video_hazir` — Kategori: **Yardımcı (Utility)**
 ```
-Merhaba {{1}}, albümünüz için {{2}} fotoğraf seçiminizi bekliyoruz. Seçiminizi panelinizden tamamlayabilirsiniz: {{3}}
+Merhaba {{1}}, düzenlenmiş fotoğraflarınız ve videonuz teslim edildi. Panelinizden izleyip indirebilirsiniz: {{2}}
 
 HM4 Studio
 ```
-Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` 60 · `{{3}}` https://siteniz.com/uygulama
+Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` https://siteniz.com/uygulama
 
 ### 5. `hm4_yorum_iste` — Kategori: **Pazarlama (Marketing)**
-Ne zaman: "Teslim edildi" aşamasından 7 gün sonra, bir kez. Meta yorum isteklerini genelde pazarlama sayar.
-`content/whatsapp.json` içindeki `yorumLinki` alanına Google işletme yorum bağlantınızı yazmazsanız gönderilmez.
-
+Meta yorum isteklerini genelde pazarlama sayar. `content/whatsapp.json` içindeki `yorumLinki` alanına Google işletme yorum bağlantınızı yazmazsanız gönderilmez.
 ```
 Merhaba {{1}}, bizi tercih ettiğiniz için teşekkür ederiz. Deneyiminizi birkaç cümleyle paylaşırsanız bizim için çok değerli olur: {{2}}
 
@@ -68,11 +76,9 @@ HM4 Studio
 Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` https://g.page/r/…/review
 
 ### 6. `hm4_ekip_gorev` — Kategori: **Yardımcı (Utility)**
-Ne zaman: Randevu oluştururken veya düzenlerken bir etkinliğe ekipten birini seçtiğinizde (o kişiye, bir kez).
-Ekip telefonları **Admin › Ekip** sayfasından girilir.
-
+Hem görev verildiğinde hem çekimden 3 gün önce hatırlatma olarak aynı metin gider. Ekip telefonları **Admin › Ekip** sayfasından girilir.
 ```
-Merhaba {{1}}, yeni görevlendirme: {{2}} · {{3}}
+Merhaba {{1}}, çekim görevi: {{2}} · {{3}}
 Tarih: {{4}} {{5}}
 Yer: {{6}}
 Not: {{7}}
@@ -83,46 +89,6 @@ HM4 Studio
 
 WhatsApp API kurulmadan önce de kişi kartındaki etkinliğin altında, ekipteki kişinin yanında çıkan
 WhatsApp simgesine dokunarak aynı mesajı elle gönderebilirsiniz.
-
-### 7. `hm4_teslim_hazir` — Kategori: **Yardımcı (Utility)**
-Ne zaman: **Düzenlenmiş / renkli** fotoğrafları yüklediğinizde (son yüklemeden 15 dk sonra).
-
-```
-Merhaba {{1}}, düzenlenmiş {{2}} fotoğrafınız teslim edildi. Panelinizden görüntüleyip indirebilirsiniz: {{3}}
-
-HM4 Studio
-```
-Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` 350 · `{{3}}` https://siteniz.com/uygulama
-
-### 8. `hm4_video_hazir` — Kategori: **Yardımcı (Utility)**
-Ne zaman: Çiftin sayfasına video yüklediğinizde veya video bağlantısı eklediğinizde (günde en fazla bir kez).
-
-```
-Merhaba {{1}}, "{{2}}" panelinize eklendi. İzleyebilir ve indirebilirsiniz: {{3}}
-
-HM4 Studio
-```
-Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` Düğün klibi · `{{3}}` https://siteniz.com/uygulama
-
-### 9. `hm4_sozlesme_onay` — Kategori: **Yardımcı (Utility)**
-Ne zaman: Sözleşmeyi çifte gönderdiğinizde; 3 gün içinde onaylanmazsa bir kez daha.
-
-```
-Merhaba {{1}}, hizmet sözleşmeniz onayınıza sunuldu. Sözleşmeyi panelinizden inceleyip onaylayabilirsiniz: {{2}}
-
-HM4 Studio
-```
-Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` https://siteniz.com/uygulama
-
-### 10. `hm4_odeme_hatirlatma` — Kategori: **Yardımcı (Utility)**
-Ne zaman: Çekime 3 gün kala, kalan bakiye varsa (bir kez).
-
-```
-Merhaba {{1}}, kalan ödemeniz {{2}} olup {{3}} tarihli çekim günü tahsil edilecektir. Sorularınız için bu numaradan bize ulaşabilirsiniz.
-
-HM4 Studio
-```
-Örnekler: `{{1}}` Ayşe & Mehmet · `{{2}}` 15.000 TL · `{{3}}` 17 Temmuz Cumartesi
 
 ---
 
@@ -135,4 +101,4 @@ Metinleri `content/whatsapp.json › otomatikCevap` içinden istediğiniz gibi d
 - **mevcutCift:** Kayıtlı bir çift yazınca panel bağlantısı (12 saatte bir).
 - **talepAlindi:** WhatsApp'tan gelen kişi formu doldurunca teşekkür.
 
-Hatırlatma günlerini (`planHatirlatmaGunOnce`, `albumHatirlatmaGunSonra`, `yorumIstemeGunSonra`, `odemeHatirlatmaGunOnce`, `sozlesmeHatirlatmaGunSonra`) da aynı dosyadaki `kurallar` bölümünden değiştirebilirsiniz.
+Gün sayılarını (`hatirlatmaGunOnce`: çekimden kaç gün önce plan ve ekip hatırlatması, `yorumIstemeGunSonra`: teslimden kaç gün sonra yorum isteği) aynı dosyadaki `kurallar` bölümünden değiştirebilirsiniz.

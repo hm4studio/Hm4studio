@@ -4,7 +4,7 @@
 
 ```
  WhatsApp ──► Meta ──► n8n ──► Site (talep kaydı, otomatik cevap hazırlar) ──► n8n ──► WhatsApp
- Sitede olay (aşama, fotoğraf, video, sözleşme, talep, ekip görevi) ──► n8n ──► WhatsApp
+ Sitede olay (sözleşme, seçim fotoğrafları, teslim, talep, ekip görevi) ──► n8n ──► WhatsApp
  Her sabah 10:30: n8n ──► Site "bugün kime hatırlatma?" ──► WhatsApp ──► Site "gönderildi"
 ```
 
@@ -17,21 +17,19 @@
 
 ## Otomasyonlar
 
-| Ne zaman | Kime | Şablon |
+| Ne zaman | Kime | Mesaj |
 |---|---|---|
 | Biri işletme numarasına ilk kez yazınca | Yazan kişi | Serbest metin: karşılama + "Uygunluk sorun" formu; talep panele düşer |
 | Kayıtlı çift yazınca | Çift | Serbest metin: panel bağlantısı |
 | WhatsApp'tan gelen kişi formu doldurunca | Kişi | Serbest metin: "bilgileriniz alındı" |
-| İş aşaması değişince | Çift | `hm4_asama_guncellendi` |
-| Seçim fotoğrafları yüklenince (15 dk sonra, günde 1) | Çift | `hm4_fotograflar_hazir` |
-| Düzenlenmiş fotoğraflar yüklenince | Çift | `hm4_teslim_hazir` |
-| Video eklenince | Çift | `hm4_video_hazir` |
-| Sözleşme gönderilince; 3 gün onaylanmazsa bir kez daha | Çift | `hm4_sozlesme_onay` |
-| Çekime 7 ve 2 gün kala, gün planı yoksa | Çift | `hm4_plan_hatirlatma` |
-| Çekime 3 gün kala, kalan bakiye varsa | Çift | `hm4_odeme_hatirlatma` |
-| Fotoğraflardan 5 gün sonra albüm seçilmediyse | Çift | `hm4_album_hatirlatma` |
-| "Teslim edildi"den 7 gün sonra | Çift | `hm4_yorum_iste` |
-| Etkinliğe ekipten biri atanınca | Ekip üyesi | `hm4_ekip_gorev` |
+| Sözleşme gönderilince (bir kez) | Çift | `hm4_sozlesme_onay` |
+| Çekimden 3 gün önce, gün planı yoksa | Çift | `hm4_plan_hatirlatma` |
+| Seçim fotoğrafları ilk yüklendiğinde (bir kez) | Çift | `hm4_fotograflar_hazir` |
+| İş "Teslim" aşamasına geçince (video varsa ikinci şablon) | Çift | `hm4_teslim_hazir` / `hm4_teslim_video_hazir` |
+| Teslimden 7 gün sonra | Çift | `hm4_yorum_iste` |
+| Ekipten biri atanınca ve çekimden 3 gün önce | Ekip üyesi | `hm4_ekip_gorev` |
+
+Aşama değişikliği, video ekleme gibi diğer gelişmeler WhatsApp'tan değil, yalnızca telefon bildirimiyle (uygulama) haber verilir.
 
 Gün sayıları `content/whatsapp.json › kurallar` bölümünden değiştirilebilir.
 
@@ -62,7 +60,7 @@ Yeniden çalıştırmak güvenlidir.
    **Varlık ata** (uygulama + WhatsApp hesabı) › **Anahtar oluştur**.
    İzinler: `whatsapp_business_messaging`, `whatsapp_business_management`.
 5. **Ödeme yöntemi** ekleyin (şablon mesajları ücretlidir; müşteri yazdıktan sonraki 24 saatte verilen cevaplar ücretsizdir).
-6. `n8n/SABLONLAR.md`'deki **10 şablonu** oluşturup onaya gönderin.
+6. `n8n/SABLONLAR.md`'deki **7 şablonu** oluşturup onaya gönderin.
 
 ### 3 · WhatsApp'ı bağlayın
 
@@ -77,7 +75,7 @@ developers.facebook.com › uygulamanız › WhatsApp › **Yapılandırma** ›
 ### 4 · Deneyin
 
 1. Kendi telefonunuzdan işletme numarasına "Merhaba" yazın: karşılama mesajı gelmeli, **Talepler**'de görünmelisiniz.
-2. Bir çiftin aşamasını değiştirin (telefonu kayıtlı olsun): "durumu güncellendi" mesajı gelmeli.
+2. Kendi numaranızla bir deneme çifti oluşturup sözleşme gönderin: "sözleşmeniz onayınıza sunuldu" mesajı gelmeli.
 
 Mesaj gelmezse n8n › **Executions** ekranında kırmızı adımı açın; Meta'nın hata mesajı orada yazar.
 En sık nedenler: şablon henüz onaylanmamış, anahtar yanlış, numara doğrulanmamış.

@@ -1,35 +1,73 @@
 {
-  "_aciklama": "WhatsApp mesaj metinleri. 'otomatikCevap' metinleri serbesttir (müşteri yazdıktan sonraki 24 saatte gönderilir). 'sablonlar' Meta'da onaylatacağınız şablonların ADI ve değişken sırasıdır; metinleri Meta panelinde aynen girersiniz (n8n/SABLONLAR.md). {ad}, {link} gibi alanlar otomatik doldurulur.",
-
+  "_aciklama": "WhatsApp mesaj metinleri. 'otomatikCevap' metinleri serbesttir (müşteri yazdıktan sonraki 24 saatte gönderilir). 'sablonlar' Meta'da onaylatacağınız 7 şablonun ADI ve değişken sırasıdır; metinleri Meta panelinde aynen girersiniz (n8n/SABLONLAR.md). {ad}, {link} gibi alanlar otomatik doldurulur.",
   "dil": "tr",
   "yorumLinki": "[Google işletme yorum bağlantınız]",
-
   "otomatikCevap": {
     "yeniKisi": "Merhaba {ad}, HM4 Studio'ya yazdığınız için teşekkürler! 🤍\nTarihinizin uygunluğunu kontrol edebilmemiz için birkaç kısa bilgiyi buradan iletir misiniz? (1 dakika sürer)\n{link}\n\nEkibimiz en kısa sürede size dönecek.",
     "mevcutCift": "Merhaba {ad} 🤍 Mesajınızı aldık, ekibimiz en kısa sürede dönecek. Bu arada işinizin durumunu ve fotoğraflarınızı panelinizden görebilirsiniz: {link}",
-    "ekipGorev": "Merhaba {ad}, yeni görev: {etkinlik} · {cift}\n{tarih} {saat}\n{yer}\n{not}\n\nHM4 Studio",
+    "ekipGorev": "Merhaba {ad}, çekim görevi: {etkinlik} · {cift}\n{tarih} {saat}\n{yer}\n{not}\n\nHM4 Studio",
     "talepAlindi": "Bilgileriniz bize ulaştı, teşekkürler {ad}! Uygunluğu kontrol edip size buradan yazacağız."
   },
-
   "sablonlar": {
-    "asama": { "ad": "hm4_asama_guncellendi", "degiskenler": ["ad", "asama", "link"] },
-    "fotograflar": { "ad": "hm4_fotograflar_hazir", "degiskenler": ["ad", "link"] },
-    "plan": { "ad": "hm4_plan_hatirlatma", "degiskenler": ["ad", "gun", "link"] },
-    "album": { "ad": "hm4_album_hatirlatma", "degiskenler": ["ad", "kare", "link"] },
-    "yorum": { "ad": "hm4_yorum_iste", "degiskenler": ["ad", "link"] },
-    "gorev": { "ad": "hm4_ekip_gorev", "degiskenler": ["ad", "etkinlik", "cift", "tarih", "saat", "yer", "not"] },
-    "teslim": { "ad": "hm4_teslim_hazir", "degiskenler": ["ad", "adet", "link"] },
-    "video": { "ad": "hm4_video_hazir", "degiskenler": ["ad", "video", "link"] },
-    "sozlesme": { "ad": "hm4_sozlesme_onay", "degiskenler": ["ad", "link"] },
-    "odeme": { "ad": "hm4_odeme_hatirlatma", "degiskenler": ["ad", "tutar", "tarih"] }
+    "sozlesme": {
+      "ad": "hm4_sozlesme_onay",
+      "degiskenler": [
+        "ad",
+        "link"
+      ]
+    },
+    "plan": {
+      "ad": "hm4_plan_hatirlatma",
+      "degiskenler": [
+        "ad",
+        "gun",
+        "link"
+      ]
+    },
+    "fotograflar": {
+      "ad": "hm4_fotograflar_hazir",
+      "degiskenler": [
+        "ad",
+        "link"
+      ]
+    },
+    "teslim": {
+      "ad": "hm4_teslim_hazir",
+      "degiskenler": [
+        "ad",
+        "link"
+      ]
+    },
+    "teslimVideo": {
+      "ad": "hm4_teslim_video_hazir",
+      "degiskenler": [
+        "ad",
+        "link"
+      ]
+    },
+    "yorum": {
+      "ad": "hm4_yorum_iste",
+      "degiskenler": [
+        "ad",
+        "link"
+      ]
+    },
+    "gorev": {
+      "ad": "hm4_ekip_gorev",
+      "degiskenler": [
+        "ad",
+        "etkinlik",
+        "cift",
+        "tarih",
+        "saat",
+        "yer",
+        "not"
+      ]
+    }
   },
-
   "kurallar": {
-    "planHatirlatmaGunOnce": [7, 2],
-    "albumHatirlatmaGunSonra": 5,
+    "hatirlatmaGunOnce": 3,
     "yorumIstemeGunSonra": 7,
-    "fotografBildirimiBekleme": 15,
-    "odemeHatirlatmaGunOnce": 3,
-    "sozlesmeHatirlatmaGunSonra": 3
+    "fotografBildirimiBekleme": 15
   }
 }

@@ -42,9 +42,11 @@ function stageChanged(couple, stageIndex) {
   if (!config.n8nWebhookUrl) return;
   const c = db.getCouple(couple.id);
   const payload = { event: 'asama_degisti', at: new Date().toISOString(), couple: coupleInfo(c), stage: stageIndex, stageName: stages[stageIndex] || '', note: c.stage_note || '' };
-  if (canMessage(c)) {
-    // Teslim edildiğinde de aynı şablon; yorum isteği hatırlatmalardan gider
-    payload.whatsapp = wa.templateMessage(c.phone, 'asama', { ad: c.name, asama: stages[stageIndex] || '', link: wa.panelLink() });
+  // WhatsApp yalnızca "Teslim" aşamasında, bir kez: video da varsa "fotoğraflarınız ve videonuz", yoksa "fotoğraflarınız"
+  const key = `teslim:${c.id}`;
+  if (last && canMessage(c) && !db.wasNotified(key)) {
+    db.markNotified(key);
+    payload.whatsapp = wa.templateMessage(c.phone, db.videoCount(c.id) > 0 ? 'teslimVideo' : 'teslim', { ad: c.name, link: wa.panelLink() });
   }
   post(payload);
 }
@@ -71,13 +73,11 @@ function photosUploaded(coupleId, kind = 'secim') {
     if (!config.n8nWebhookUrl) return;
     const count = db.listPhotos(c.id).length;
     const payload = { event: 'fotograflar_yuklendi', at: new Date().toISOString(), couple: coupleInfo(c), photoCount: count, kind };
-    // Aynı gün içinde aynı türde ikinci bir "fotoğraflarınız hazır" mesajı gitmesin
-    const key = `fotograflar:${c.id}:${kind}:${new Date().toISOString().slice(0, 10)}`;
-    if (canMessage(c) && !db.wasNotified(key)) {
-      payload.whatsapp = edited
-        ? wa.templateMessage(c.phone, 'teslim', { ad: c.name, adet: edited, link: wa.panelLink() })
-        : wa.templateMessage(c.phone, 'fotograflar', { ad: c.name, link: wa.panelLink() });
-      if (!edited) db.markAlbumInfoSent(c.id);
+    // WhatsApp: yalnızca seçim fotoğrafları için ve bir kez. Düzenlenmiş fotoğraflar "Teslim" mesajıyla duyurulur.
+    const key = `fotograflar:${c.id}`;
+    if (kind === 'secim' && canMessage(c) && !db.wasNotified(key)) {
+      payload.whatsapp = wa.templateMessage(c.phone, 'fotograflar', { ad: c.name, link: wa.panelLink() });
+      db.markAlbumInfoSent(c.id);
       db.markNotified(key);
     }
     post(payload);
@@ -136,7 +136,7 @@ function contractSigned(couple, signerName) {
   post({ event: 'sozlesme_onaylandi', at: new Date().toISOString(), couple: coupleInfo(couple), signerName });
 }
 
-// Çifte: sözleşme gönderildi, video eklendi, video durumu değişti
+// Çifte: sözleşme gönderildi (WhatsApp + bildirim); video eklendi ve video durumu değişti (yalnızca telefon bildirimi)
 function contractSent(coupleId, contractId) {
   const c = db.getCouple(coupleId);
   const key = `sozlesme:${coupleId}:${contractId}`;
@@ -147,12 +147,6 @@ function contractSent(coupleId, contractId) {
   safePush(() => push.toCouple(coupleId, { title: 'Sözleşmeniz onayınıza sunuldu', body: 'Hizmet sözleşmenizi panelinizden inceleyip onaylayabilirsiniz.', url: '/panel/sozlesme', tag: 'sozlesme' }));
 }
 function videoAdded(coupleId, title) {
-  const c = db.getCouple(coupleId);
-  const key = `video:${coupleId}:${new Date().toISOString().slice(0, 10)}`;
-  if (config.n8nWebhookUrl && canMessage(c) && !db.wasNotified(key)) {
-    db.markNotified(key);
-    post({ event: 'video_teslim', at: new Date().toISOString(), couple: coupleInfo(c), whatsapp: wa.templateMessage(c.phone, 'video', { ad: c.name, video: title || 'Videonuz', link: wa.panelLink() }) });
-  }
   safePush(() => push.toCouple(coupleId, { title: 'Videonuz teslim edildi', body: title ? `“${title}” panelinize eklendi. İzleyebilir ve indirebilirsiniz.` : 'Yeni videonuz panelinize eklendi. İzleyebilir ve indirebilirsiniz.', url: '/panel/video', tag: 'video' }));
 }
 function videoStatusChanged(coupleId, status) {

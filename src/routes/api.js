@@ -7,7 +7,7 @@ const db = require('../db');
 const wa = require('../whatsapp');
 const events = require('../events');
 const { getContent, getWhatsapp } = require('../content');
-const { today, daysBetween } = require('../jobs');
+const { today, daysBetween, addDays } = require('../jobs');
 const { json, readJson, readBody, HttpError } = require('../http');
 
 function requireKey(req) {
@@ -42,12 +42,13 @@ function hoursAgoSql(h) {
   return new Date(Date.now() - h * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19);
 }
 
-// Bugün gönderilmesi gereken hatırlatmaları hesaplar (gönderilmiş olanları atlar)
+// Bugün gönderilmesi gereken hatırlatmaları hesaplar (gönderilmiş olanları atlar).
+// Yalnızca üç tür var: çekimden önce plan hatırlatması (çifte), aynı gün ekibe görev hatırlatması, teslimden sonra yorum isteği.
 function dueReminders() {
   const rules = getWhatsapp().kurallar || {};
-  const stages = getContent().stages;
-  const last = stages.length - 1;
+  const last = getContent().stages.length - 1;
   const t = today();
+  const before = Number(rules.hatirlatmaGunOnce) || 3;
   const items = [];
   const reviewLink = getWhatsapp().yorumLinki || '';
 
@@ -55,59 +56,31 @@ function dueReminders() {
     if (!events.canMessage(c)) continue;
     const who = { id: c.id, name: c.name, phone: c.phone };
 
-    const shoot = c.next_date; // sıradaki etkinlik (bir çiftin birden çok tarihi olabilir)
-    // 0) Çekimden birkaç gün önce kalan ödeme hatırlatması (diğer hatırlatmalardan bağımsız; aynı gün plan hatırlatmasıyla birlikte gidebilir)
-    const due = Math.max((c.total || 0) - (c.paid || 0), 0);
-    if (shoot && due > 0) {
-      const leftDays = daysBetween(t, shoot);
-      const n = rules.odemeHatirlatmaGunOnce ?? 3;
-      const key = `odeme:${c.id}:${shoot}`;
-      if (leftDays > 0 && leftDays <= n && !db.wasNotified(key)) {
-        const tarih = new Date(`${shoot}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
-        items.push({ type: 'odeme', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'odeme', { ad: c.name, tutar: `${due.toLocaleString('tr-TR')} TL`, tarih }) });
-      }
-    }
-
-    // 1) Çekimden önce plan formu hatırlatması (plan henüz kaydedilmediyse)
+    // 1) Çekimden birkaç gün önce, gün planı doldurulmadıysa (her çekim tarihi için bir kez)
+    const shoot = c.next_date;
     const planSaved = (() => { try { return Boolean(JSON.parse(c.plan_json || '{}').saved); } catch { return false; } })();
-    if (shoot && !planSaved) {
-      const left = daysBetween(t, shoot);
-      const offsets = [...(rules.planHatirlatmaGunOnce || [7, 2])].sort((a, b) => b - a);
-      const applicable = offsets.filter((n) => left > 0 && left <= n);
-      const keys = applicable.map((n) => `plan:${c.id}:${n}:${shoot}`);
-      if (applicable.length && keys.some((k) => !db.wasNotified(k))) {
-        items.push({ type: 'plan', keys, couple: who, whatsapp: wa.templateMessage(c.phone, 'plan', { ad: c.name, gun: left, link: wa.panelLink() }) });
-        continue;
-      }
+    const left = shoot ? daysBetween(t, shoot) : -1;
+    if (shoot && !planSaved && left > 0 && left <= before) {
+      const key = `plan:${c.id}:${shoot}`;
+      if (!db.wasNotified(key)) items.push({ type: 'plan', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'plan', { ad: c.name, gun: left, link: wa.panelLink() }) });
     }
 
-    // 2) Gönderilen sözleşme birkaç gündür onaylanmadıysa bir kez hatırlat
-    const k = db.activeContract(c.id);
-    if (k && !k.signed_at && daysBetween(k.sent_at.slice(0, 10), t) >= (rules.sozlesmeHatirlatmaGunSonra ?? 3)) {
-      const key = `sozhat:${c.id}:${k.id}`;
-      if (!db.wasNotified(key)) {
-        items.push({ type: 'sozlesme', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'sozlesme', { ad: c.name, link: wa.panelLink() }) });
-        continue;
-      }
-    }
-
-    // 3) Fotoğraflar yüklendikten birkaç gün sonra albüm seçimi hatırlatması
-    const lastUpload = db.lastUploadDay(c.id);
-    if (lastUpload && !c.album_locked && c.stage < last && daysBetween(lastUpload, t) >= (rules.albumHatirlatmaGunSonra ?? 5)) {
-      const key = `album:${c.id}:${lastUpload}`;
-      if (!db.wasNotified(key)) {
-        items.push({ type: 'album', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'album', { ad: c.name, kare: c.album_limit, link: wa.panelLink() }) });
-        continue;
-      }
-    }
-
-    // 4) Teslimden bir süre sonra yorum isteme (yorum bağlantısı girildiyse)
+    // 2) "Teslim" aşamasından bir süre sonra yorum isteği (yorum bağlantısı girildiyse, bir kez)
     if (c.stage >= last && c.stage_changed_at && reviewLink && !reviewLink.startsWith('[')
       && daysBetween(c.stage_changed_at, t) >= (rules.yorumIstemeGunSonra ?? 7)) {
       const key = `yorum:${c.id}`;
-      if (!db.wasNotified(key)) {
-        items.push({ type: 'yorum', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'yorum', { ad: c.name, link: reviewLink }) });
-      }
+      if (!db.wasNotified(key)) items.push({ type: 'yorum', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'yorum', { ad: c.name, link: reviewLink }) });
+    }
+  }
+
+  // 3) Ekip: çekimden aynı sayıda gün önce görevli kişilere hatırlatma (görev mesajı son 2 günde gittiyse atlanır)
+  const recent = new Date(Date.now() - 48 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+  for (const ev of db.eventsBetween(addDays(t, 1), addDays(t, before))) {
+    for (const m of db.eventMembers(ev.id)) {
+      if (!m.phone || !m.active || !m.wa_optin) continue;
+      const key = `ekiphat:${ev.id}:${m.id}:${ev.event_date}`;
+      if (db.wasNotified(key) || db.notifiedSince(`gorev:${ev.id}:${m.id}:${ev.event_date}`, recent)) continue;
+      items.push({ type: 'ekip', keys: [key], member: { id: m.id, name: m.name, phone: m.phone }, couple: { id: ev.couple_id, name: ev.couple_name }, whatsapp: wa.templateMessage(m.phone, 'gorev', wa.taskVars(m, ev, ev.couple_name)) });
     }
   }
   return items;
@@ -178,7 +151,7 @@ function register(router) {
   router.post('/api/hatirlatmalar/gonderildi', async (req, res) => {
     requireKey(req);
     const { keys } = await readJson(req);
-    const valid = (Array.isArray(keys) ? keys : []).filter((k) => /^(plan|album|yorum|odeme|sozhat):\d+(:[\w-]+)*$/.test(String(k))).slice(0, 500);
+    const valid = (Array.isArray(keys) ? keys : []).filter((k) => /^(plan|yorum|ekiphat):\d+(:[\w-]+)*$/.test(String(k))).slice(0, 500);
     for (const k of valid) db.markNotified(k);
     json(res, { ok: true, marked: valid.length });
   });
