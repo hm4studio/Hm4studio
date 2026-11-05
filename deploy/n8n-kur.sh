@@ -40,8 +40,12 @@ done
 say "4/4 · Site ve n8n yeniden başlatılıyor"
 "${DC[@]}" up -d --force-recreate site >/dev/null
 "${DC[@]}" restart n8n >/dev/null
-sleep 5
-code="$("${DC[@]}" exec -T site node -e "fetch('http://n8n:5678/healthz').then(r=>console.log(r.status)).catch(()=>console.log(0))" 2>/dev/null | tail -1)"
+# n8n yeniden açılırken birkaç saniye cevap vermez; 60 saniyeye kadar bekle
+code=0
+for i in $(seq 1 20); do
+  code="$("${DC[@]}" exec -T site node -e "fetch('http://n8n:5678/healthz').then(r=>console.log(r.status)).catch(()=>console.log(0))" 2>/dev/null | tail -1)"
+  [ "$code" = "200" ] && break; sleep 3
+done
 [ "$code" = "200" ] && echo "Site n8n'e ulaşabiliyor." || echo "Uyarı: site n8n'e ulaşamadı (kod $code)."
 cat <<TXT
 
