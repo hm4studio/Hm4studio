@@ -116,7 +116,7 @@ async function handle(msg) {
   const text = String(msg.text || '').trim();
   if (!chatId || !text) return;
   if (!config.telegramChatIds.includes(String(chatId))) {
-    await tg('sendMessage', { chat_id: chatId, text: 'Bu sohbet yetkili değil.' }).catch(() => {});
+    await tg('sendMessage', { chat_id: chatId, text: `Bu sohbet yetkili değil. Sohbet no: ${chatId}` }).catch(() => {});
     return;
   }
   if (/^\/(start|yardim|help)\b/i.test(text)) {
