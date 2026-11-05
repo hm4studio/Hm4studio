@@ -36,21 +36,32 @@ say "2/3 · Sizin Telegram hesabınız"
 cd "$DIR/deploy"
 docker compose --env-file "$ENV_FILE" stop site >/dev/null 2>&1 || true
 curl -s "https://api.telegram.org/bot$TOKEN/deleteWebhook" >/dev/null
-OFFSET="$(curl -s "https://api.telegram.org/bot$TOKEN/getUpdates" | grep -o '"update_id":[0-9]*' | tail -1 | cut -d: -f2 || true)"
-OFFSET=$(( ${OFFSET:-0} + 1 ))
-echo "Telegram'da @$BOT botunu açın ve  /start  yazın (2 dakika bekliyorum)…"
-CHAT=""
-for i in $(seq 1 24); do
-  R="$(curl -s "https://api.telegram.org/bot$TOKEN/getUpdates?offset=$OFFSET&timeout=5" || true)"
-  CHAT="$(printf '%s' "$R" | grep -o '"chat":{"id":-\?[0-9]*' | head -1 | grep -o -- '-\?[0-9]*$' || true)"
+echo "Telegram'da botunuzu açın:  https://t.me/$BOT"
+echo "ve  /start  yazın (son 15 dakikada yazdıysanız tekrar yazmanıza gerek yok). 3 dakika bekliyorum…"
+NOW="$(date +%s)"; CHAT=""
+for i in $(seq 1 36); do
+  R="$(curl -s --max-time 10 "https://api.telegram.org/bot$TOKEN/getUpdates?timeout=4" || true)"
+  # Son 15 dakikadaki en yeni özel mesajın sohbet numarası
+  CHAT="$(printf '%s' "$R" | python3 -c '
+import json,sys,time
+try: d=json.load(sys.stdin)
+except Exception: sys.exit()
+ids=[u["message"]["chat"]["id"] for u in d.get("result",[]) if "message" in u and u["message"]["chat"].get("type")=="private" and u["message"].get("date",0)>time.time()-900]
+print(ids[-1] if ids else "")' 2>/dev/null || true)"
   [ -n "$CHAT" ] && break
+  printf '.'
 done
+echo
 if [ -z "$CHAT" ]; then
-  docker compose --env-file "$ENV_FILE" start site >/dev/null
-  echo "Mesaj gelmedi. Betiği yeniden çalıştırıp botunuza /start yazın."; exit 1
+  echo "Bottan mesaj göremedim."
+  echo "Telegram'da @userinfobot'a herhangi bir şey yazarsanız size 'Id' numaranızı söyler."
+  read -r -p "O numarayı buraya yazın (boş bırakırsanız çıkılır): " CHAT </dev/tty
+  CHAT="$(printf '%s' "$CHAT" | tr -dc '0-9-')"
+  if [ -z "$CHAT" ]; then docker compose --env-file "$ENV_FILE" start site >/dev/null; echo "İptal edildi."; exit 1; fi
 fi
-NEXT="$(printf '%s' "$R" | grep -o '"update_id":[0-9]*' | tail -1 | cut -d: -f2)"
-curl -s "https://api.telegram.org/bot$TOKEN/getUpdates?offset=$((NEXT + 1))" >/dev/null
+# Okunan mesajları temizle (site eski /start'a cevap vermesin)
+LAST="$(printf '%s' "${R:-}" | grep -o '"update_id":[0-9]*' | tail -1 | cut -d: -f2 || true)"
+[ -n "$LAST" ] && curl -s "https://api.telegram.org/bot$TOKEN/getUpdates?offset=$((LAST + 1))" >/dev/null
 echo "Hesabınız eşleşti (sohbet no: $CHAT)."
 
 say "3/3 · Kaydediliyor ve site yeniden başlatılıyor"
