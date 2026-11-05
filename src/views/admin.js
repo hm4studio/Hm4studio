@@ -502,8 +502,13 @@ function appointmentSummary(c, k, events, payments, csrf) {
           </li>`)}</ol>` : h`<p class="muted">Etkinlik girilmedi.</p>`}
       </div>
     </div>
-  </section>
+  </section>`;
+}
 
+function paymentsSection(c, k, payments, csrf) {
+  const pay = payment(k);
+  const base = `/admin/ciftler/${k.id}`;
+  return h`
   <section class="panel-section" id="odemeler" aria-labelledby="pay-title">
     <div class="panel-section__head">
       <h2 class="panel-section__title" id="pay-title">Ödemeler</h2>
@@ -537,7 +542,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=23">
+<link rel="stylesheet" href="/css/style.css?v=24">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -658,15 +663,32 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     </div>
     ${flashBlock(f)}
 
-    ${appointmentSummary(c, card, evs, payments, csrf)}
+    ${(() => {
+      const pay = payment(card);
+      const ctState = !ct ? 'gönderilmedi' : ct.signed_at ? 'onaylandı' : 'onay bekliyor';
+      const nd = card.next_date;
+      return h`<dl class="cd-facts">
+        <div><dt>Sıradaki çekim</dt><dd>${nd ? h`${shortDate(nd)} <span class="muted">${relDays(daysBetween(today(), nd))}</span>` : 'Yok'}</dd></div>
+        <div><dt>Aşama</dt><dd>${c.stages[couple.stage] || '-'}${couple.video_status ? h` <span class="muted">· Video: ${couple.video_status.toLocaleLowerCase('tr-TR')}</span>` : ''}</dd></div>
+        <div><dt>Kalan ödeme</dt><dd class="${pay[2] ? 'is-due' : ''}">${card.total ? (pay[2] ? tl(pay[2]) : 'Ödendi') : 'Tutar yok'}</dd></div>
+        <div><dt>Sözleşme</dt><dd class="${ct && !ct.signed_at ? 'is-due' : ''}">${ctState}</dd></div>
+        <div><dt>Albüm</dt><dd>${totalCount ? h`${favCount}/${couple.album_limit} seçildi${couple.album_locked ? ' · tamam' : ''}` : 'Fotoğraf yok'}</dd></div>
+      </dl>`;
+    })()}
 
-    ${require('./contract').adminSection({ coupleId: couple.id, k: ct, csrf, phone: couple.phone, loginUrl, coupleName: couple.name })}
+    <nav class="cd-tabs" data-cd-tabs aria-label="Çift sayfası bölümleri" hidden>
+      ${[['ozet', 'Özet'], ['odeme', 'Ödeme ve sözleşme'], ['foto', `Fotoğraflar${totalCount + edited.length ? ` ${totalCount + edited.length}` : ''}`], ['video', `Video${videos.length ? ` ${videos.length}` : ''}`], ['plan', 'Gün planı'], ['ayar', 'Giriş ve dosyalar']]
+        .map(([k, l]) => h`<a href="#${k}" data-tab="${k}">${l}</a>`)}
+    </nav>
+
+    <div class="cd-pane" data-pane="ozet">
+    ${appointmentSummary(c, card, evs, payments, csrf)}
 
     ${statusBar(c.stages, couple.stage, couple.stage_note, 'İş durumu (çiftin gördüğü)', { status: couple.video_status, stages: c.appointments?.videoStages || [] })}
 
-    <div class="admin-grid admin-grid--2">
-      <section class="card" aria-labelledby="stage-title">
-        <h2 class="card__title" id="stage-title">İş aşamasını güncelle</h2>
+    <div>
+      <section class="panel-section cd-stage" aria-labelledby="stage-title">
+        <div class="panel-section__head"><h2 class="panel-section__title" id="stage-title">İş aşamasını güncelle</h2></div>
         <form class="form" method="post" action="${base}/asama">
           ${csrfField(csrf)}
           <div class="field">
@@ -690,18 +712,21 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
         </form>
       </section>
 
-      <section class="card" aria-labelledby="access-title">
-        <h2 class="card__title" id="access-title">Giriş</h2>
-        <p class="muted">Giriş adresi: <code>${loginUrl}</code></p>
-        <p class="muted">Erişim kodu: <code>${couple.access_code}</code></p>
-        <form method="post" action="${base}/sifre" data-confirm="Yeni şifre oluşturulsun mu? Eski şifre çalışmayı bırakır.">
-          ${csrfField(csrf)}
-          <button class="btn btn--outline" type="submit">Şifre yenile</button>
-        </form>
-      </section>
+
     </div>
 
+    </div>
+
+    <div class="cd-pane" data-pane="odeme">
+    ${paymentsSection(c, card, payments, csrf)}
+    ${require('./contract').adminSection({ coupleId: couple.id, k: ct, csrf, phone: couple.phone, loginUrl, coupleName: couple.name })}
+    </div>
+
+    <div class="cd-pane" data-pane="plan">
     ${planView(couple)}
+    </div>
+
+    <div class="cd-pane" data-pane="foto">
 
     <section class="panel-section" aria-labelledby="upload-title">
       <div class="panel-section__head">
@@ -764,6 +789,9 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
       ${edited.length ? h`<ul class="tiles" data-gallery>${edited.map((p) => photoTile(p, { canDelete: true, csrf, noFav: true, deleteAction: `${base}/fotograflar/${p.id}/sil` }))}</ul>` : h`<p class="sec-empty">Henüz düzenlenmiş fotoğraf yüklenmedi.</p>`}
     </section>
 
+    </div>
+
+    <div class="cd-pane" data-pane="video">
     <section class="panel-section" id="video" aria-labelledby="video-title">
       <div class="panel-section__head">
         <h2 class="panel-section__title" id="video-title">Video teslimi</h2>
@@ -799,7 +827,20 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
       </details>
     </section>
 
-    <section class="danger-zone" aria-labelledby="files-title">
+    </div>
+
+    <div class="cd-pane" data-pane="ayar">
+          <section class="panel-section" aria-labelledby="access-title">
+        <div class="panel-section__head"><h2 class="panel-section__title" id="access-title">Giriş bilgileri</h2></div>
+        <p class="muted">Giriş adresi: <code>${loginUrl}</code></p>
+        <p class="muted">Erişim kodu: <code>${couple.access_code}</code></p>
+        <form method="post" action="${base}/sifre" data-confirm="Yeni şifre oluşturulsun mu? Eski şifre çalışmayı bırakır.">
+          ${csrfField(csrf)}
+          <button class="btn btn--outline" type="submit">Şifre yenile</button>
+        </form>
+      </section>
+
+    <section class="danger-zone" id="dosyalar" aria-labelledby="files-title">
       <h2 class="card__title" id="files-title">Sunucudan dosyaları sil</h2>
       ${couple.archived_at ? h`<p class="muted">Dosyalar ${shortDate(couple.archived_at)} tarihinde temizlendi (${couple.archived_photos} fotoğraf). Seçim listesi hâlâ indirilebilir: <a href="${base}/secim.txt">Listeyi indir</a></p>` : ''}
       <p class="muted">Teslim bittiyse yer açmak için yalnızca fotoğraf ve video dosyalarını silin. Çift kartı, randevular, ödemeler ve albüm seçim listesi kalır.</p>
@@ -822,8 +863,9 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
         <button class="btn btn--danger" type="submit">${icon('trash')}Çifti sil</button>
       </form>
     </section>
+    </div>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=4', '/js/admin.js?v=3', '/js/video-upload.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=4', '/js/admin.js?v=3', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
 function calendar(c, { couples, csrf, demoAdmin }) {

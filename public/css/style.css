@@ -1633,3 +1633,58 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .aibot__chips[hidden] { display: none; }
 .ct-cursig { display: flex; align-items: center; gap: 16px; margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--rule, #e8e8e5); background: #fff; }
 .ct-cursig img { max-width: 220px; height: auto; }
+
+/* ── Bölümleri ton farkıyla ayır (yönetim ve çift panelleri) ── */
+.pui { --canvas: #f2f2ef; background: var(--canvas); }
+.pui.panel-body { background: var(--canvas); }
+.pui .panel-header { background: var(--paper); }
+@supports (backdrop-filter: blur(8px)) { .pui .tabbar { background: rgba(252, 252, 251, .9); } }
+.pui .panel-section, .pui .status, .pui .danger-zone {
+  background: var(--white); border: 1px solid var(--rule); padding: clamp(18px, 3vw, 28px); margin-top: 16px;
+}
+.pui .panel-section__head, .pui .status__head, .pui .card__title { border-bottom-color: var(--rule); }
+.pui .danger-zone { border-color: #f0d9d6; }
+.pui .danger-zone .card__title { color: var(--mark); }
+.pui .panel-section .panel-section { border: 0; padding: 0; margin-top: 24px; }
+
+/* ── Çift sayfası: özet şeridi ve sekmeler ── */
+.cd-facts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; margin: 18px 0 0; background: var(--rule, #e8e8e5); border: 1px solid var(--rule, #e8e8e5); }
+.cd-facts > div { background: var(--white, #fff); padding: 12px 16px; display: grid; gap: 2px; min-width: 0; }
+.cd-facts dt { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--pencil, #6e6e6b); }
+.cd-facts dd { margin: 0; font-size: .92rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.cd-facts dd.is-due { color: var(--mark, #cf2a1f); }
+.cd-facts .muted { font-weight: 400; font-size: .8rem; }
+.cd-tabs { position: sticky; top: 0; z-index: 30; display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; margin: 20px 0 0; padding: 6px 0 0; background: var(--canvas, #f2f2ef); border-bottom: 1px solid var(--rule-2, #d9d9d5); }
+.cd-tabs::-webkit-scrollbar { display: none; }
+.cd-tabs a { flex: none; padding: 10px 14px; font-size: .9rem; color: var(--pencil, #6e6e6b); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.cd-tabs a:hover { color: var(--graphite, #1a1a1a); }
+.cd-tabs a.is-on { color: var(--graphite, #1a1a1a); border-bottom-color: var(--graphite, #1a1a1a); font-weight: 500; }
+.cd-pane > :first-child { margin-top: 16px; }
+.cd-stage .form { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; align-items: start; }
+.cd-stage .form > .field:nth-of-type(3), .cd-stage .form > button { grid-column: 1 / -1; }
+.cd-stage .form > button { justify-self: start; }
+@media (max-width: 899px) { .cd-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cd-facts > div:last-child { grid-column: 1 / -1; } }
+@media (max-width: 599px) { .cd-stage .form { grid-template-columns: 1fr; } .cd-tabs a { padding: 10px 11px; font-size: .86rem; } }
+/* Panel ana sayfası: bloklar beyaz kutularda */
+.pui .prog, .pui .todo, .pui .cal, .pui .dash__side, .pui .sel, .pui .couples {
+  background: var(--white); border: 1px solid var(--rule); padding: clamp(16px, 2.4vw, 24px);
+}
+.pui .figures > * { background: var(--white); border: 1px solid var(--rule); padding: 14px 16px; }
+.pui .dash-top, .pui .dash { gap: 16px; }
+.pui .sel, .pui .couples { margin-top: 16px; }
+.pui .sec-head, .pui .prog__head-row { border-bottom-color: var(--rule); }
+/* Çift paneli: hızlı bağlantılar ve uyarılar da kutu içinde */
+.pui .cquick__item { background: var(--white); border: 1px solid var(--rule); padding: 16px 18px; }
+.pui .ct-callout { background: var(--white); }
+.pushbox [hidden] { display: none !important; }
+@media (max-width: 599px) {
+  .cd-facts > div { padding: 8px 12px; }
+  .cd-facts dt { font-size: .62rem; }
+  .cd-facts dd { font-size: .86rem; }
+  .cd-tabs { margin-top: 12px; }
+}
+.pui .figures { gap: 16px; margin-bottom: 16px; }
+.pui .dash-top { margin-bottom: 16px; }
+.pui .dash { margin: 0 0 16px; }
+.pui .sel { margin-bottom: 0; }
+@media (max-width: 599px) { .cd-facts .muted { display: none; } }
