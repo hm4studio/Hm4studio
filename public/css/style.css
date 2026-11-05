@@ -1688,3 +1688,50 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .pui .dash { margin: 0 0 16px; }
 .pui .sel { margin-bottom: 0; }
 @media (max-width: 599px) { .cd-facts .muted { display: none; } }
+
+/* ── Çift paneli sadeleştirme (Kasım 2026) ── */
+/* Durum: en üstte tek "sıradaki adım" kartı */
+.now { background: var(--white, #fff); border: 1px solid var(--rule, #e8e8e5); padding: 24px 22px; margin: 0 0 20px; }
+.now--todo { border-color: var(--graphite, #1a1a1a); }
+.now__eyebrow { margin: 0 0 6px; font-size: .82rem; color: var(--pencil, #6e6e6b); }
+.now__title { margin: 0 0 8px; font-family: var(--serif); font-weight: 500; font-size: clamp(1.7rem, 6vw, 2.3rem); line-height: 1.15; letter-spacing: -.005em; }
+.now__text { margin: 0; color: var(--pencil, #6e6e6b); line-height: 1.5; max-width: 52ch; }
+.now .btn { margin-top: 18px; gap: 8px; }
+.now .btn svg { width: 16px; height: 16px; }
+@media (max-width: 699px) { .now .btn { width: 100%; justify-content: center; } }
+.cout { display: flex; justify-content: center; margin: 32px 0 8px; }
+.cout .btn { color: var(--pencil, #6e6e6b); }
+/* Fotoğraflar: önce fotoğraflar; sayaç, "Seçimi tamamladım" ve indirme en altta */
+.gal-foot { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--rule, #e8e8e5); }
+.gal-foot .album-bar { border-bottom: 0; padding-bottom: 8px; margin-bottom: 4px; }
+.gal-foot .dl-row { margin-top: 4px; }
+.pui .panel-section__head .muted + .dl-row { margin-top: 12px; }
+/* Sabit seçim balonu: sayaç + sınır dolunca "Tamamla" */
+.selpill { gap: 10px; padding: 6px 6px 6px 16px; }
+.selpill__count { display: inline-flex; align-items: center; color: #fff; text-decoration: none; padding: 4px 0; }
+.selpill .inline-form[hidden] { display: none; }
+.selpill__done { border: 0; border-radius: 999px; background: #fff; color: var(--graphite, #1a1a1a); font: 600 .85rem/1 var(--gfont, inherit); padding: 9px 14px; cursor: pointer; }
+.selpill:not(:has(.inline-form:not([hidden]))) { padding-right: 18px; }
+@media (max-width: 699px) {
+  /* Asistan balonuyla çakışmasın: sola yaslı */
+  body:has(.aibot) .selpill { left: 16px; transform: none; max-width: calc(100% - 92px); }
+  .aibot__fab { width: 46px; height: 46px; }
+  body:has(.tabbar) .aibot__fab { bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+  body:has(.tabbar) .selpill { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+}
+/* Panel üst başlığındaki logo sitedekiyle aynı */
+.panel-header .brand .brand__name { font-family: var(--serif); font-weight: 500; letter-spacing: .32em; font-size: 1rem; }
+/* Panel: kişi kartı satırları sıkı, F V A S açıklaması, telefonda Çiftler takvimden önce */
+.appt-dl { align-content: start; }
+.crow-legend { margin: 14px 0 0; font-size: .8rem; color: var(--pencil, #6e6e6b); }
+.crow-legend b { font-weight: 600; color: var(--graphite, #1a1a1a); }
+@media (max-width: 699px) {
+  .dashboard { display: flex; flex-direction: column; }
+  .dashboard > .couples { order: 1; }
+  .dashboard > .sel { order: 2; margin-top: 16px; }
+  .dashboard > .dash { order: 3; margin-top: 16px; }
+  .dashboard .dash__side { display: none; }
+}
+.pushbox[hidden], .install[hidden] { display: none !important; }
+.pui .install { margin: 20px 0; }
+.pui .now__title { font-family: var(--serif); font-weight: 500; }

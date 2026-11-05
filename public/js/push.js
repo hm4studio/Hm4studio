@@ -27,7 +27,11 @@
     return reg.pushManager.getSubscription();
   }
 
+  // Çift panelinde sessiz mod: çalışmayacağı yerde (iPhone'da ana ekrana eklenmemişse, desteklenmiyorsa,
+  // izin engellenmişse) kutu hiç görünmez; çifte korkutucu bir uyarı gösterilmez.
+  const quiet = box.hasAttribute('data-push-quiet');
   async function render() {
+    if (quiet && (!supported || (isIOS && !standalone) || Notification.permission === 'denied')) { box.hidden = true; return; }
     if (!supported) {
       if (isIOS && !standalone) return show('Bildirim almak için önce bu sayfayı ana ekranınıza ekleyin (Paylaş › Ana Ekrana Ekle), sonra uygulamadan açın.', '', false);
       return show('Bu tarayıcı bildirimleri desteklemiyor.', '', false);

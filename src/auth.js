@@ -146,7 +146,26 @@ setInterval(() => {
   for (const [ip, rec] of attempts) if (now - rec.first > WINDOW) attempts.delete(ip);
 }, 60 * 60 * 1000).unref();
 
+// ── Tek dokunuşla giriş bağlantısı: /g/<id>-<imza>. İmza şifre özetine bağlıdır;
+// "Şifre yenile" ile eski bağlantı da geçersiz olur. ──
+function loginSig(id, passwordHash) {
+  return crypto.createHmac('sha256', config.sessionSecret).update(`giris:${id}:${passwordHash}`).digest('base64url').slice(0, 24);
+}
+function loginLink(id, passwordHash) {
+  return `${config.siteUrl}/g/${id}-${loginSig(id, passwordHash)}`;
+}
+function checkLoginToken(token) {
+  const m = /^(\d{1,9})-([A-Za-z0-9_-]{24})$/.exec(String(token || ''));
+  if (!m) return null;
+  const couple = db.getCouple(Number(m[1]));
+  if (!couple) return null;
+  const a = Buffer.from(loginSig(couple.id, couple.password_hash));
+  const b = Buffer.from(m[2]);
+  return a.length === b.length && crypto.timingSafeEqual(a, b) ? couple : null;
+}
+
 module.exports = {
+  loginLink, checkLoginToken,
   hashPassword, verifyPassword, DUMMY_HASH, randomToken, friendlyPassword, memorablePassword, normalizeCouplePassword,
   startSession, endSession, loadSession, csrfValid, parseCookies, isApp,
   isRateLimited, recordFailure, clearFailures,

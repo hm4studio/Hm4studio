@@ -97,6 +97,19 @@ function register(router) {
     redirect(res, '/panel');
   });
 
+  // Tek dokunuşla giriş (stüdyonun WhatsApp'tan gönderdiği bağlantı)
+  router.get('/g/:token', (req, res, { params }) => {
+    if (auth.isRateLimited(req)) return redirect(res, '/giris');
+    const couple = auth.checkLoginToken(params.token);
+    if (!couple) {
+      auth.recordFailure(req);
+      return html(res, panelViews.coupleLogin(getContent(), { error: 'Bu giriş bağlantısı artık geçerli değil. Erişim kodu ve şifrenizle girin ya da bizden yeni bağlantı isteyin.' }), 410);
+    }
+    auth.clearFailures(req);
+    auth.startSession(res, 'couple', couple.id);
+    redirect(res, '/panel');
+  });
+
   // ── Çıkış (çift ve admin ortak) ──
   router.post('/cikis', async (req, res) => {
     const form = await readForm(req);

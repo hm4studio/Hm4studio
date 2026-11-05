@@ -24,12 +24,13 @@
     const fill = album.querySelector('.album-bar__fill'); if (fill) fill.style.width = Math.min(100, Math.round(count / limit * 100)) + '%';
     const bar = album.querySelector('[role="progressbar"]'); if (bar) bar.setAttribute('aria-valuenow', count);
     const lock = album.querySelector('[data-album-lock]'); if (lock) lock.disabled = count === 0;
+    const done = document.querySelector('[data-selpill-done]'); if (done) done.hidden = count < limit;
   }
   // Galeri görünürken altta sabit seçim sayacı
   const pill = document.querySelector('[data-selpill]');
-  const gallery = document.querySelector('#fotograflar');
+  const gallery = document.querySelector('[data-gallery]');
   if (pill && gallery && 'IntersectionObserver' in window) {
-    new IntersectionObserver((entries) => { pill.hidden = !entries[0].isIntersecting; }, { rootMargin: '-35% 0px -35% 0px' }).observe(gallery);
+    new IntersectionObserver((entries) => { pill.hidden = !entries[0].isIntersecting; }, { rootMargin: '0px 0px -30% 0px' }).observe(gallery);
   }
   const onlyFavView = new URLSearchParams(location.search).get('g') === 'fav';
 

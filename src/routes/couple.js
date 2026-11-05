@@ -20,7 +20,15 @@ function register(router) {
     const c = db.getCouple(req.session.userId);
     if (!c) throw new HttpError(404, 'Bulunamadı');
     const k = db.activeContract(c.id);
-    return { ...c, contract_state: k ? (k.signed_at ? 'imzali' : 'bekliyor') : '' };
+    const evs = db.listEvents(c.id);
+    const dates = evs.map((e) => e.event_date).filter(Boolean);
+    return {
+      ...c,
+      contract_state: k ? (k.signed_at ? 'imzali' : 'bekliyor') : '',
+      // Menüde yalnızca işe yarayan sayfalar: plan çekimler bitene kadar, video yalnızca video işi varsa
+      show_plan: !dates.length || dates.some((d) => d >= today()),
+      show_video: Boolean(c.video_status) || db.videoCount(c.id) > 0 || evs.some((e) => /video|klip|film|reels/i.test(`${e.package || ''} ${e.package_detail || ''}`)),
+    };
   };
 
   // Yapay zekâ asistanı (sağ alttaki balon)
@@ -105,11 +113,13 @@ function register(router) {
     if (!requireCouple(req, res)) return;
     const couple = me(req);
     const c = getContent();
+    const sel = db.listPhotos(couple.id, 'secim');
     html(res, views.couplePanel(c, {
       couple,
       card: c.couplePanel?.showPayments ? db.getCoupleCard(couple.id) : null,
       events: db.listEvents(couple.id),
-      totalCount: db.listPhotos(couple.id, 'secim').length,
+      totalCount: sel.length,
+      favCount: sel.filter((p) => p.is_fav).length,
       editedCount: db.listPhotos(couple.id, 'duzenli').length,
       videoCount: db.videoCount(couple.id),
       csrf: req.session.csrf,

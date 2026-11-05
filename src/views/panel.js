@@ -199,12 +199,14 @@ const COUPLE_PAGES = [
   { key: 'plan', href: '/panel/plan', label: 'Plan', icon: 'pin' },
 ];
 
-// Sözleşme gönderildiyse menüde görünür (onay bekliyorsa Durum'dan sonra, onaylandıysa en sonda)
+// Menüde yalnızca o an işe yarayan sayfalar. Sözleşme onay bekliyorsa Durum'dan sonra, onaylandıysa en sonda.
+// Plan çekimler bitince, Video da video işi yoksa gizlenir (sayfalar adresle yine açılır).
 function pagesFor(couple) {
   const ct = { key: 'sozlesme', href: '/panel/sozlesme', label: 'Sözleşme', icon: 'check' };
-  if (couple.contract_state === 'bekliyor') return [COUPLE_PAGES[0], ct, ...COUPLE_PAGES.slice(1)];
-  if (couple.contract_state === 'imzali') return [...COUPLE_PAGES, ct];
-  return COUPLE_PAGES;
+  const base = COUPLE_PAGES.filter((p) => (p.key !== 'plan' || couple.show_plan !== false) && (p.key !== 'video' || couple.show_video !== false));
+  if (couple.contract_state === 'bekliyor') return [base[0], ct, ...base.slice(1)];
+  if (couple.contract_state === 'imzali') return [...base, ct];
+  return base;
 }
 
 // Sağ alttaki yapay zekâ asistanı
@@ -243,33 +245,39 @@ function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
     ${body}
   </div>
   ${config.openaiKey ? aiBot(c) : ''}`;
-  const tabs = [
-    ...pagesFor(couple).map((p) => ({ href: p.href, label: p.label, icon: p.icon, active: p.key === page })),
-    { form: '/cikis', csrf, label: 'Çıkış', icon: 'logout' },
-  ];
+  const tabs = pagesFor(couple).map((p) => ({ href: p.href, label: p.label, icon: p.icon, active: p.key === page }));
   const title = (pagesFor(couple).find((p) => p.key === page) || {}).label || 'Panelim';
   return panelLayout(c, { title, csrf, nav, body: content, scripts: config.openaiKey ? [...scripts, '/js/assistant.js?v=1'] : scripts, tabs, home: '/panel' });
 }
 
-// Durum: iş durumu, randevular, ödeme
-function couplePanel(c, { couple, card = null, events = [], totalCount = 0, editedCount = 0, videoCount = 0, csrf, flash: f }) {
+// Durum sayfasının en üstündeki "sıradaki adım" kartı: çiftin şu an yapması gereken tek şey
+function nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages }) {
+  const day = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+  const upcoming = events.filter((e) => e.event_date && e.event_date >= day).sort((x, y) => x.event_date.localeCompare(y.event_date))[0];
+  const limit = couple.album_limit || 60;
+  if (couple.contract_state === 'bekliyor') return { title: 'Sözleşmenizi onaylayın', text: 'Okuyup birkaç dakikada onaylayabilirsiniz.', href: '/panel/sozlesme', btn: 'Sözleşmeyi aç' };
+  if (upcoming && !parsePlan(couple).saved) return { title: 'Çekim günü planınızı doldurun', text: 'Saatleri ve adresleri yazın; ekibimiz hazırlığını bu plana göre yapar.', href: '/panel/plan', btn: 'Planı doldur' };
+  if (totalCount && !couple.album_locked) return { title: 'Albüm fotoğraflarınızı seçin', text: favCount ? `${favCount} / ${limit} kare seçtiniz. Bitirince “Seçimi tamamladım”a basın.` : `Albümünüz için ${limit} kare seçin: beğendiğiniz fotoğrafın kalbine dokunun.`, href: '/panel/fotograflar?g=secim', btn: favCount ? 'Seçime devam et' : 'Seçime başla' };
+  if (editedCount) return { title: 'Fotoğraflarınız teslim edildi', text: `${editedCount} düzenlenmiş fotoğrafınızı görüntüleyip indirebilirsiniz.`, href: '/panel/fotograflar?g=duzenli', btn: 'Fotoğraflara git' };
+  if (videoCount) return { title: 'Videonuz hazır', text: 'İzleyip indirebilirsiniz.', href: '/panel/video', btn: 'Videoyu aç' };
+  if (upcoming) {
+    const n = Math.round((new Date(`${upcoming.event_date}T12:00:00Z`) - new Date(`${day}T12:00:00Z`)) / 86400000);
+    return { title: n === 0 ? 'Çekiminiz bugün' : n === 1 ? 'Çekiminiz yarın' : `Çekiminize ${n} gün kaldı`, text: `${upcoming.event_type || 'Çekim'} · ${formatDate(upcoming.event_date)}${upcoming.start_time ? `, ${upcoming.start_time}` : ''}. Sizden şu an bir şey beklemiyoruz.` };
+  }
+  return { title: 'Her şey yolunda', text: `Çalışmanız “${stages?.[couple.stage] || '-'}” aşamasında. Hazır olduğunda size haber vereceğiz.` };
+}
+
+// Durum: sıradaki adım, iş durumu, randevular, ödeme; en altta bildirim ayarları ve çıkış
+function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favCount = 0, editedCount = 0, videoCount = 0, csrf, flash: f }) {
+  const step = nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages: c.stages });
+  const pushbox = h`<div class="pushbox" data-push data-push-quiet data-off-text="Fotoğraflarınız ve videonuz hazır olunca telefonunuza haber verelim." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>`;
   const body = h`
-    <section class="welcome">
-      <p class="eyebrow">Hoş geldiniz</p>
-      <h1 class="page-title">${couple.name}</h1>
-      ${couple.event_date ? h`<p class="muted">${formatDate(couple.event_date)}</p>` : ''}
+    <section class="now${step.href ? ' now--todo' : ''}" aria-labelledby="now-title">
+      <p class="now__eyebrow">${step.href ? 'Sıradaki adım' : 'Durum'}</p>
+      <h1 class="now__title" id="now-title">${step.title}</h1>
+      <p class="now__text">${step.text}</p>
+      ${step.href ? h`<a class="btn btn--primary" href="${step.href}">${step.btn}${icon('right')}</a>` : ''}
     </section>
-
-    <div class="pushbox" data-push data-off-text="Fotoğraflarınız ve videonuz hazır olunca telefonunuza haber verelim." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>
-
-    ${couple.contract_state === 'bekliyor' ? h`<a class="ct-callout" href="/panel/sozlesme"><span><strong>Sözleşmeniz onayınızı bekliyor</strong><span>Okuyup birkaç dakikada onaylayabilirsiniz.</span></span>${icon('right')}</a>` : ''}
-
-    <div class="install" data-install hidden>
-      <img class="install__icon" src="/images/icon-192.png" alt="" width="48" height="48">
-      <div class="install__copy"><p class="install__title">HM4 Studio’yu telefonunuza ekleyin</p><p class="install__text" data-install-text></p></div>
-      <button type="button" class="btn btn--primary btn--sm" data-install-btn hidden>Ekle</button>
-      <button type="button" class="install__close" data-install-close aria-label="Kapat">${icon('close')}</button>
-    </div>
 
     <div id="durum">${statusBar(c.stages, couple.stage, couple.stage_note, 'İşinizin durumu', { status: couple.video_status, stages: c.appointments?.videoStages || [] })}</div>
 
@@ -282,7 +290,7 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, edit
     ${events.length ? h`<section class="panel-section" id="randevular" aria-labelledby="ev-title">
       <div class="panel-section__head appt-card__head">
         <h2 class="panel-section__title" id="ev-title">Randevularınız</h2>
-        <a class="btn btn--outline btn--sm" href="/panel/belge">${icon('download')}Randevu belgesi</a>
+        <a class="btn btn--outline btn--sm" href="/panel/belge">${icon('download')}Belge</a>
       </div>
       <ul class="jobs">${events.map((e) => {
         const dt = e.event_date ? new Date(`${e.event_date}T12:00:00`) : null;
@@ -307,16 +315,26 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, edit
       </section>`;
     })() : ''}
 
+    <div class="install" data-install hidden>
+      <img class="install__icon" src="/images/icon-192.png" alt="" width="48" height="48">
+      <div class="install__copy"><p class="install__title">HM4 Studio’yu telefonunuza ekleyin</p><p class="install__text" data-install-text></p></div>
+      <button type="button" class="btn btn--primary btn--sm" data-install-btn hidden>Ekle</button>
+      <button type="button" class="install__close" data-install-close aria-label="Kapat">${icon('close')}</button>
+    </div>
+
     ${couple.phone ? h`<section class="panel-section" id="izinler" aria-labelledby="wa-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="wa-title">WhatsApp bildirimleri</h2></div>
+      <div class="panel-section__head"><h2 class="panel-section__title" id="wa-title">Bildirimler</h2></div>
+      ${pushbox}
       <form class="form wa-pref" method="post" action="/panel/whatsapp">
         <input type="hidden" name="csrf" value="${csrf}">
         <label class="check"><input type="checkbox" name="waConsent" value="1"${couple.wa_optin ? raw(' checked') : ''}><span>${require('../kvkk').WA_CONSENT}</span></label>
-        <p class="muted">Kapalıyken fotoğraflarınız hazır olduğunda size mesaj gitmez; durumu buradan takip edersiniz. <a href="/kvkk">Aydınlatma metni</a></p>
+        <p class="muted">Kapalıyken fotoğraflarınız hazır olduğunda size WhatsApp mesajı gitmez; durumu buradan takip edersiniz. <a href="/kvkk">Aydınlatma metni</a></p>
         <button class="btn btn--outline btn--sm" type="submit">Kaydet</button>
       </form>
-    </section>` : ''}`;
-  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=4', '/js/push.js?v=1'] });
+    </section>` : pushbox}
+
+    <div class="cout">${logoutForm(csrf, 'Çıkış yap')}</div>`;
+  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=5', '/js/push.js?v=2'] });
 }
 
 // Fotoğraflar: galeri, albüm seçimi, indirme
@@ -341,15 +359,9 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
     <section class="panel-section cpage" id="fotograflar" aria-labelledby="gallery-title">
       <div class="panel-section__head">
         <h1 class="panel-section__title" id="gallery-title">${editedCount ? 'Seçim fotoğrafları' : 'Fotoğraflarınız'}</h1>
-        <p class="muted">Albümünüze girecek kareleri kalbe dokunarak seçin. Bitirince “Seçimi tamamladım”a basın.</p>
-        ${totalCount ? h`<div class="dl-row">
-          <a class="btn btn--outline btn--sm" href="/panel/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>
-          ${favCount ? h`<a class="btn btn--text btn--sm" href="/panel/indir?g=fav" download>${icon('download')}Seçimimi indir (${favCount})</a>` : ''}
-        </div>` : ''}
+        ${totalCount ? h`<p class="muted">${couple.album_locked ? 'Seçtiğiniz kareleri “Albüm seçimi” sekmesinde görebilirsiniz.' : `Albümünüz için ${couple.album_limit || 60} kare seçin: beğendiğiniz fotoğrafın üzerindeki kalbe dokunun.`}</p>` : ''}
       </div>
       ${sets}
-      ${totalCount ? albumBar(couple, favCount, { admin: false, csrf }) : ''}
-      ${totalCount && !couple.album_locked ? h`<a class="selpill" href="/panel/fotograflar?g=fav" data-selpill hidden><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 60} kare seçildi</a>` : ''}
       ${totalCount ? galleryTabs('/panel/fotograflar', view, totalCount, favCount) : ''}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
@@ -357,8 +369,22 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav'
           ? 'Henüz albüm için kare seçmediniz. “Tüm fotoğraflar” sekmesinden kalbe dokunarak ekleyebilirsiniz.'
           : couple.archived_at ? 'Fotoğraflarınız teslim edildi ve sunucumuzdan kaldırıldı. Yeniden ihtiyacınız olursa bize yazın.' : 'Fotoğraflarınız hazırlandığında burada görünecek.'}</p></div>`}
+      ${totalCount ? h`<div class="gal-foot">
+        ${albumBar(couple, favCount, { admin: false, csrf })}
+        <div class="dl-row">
+          <a class="btn btn--text btn--sm" href="/panel/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>
+          ${favCount ? h`<a class="btn btn--text btn--sm" href="/panel/indir?g=fav" download>${icon('download')}Seçimimi indir (${favCount})</a>` : ''}
+        </div>
+      </div>` : ''}
+      ${totalCount && !couple.album_locked ? h`<div class="selpill" data-selpill hidden>
+        <a class="selpill__count" href="/panel/fotograflar?g=fav"><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 60} seçildi</a>
+        <form method="post" action="/panel/album-tamamla" class="inline-form" data-selpill-done data-confirm="Seçiminiz HM4 Studio'ya gönderilsin mi? Sonrasında değişiklik için bize yazmanız gerekir."${favCount >= (couple.album_limit || 60) ? '' : raw(' hidden')}>
+          <input type="hidden" name="csrf" value="${csrf}">
+          <button class="selpill__done" type="submit">Tamamla</button>
+        </form>
+      </div>` : ''}
     </section>`;
-  return coupleShell(c, { couple, page: 'foto', csrf, flash: f, body, scripts: ['/js/panel.js?v=4'] });
+  return coupleShell(c, { couple, page: 'foto', csrf, flash: f, body, scripts: ['/js/panel.js?v=5'] });
 }
 
 // Video: klip, film, reels — izle ve indir
@@ -391,7 +417,7 @@ function coupleVideos(c, { couple, videos, csrf, flash: f }) {
 
 // Plan: çekim günü planı
 function couplePlan(c, { couple, csrf, flash: f }) {
-  return coupleShell(c, { couple, page: 'plan', csrf, flash: f, body: planSection(couple, csrf), scripts: ['/js/panel.js?v=4'] });
+  return coupleShell(c, { couple, page: 'plan', csrf, flash: f, body: planSection(couple, csrf), scripts: ['/js/panel.js?v=5'] });
 }
 
 module.exports = { coupleShell, couplePhotos, coupleVideos, couplePlan, coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };

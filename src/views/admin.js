@@ -39,7 +39,7 @@ const csrfField = (csrf) => h`<input type="hidden" name="csrf" value="${csrf}">`
 function flashBlock(f) {
   if (!f) return '';
   const cr = f.credentials;
-  const text = cr ? `Merhaba ${cr.name || ''}, HM4 Studio panelinize buradan girebilirsiniz:\n${cr.url}\n\nErişim kodu: ${cr.code}\nŞifre: ${cr.password}\n\nTelefonunuzun ana ekranına eklerseniz uygulama gibi açılır.` : '';
+  const text = cr ? `Merhaba ${cr.name || ''}, HM4 Studio panelinize bu bağlantıya dokunarak girebilirsiniz:\n${cr.link || cr.url}\n\nUygulamayı telefonunuzun ana ekranına eklerseniz ilk girişte bu bilgiler istenir:\nErişim kodu: ${cr.code}\nŞifre: ${cr.password}` : '';
   return h`
   ${flash(f.message, f.type)}
   ${cr ? h`
@@ -49,7 +49,7 @@ function flashBlock(f) {
       <div><span class="creds__label">Erişim kodu</span><span class="creds__value">${cr.code}</span></div>
       <div><span class="creds__label">Şifre</span><span class="creds__value">${cr.password}</span></div>
     </div>
-    <p class="creds__url">${cr.url}</p>
+    <p class="creds__url">${cr.link || cr.url}</p>
     <div class="creds__actions">
       ${cr.phone ? h`<a class="btn btn--primary btn--sm" href="https://wa.me/${cr.phone}?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan gönder</a>` : h`<a class="btn btn--primary btn--sm" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan gönder</a>`}
       <button type="button" class="btn btn--outline btn--sm" data-copy="${text}">Mesajı kopyala</button>
@@ -188,11 +188,22 @@ function attentionItems(c, couples) {
     if (st[0] === 'late') items.push({ k, level: 3, text: `Teslim ${daysBetween(k.due_date, t)} gün gecikti`, tag: 'Teslim' });
     else if (k.due_date && k.stage < last && k.due_date >= t && daysBetween(t, k.due_date) <= 7) items.push({ k, level: 2, text: `Teslime ${daysBetween(t, k.due_date)} gün kaldı`, tag: 'Teslim' });
     if (k.next_date && pay[2] > 0 && daysBetween(t, k.next_date) <= 14) items.push({ k, level: daysBetween(t, k.next_date) <= 3 ? 3 : 2, text: `Etkinlik ${relDays(daysBetween(t, k.next_date))}, ${tl(pay[2])} bakiye var`, tag: 'Ödeme' });
-    if (k.next_date && !plan.saved && daysBetween(t, k.next_date) <= 10) items.push({ k, level: 1, text: `Gün planı doldurulmadı (etkinlik ${relDays(daysBetween(t, k.next_date))})`, tag: 'Plan' });
+    if (k.next_date && !plan.saved && daysBetween(t, k.next_date) <= 10) items.push({ k, level: 1, text: 'Gün planı doldurulmadı', ctx: `etkinlik ${relDays(daysBetween(t, k.next_date))}`, tag: 'Plan' });
     if (k.contract_status === 'bekliyor') items.push({ k, level: k.next_date && daysBetween(t, k.next_date) <= 14 ? 2 : 1, text: 'Sözleşme onayı bekleniyor', tag: 'Sözleşme' });
     if (k.photo_count > 0 && !k.album_locked && k.stage < last) items.push({ k, level: 1, text: `Albüm seçimi bekleniyor (${k.fav_count}/${k.album_limit})`, tag: 'Albüm' });
   }
-  return items.sort((a, b) => b.level - a.level);
+  // Aynı çiftin işleri tek satırda: "Etkinlik yarın, 15.000 ₺ bakiye var · Gün planı doldurulmadı"
+  const groups = new Map();
+  for (const x of items) {
+    const g = groups.get(x.k.id) || { k: x.k, level: 0, items: [] };
+    g.level = Math.max(g.level, x.level);
+    g.items.push(x);
+    groups.set(x.k.id, g);
+  }
+  return [...groups.values()].map((g) => {
+    const hasWhen = g.items.some((x) => x.text.startsWith('Etkinlik'));
+    return { k: g.k, level: g.level, text: g.items.sort((a, b) => b.level - a.level).map((x) => (x.ctx && !hasWhen ? `${x.text} (${x.ctx})` : x.text)).join(' · ') };
+  }).sort((a, b) => b.level - a.level);
 }
 
 // Çift satırı (panelde arama ve süzgeçle)
@@ -276,12 +287,12 @@ function dashboard(c, { weekEvents = [], monday, selections = [], couples, month
       <section class="todo" aria-labelledby="todo-title">
         <header class="sec-head">
           <h2 class="sec-title" id="todo-title">Bekleyenler</h2>
-          <span class="sec-note">${todo.length ? `${todo.length} iş` : ''}</span>
+          <span class="sec-note">${todo.length ? `${todo.length} çift` : ''}</span>
         </header>
         ${todo.length ? h`<ul class="todo__list">${todo.slice(0, 8).map((x) => h`
           <li class="todo__item${x.level === 3 ? ' is-urgent' : ''}">
             <a href="/admin/ciftler/${x.k.id}"><span class="todo__name">${x.k.name}</span><span class="todo__text">${x.text}</span></a>
-          </li>`)}</ul>${todo.length > 8 ? h`<p class="sec-empty">ve ${todo.length - 8} iş daha</p>` : ''}` : h`<p class="sec-empty">Bekleyen iş yok.</p>`}
+          </li>`)}</ul>${todo.length > 8 ? h`<p class="sec-empty">ve ${todo.length - 8} çift daha</p>` : ''}` : h`<p class="sec-empty">Bekleyen iş yok.</p>`}
       </section>
     </div>
 
@@ -334,12 +345,13 @@ function dashboard(c, { weekEvents = [], monday, selections = [], couples, month
         <label class="sr-only" for="f-pay">Ödeme</label>
         <select id="f-pay" data-f-pay><option value="">Tüm ödemeler</option><option value="unpaid">Ödeme bekleniyor</option><option value="deposit">Kapora alındı</option><option value="paid">Ödendi</option><option value="none">Tutar girilmedi</option></select>
         <label class="sr-only" for="f-sort">Sıralama</label>
-        <select id="f-sort" data-f-sort><option value="date">Sıradaki etkinliğe göre</option><option value="new">En yeni kayıt</option></select>
+        <select id="f-sort" data-f-sort><option value="date">Tarihe göre</option><option value="new">En yeni kayıt</option></select>
       </div>
       ${couples.length ? h`<div class="crow-head" aria-hidden="true"><span>Çift</span><span>Tarih</span><span>Aşama</span><span>Bakiye</span><span>Hazır</span></div>
         <ul class="ccards crows" data-cards>${couples.map((k) => coupleCard(c, k))}</ul>
         ${stageBoard(c, couples)}
-        <p class="sec-empty" data-cards-empty hidden>Aramaya uyan çift yok.</p>`
+        <p class="sec-empty" data-cards-empty hidden>Aramaya uyan çift yok.</p>
+        <p class="crow-legend">Hazır: <b>F</b> fotoğraf · <b>V</b> video · <b>A</b> albüm · <b>S</b> sözleşme onaylı</p>`
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
@@ -865,7 +877,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=4', '/js/admin.js?v=3', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=5', '/js/admin.js?v=3', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
 function calendar(c, { couples, csrf, demoAdmin }) {
@@ -1061,7 +1073,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
       ${logoutForm(csrf, 'Bu cihazda çıkış yap')}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Ayarlar', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/push.js?v=1'] });
+  return panelLayout(c, { title: 'Ayarlar', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/push.js?v=2'] });
 }
 
 // Veriler: sezon arşivleri ve veritabanı yedekleri

@@ -167,7 +167,8 @@ function register(router) {
     const firstDate = list.map((e) => e.eventDate).filter(Boolean).sort()[0];
     const code = uniqueAccessCode(a.name, (firstDate || today()).slice(0, 4), (x) => db.getCoupleByCode(x) || db.findAdminLogin(x));
     const password = auth.memorablePassword();
-    const id = db.createCouple({ name: a.name, accessCode: code, hash: auth.hashPassword(password), eventDate: null });
+    const hash = auth.hashPassword(password);
+    const id = db.createCouple({ name: a.name, accessCode: code, hash, eventDate: null });
     a.dueDate = defaultDue(a, list, c);
     db.updateCard(id, a);
     const assigned = saveEvents(id, list);
@@ -180,7 +181,7 @@ function register(router) {
     setFlash(req, {
       message: `${a.name} için randevu oluşturuldu.${assigned ? ` ${assigned} ekip görevi verildi${config.n8nWebhookUrl ? ' ve WhatsApp mesajı gönderildi' : ''}.` : ''}${warn ? ' ' + warn : ''}`,
       type: warn ? 'error' : 'success',
-      credentials: { url: `${config.siteUrl}/uygulama`, code, password, phone: a.phone, name: a.name },
+      credentials: { url: `${config.siteUrl}/uygulama`, link: auth.loginLink(id, hash), code, password, phone: a.phone, name: a.name },
     });
     redirect(res, `/admin/ciftler/${id}`);
   });
@@ -790,12 +791,13 @@ function register(router) {
     if (!form) return;
     const couple = getCoupleOr404(params.id);
     const password = auth.memorablePassword();
-    db.setCouplePassword(couple.id, auth.hashPassword(password));
+    const hash = auth.hashPassword(password);
+    db.setCouplePassword(couple.id, hash);
     db.deleteSessionsFor('couple', couple.id); // açık oturumları kapat
     setFlash(req, {
       message: 'Yeni şifre oluşturuldu. Eski şifre artık çalışmaz.',
       type: 'success',
-      credentials: { url: `${config.siteUrl}/uygulama`, code: couple.access_code, password, phone: couple.phone, name: couple.name },
+      credentials: { url: `${config.siteUrl}/uygulama`, link: auth.loginLink(couple.id, hash), code: couple.access_code, password, phone: couple.phone, name: couple.name },
     });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
