@@ -39,7 +39,7 @@ const csrfField = (csrf) => h`<input type="hidden" name="csrf" value="${csrf}">`
 function flashBlock(f) {
   if (!f) return '';
   const cr = f.credentials;
-  const text = cr ? `Merhaba ${cr.name || ''}, HM4 Studio panelinize bu bağlantıya dokunarak girebilirsiniz:\n${cr.link || cr.url}\n\nUygulamayı telefonunuzun ana ekranına eklerseniz ilk girişte bu bilgiler istenir:\nErişim kodu: ${cr.code}\nŞifre: ${cr.password}` : '';
+  const text = cr?.text ? cr.text : cr ? `Merhaba ${cr.name || ''}, HM4 Studio panelinize bu bağlantıya dokunarak girebilirsiniz:\n${cr.link || cr.url}\n\nUygulamayı telefonunuzun ana ekranına eklerseniz ilk girişte bu bilgiler istenir:\nErişim kodu: ${cr.code}\nŞifre: ${cr.password}` : '';
   return h`
   ${flash(f.message, f.type)}
   ${cr ? h`
@@ -254,7 +254,30 @@ function stageBoard(c, couples) {
   </div>`;
 }
 
-function dashboard(c, { weekEvents = [], monday, selections = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+// WhatsApp API bağlı değilken: gönderilecek mesajlar (dokun → ofis WhatsApp'ında hazır metin açılır)
+function outboxBlock(items) {
+  if (!items.length) return '';
+  return h`<section class="outbox" aria-labelledby="ob-title" data-outbox>
+    <header class="sec-head">
+      <h2 class="sec-title" id="ob-title">Gönderilecek mesajlar <span class="sec-count" data-outbox-count>${items.length}</span></h2>
+      <span class="sec-note">“Gönder” mesajı WhatsApp'ta hazır açar</span>
+    </header>
+    <ul class="outbox__list">${items.map((x) => h`
+      <li class="outbox__item" data-outbox-item data-keys="${x.keys.join(',')}">
+        <div class="outbox__main">
+          <span class="outbox__label">${x.label}${x.team ? h` <span class="outbox__tag">Ekip</span>` : ''}</span>
+          ${x.coupleId && !x.team ? h`<a class="outbox__to" href="/admin/ciftler/${x.coupleId}">${x.to}</a>` : h`<span class="outbox__to">${x.to}</span>`}
+          <span class="outbox__text">${x.text.split('\n')[0]}</span>
+        </div>
+        <div class="outbox__actions">
+          <a class="btn btn--primary btn--sm" href="${x.href}" target="_blank" rel="noopener" data-outbox-send>${icon('whatsapp')}Gönder</a>
+          <button type="button" class="btn btn--text btn--sm" data-outbox-skip title="Göndermeden listeden kaldır">Atla</button>
+        </div>
+      </li>`)}</ul>
+  </section>`;
+}
+
+function dashboard(c, { outbox = [], weekEvents = [], monday, selections = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowEvents = upcoming.filter((e) => e.event_date === tm);
@@ -281,6 +304,8 @@ function dashboard(c, { weekEvents = [], monday, selections = [], couples, month
       <div><dt>Bekleyen bakiye</dt><dd>${tl(balance)}</dd></div>
       <div><dt><a href="/admin/takvim">Geciken teslim</a></dt><dd class="${late ? 'is-alert' : ''}">${late}</dd></div>
     </dl>
+
+    ${outboxBlock(outbox)}
 
     <div class="dash-top">
       ${programBlock(c, weekEvents, upcoming, tomorrowDue)}
@@ -355,7 +380,7 @@ function dashboard(c, { weekEvents = [], monday, selections = [], couples, month
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=7'] });
+  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=7', '/js/outbox.js?v=1'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -469,7 +494,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=7'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=7', '/js/outbox.js?v=1'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -1317,7 +1342,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=7'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=7', '/js/outbox.js?v=1'] });
 }
 
 module.exports = { flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

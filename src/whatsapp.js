@@ -54,6 +54,15 @@ function templateMessage(to, key, vars) {
   };
 }
 
+// Şablonun düz metin hâli (WhatsApp API yokken panelden elle gönderilir: wa.me bağlantısı)
+function templateText(key, vars) {
+  const t = getWhatsapp().sablonlar[key];
+  return fill(t?.metin || '', vars).replace(/\n{3,}/g, '\n\n').trim();
+}
+const waLink = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+// Otomatik gönderim açık mı (n8n + Meta numarası kurulu)
+const autoSend = () => Boolean(config.n8nWebhookUrl && config.waPhoneNumberId);
+
 // Ekip görev mesajının değişkenleri (şablon ve elle gönderilen metin ortak)
 function taskVars(member, ev, coupleName) {
   const date = ev.event_date ? new Date(`${ev.event_date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' }) : '';
@@ -68,4 +77,4 @@ const taskText = (member, ev, coupleName) => fill(getWhatsapp().otomatikCevap.ek
 const panelLink = () => `${config.siteUrl}/uygulama`;
 const enabled = () => Boolean(config.n8nApiKey);
 
-module.exports = { normalizePhone, displayPhone, fill, textMessage, templateMessage, panelLink, enabled, taskVars, taskText };
+module.exports = { templateText, waLink, autoSend, normalizePhone, displayPhone, fill, textMessage, templateMessage, panelLink, enabled, taskVars, taskText };

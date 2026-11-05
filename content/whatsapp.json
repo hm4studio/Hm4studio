@@ -1,5 +1,5 @@
 {
-  "_aciklama": "WhatsApp mesaj metinleri. 'otomatikCevap' metinleri serbesttir (müşteri yazdıktan sonraki 24 saatte gönderilir). 'sablonlar' Meta'da onaylatacağınız 8 şablonun ADI ve değişken sırasıdır; metinleri Meta panelinde aynen girersiniz (n8n/SABLONLAR.md). {ad}, {link} gibi alanlar otomatik doldurulur.",
+  "_aciklama": "WhatsApp mesaj metinleri. 'otomatikCevap' metinleri serbesttir (müşteri yazdıktan sonraki 24 saatte gönderilir). 'sablonlar' Meta'da onaylatacağınız 8 şablonun ADI ve değişken sırasıdır; metinleri Meta panelinde aynen girersiniz (n8n/SABLONLAR.md). {ad}, {link} gibi alanlar otomatik doldurulur. 'metin' alanı, WhatsApp API bağlı değilken panelden elle gönderilen hazır mesajın metnidir; Meta'daki şablon metniyle aynı tutun.",
   "dil": "tr",
   "yorumLinki": "[Google işletme yorum bağlantınız]",
   "otomatikCevap": {
@@ -18,14 +18,16 @@
         "link",
         "kod",
         "sifre"
-      ]
+      ],
+      "metin": "Merhaba {ad}, randevunuz oluşturuldu.\nRandevu no: {no}\nİlk çekim: {tarih}\n\nPanelinize bu bağlantıya dokunarak girebilirsiniz: {link}\n\nUygulamayı ana ekrana eklerseniz giriş bilgileriniz:\nErişim kodu: {kod}\nŞifre: {sifre}\n\nHM4 Studio"
     },
     "sozlesme": {
       "ad": "hm4_sozlesme_onay",
       "degiskenler": [
         "ad",
         "link"
-      ]
+      ],
+      "metin": "Merhaba {ad}, hizmet sözleşmeniz onayınıza sunuldu. Sözleşmeyi panelinizden inceleyip onaylayabilirsiniz: {link}\n\nHM4 Studio"
     },
     "plan": {
       "ad": "hm4_plan_hatirlatma",
@@ -33,35 +35,40 @@
         "ad",
         "gun",
         "link"
-      ]
+      ],
+      "metin": "Merhaba {ad}, çekiminize {gun} gün kaldı. Çekim günü planınızı panelinizden tamamlayabilirsiniz: {link}\n\nHM4 Studio"
     },
     "fotograflar": {
       "ad": "hm4_fotograflar_hazir",
       "degiskenler": [
         "ad",
         "link"
-      ]
+      ],
+      "metin": "Merhaba {ad}, fotoğraflarınız seçime hazır. Albümünüz için fotoğraf seçimine panelinizden başlayabilirsiniz: {link}\n\nHM4 Studio"
     },
     "teslim": {
       "ad": "hm4_teslim_hazir",
       "degiskenler": [
         "ad",
         "link"
-      ]
+      ],
+      "metin": "Merhaba {ad}, düzenlenmiş fotoğraflarınız teslim edildi. Panelinizden görüntüleyip indirebilirsiniz: {link}\n\nHM4 Studio"
     },
     "teslimVideo": {
       "ad": "hm4_teslim_video_hazir",
       "degiskenler": [
         "ad",
         "link"
-      ]
+      ],
+      "metin": "Merhaba {ad}, düzenlenmiş fotoğraflarınız ve videonuz teslim edildi. Panelinizden izleyip indirebilirsiniz: {link}\n\nHM4 Studio"
     },
     "yorum": {
       "ad": "hm4_yorum_iste",
       "degiskenler": [
         "ad",
         "link"
-      ]
+      ],
+      "metin": "Merhaba {ad}, bizi tercih ettiğiniz için teşekkür ederiz. Deneyiminizi birkaç cümleyle paylaşırsanız bizim için çok değerli olur: {link}\n\nHM4 Studio"
     },
     "gorev": {
       "ad": "hm4_ekip_gorev",
@@ -73,7 +80,8 @@
         "saat",
         "yer",
         "not"
-      ]
+      ],
+      "metin": "Merhaba {ad}, çekim görevi: {etkinlik} · {cift}\nTarih: {tarih} {saat}\nYer: {yer}\nNot: {not}\n\nHM4 Studio"
     }
   },
   "kurallar": {

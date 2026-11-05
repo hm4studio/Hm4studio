@@ -1735,3 +1735,19 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .pushbox[hidden], .install[hidden] { display: none !important; }
 .pui .install { margin: 20px 0; }
 .pui .now__title { font-family: var(--serif); font-weight: 500; }
+/* Panel: elle gönderilecek WhatsApp mesajları */
+.outbox { margin-bottom: 24px; }
+.pui .outbox { background: var(--white, #fff); border: 1px solid var(--graphite, #1a1a1a); padding: 20px 24px; }
+.outbox__list { list-style: none; margin: 0; padding: 0; }
+.outbox__item { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 12px 0; border-bottom: 1px solid var(--rule, #e8e8e5); transition: opacity .3s; }
+.outbox__item:last-child { border-bottom: 0; }
+.outbox__item.is-done { opacity: .35; }
+.outbox__main { display: grid; gap: 2px; min-width: 0; }
+.outbox__label { font-size: .8rem; color: var(--pencil, #6e6e6b); }
+.outbox__tag { display: inline-block; margin-left: 6px; padding: 0 6px; border: 1px solid var(--rule-2, #d9d9d5); border-radius: 999px; font-size: .72rem; }
+.outbox__to { font-weight: 600; color: inherit; text-decoration: none; }
+.outbox__text { font-size: .85rem; color: var(--pencil, #6e6e6b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.outbox__actions { display: flex; align-items: center; gap: 4px; flex: none; }
+.outbox__actions .btn svg { width: 15px; height: 15px; }
+@media (max-width: 699px) { .pui .outbox { padding: 16px; } .outbox__item { flex-wrap: wrap; } .outbox__actions { width: 100%; } .outbox__actions .btn--primary { flex: 1; justify-content: center; } }
+@media (max-width: 699px) { .outbox .sec-note { display: none; } }

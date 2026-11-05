@@ -44,6 +44,9 @@ function hoursAgoSql(h) {
 
 // Bugün gönderilmesi gereken hatırlatmaları hesaplar (gönderilmiş olanları atlar).
 // Yalnızca üç tür var: çekimden önce plan hatırlatması (çifte), aynı gün ekibe görev hatırlatması, teslimden sonra yorum isteği.
+// tpl + vars: n8n için şablon mesajı, panel için (API yokken) aynı metnin düz hâli üretilir
+const item = (type, key, couple, phone, tpl, vars) => ({ type, keys: [key], couple, phone, tpl, vars, whatsapp: wa.templateMessage(phone, tpl, vars) });
+
 function dueReminders() {
   const rules = getWhatsapp().kurallar || {};
   const last = getContent().stages.length - 1;
@@ -62,14 +65,14 @@ function dueReminders() {
     const left = shoot ? daysBetween(t, shoot) : -1;
     if (shoot && !planSaved && left > 0 && left <= before) {
       const key = `plan:${c.id}:${shoot}`;
-      if (!db.wasNotified(key)) items.push({ type: 'plan', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'plan', { ad: c.name, gun: left, link: wa.panelLink() }) });
+      if (!db.wasNotified(key)) items.push(item('plan', key, who, c.phone, 'plan', { ad: c.name, gun: left, link: wa.panelLink() }));
     }
 
     // 2) "Teslim" aşamasından bir süre sonra yorum isteği (yorum bağlantısı girildiyse, bir kez)
     if (c.stage >= last && c.stage_changed_at && reviewLink && !reviewLink.startsWith('[')
       && daysBetween(c.stage_changed_at, t) >= (rules.yorumIstemeGunSonra ?? 7)) {
       const key = `yorum:${c.id}`;
-      if (!db.wasNotified(key)) items.push({ type: 'yorum', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'yorum', { ad: c.name, link: reviewLink }) });
+      if (!db.wasNotified(key)) items.push(item('yorum', key, who, c.phone, 'yorum', { ad: c.name, link: reviewLink }));
     }
   }
 
@@ -80,7 +83,7 @@ function dueReminders() {
       if (!m.phone || !m.active || !m.wa_optin) continue;
       const key = `ekiphat:${ev.id}:${m.id}:${ev.event_date}`;
       if (db.wasNotified(key) || db.notifiedSince(`gorev:${ev.id}:${m.id}:${ev.event_date}`, recent)) continue;
-      items.push({ type: 'ekip', keys: [key], member: { id: m.id, name: m.name, phone: m.phone }, couple: { id: ev.couple_id, name: ev.couple_name }, whatsapp: wa.templateMessage(m.phone, 'gorev', wa.taskVars(m, ev, ev.couple_name)) });
+      items.push({ ...item('ekip', key, { id: ev.couple_id, name: ev.couple_name }, m.phone, 'gorev', wa.taskVars(m, ev, ev.couple_name)), member: { id: m.id, name: m.name, phone: m.phone } });
     }
   }
   return items;

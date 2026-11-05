@@ -100,7 +100,19 @@ function register(router) {
     const dow = (new Date(`${t}T12:00:00Z`).getUTCDay() + 6) % 7; // pazartesi = 0
     const monday = addDays(t, -dow);
     const weekEvents = db.eventsBetween(monday, addDays(monday, 6));
-    html(res, views.dashboard(getContent(), { weekEvents, monday, selections, couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const outbox = wa.autoSend() ? [] : require('../outbox').list();
+    html(res, views.dashboard(getContent(), { outbox, weekEvents, monday, selections, couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
+  // Elle gönderilen WhatsApp mesajı "gönderildi" (veya "atla") olarak işaretlenir; listeden düşer
+  router.post('/admin/mesajlar/gonderildi', async (req, res) => {
+    if (req.session?.kind !== 'admin') throw new HttpError(401, 'Oturum gerekli');
+    checkCsrf(req);
+    const { keys } = await readJson(req);
+    const { KEY_RE } = require('../outbox');
+    const valid = (Array.isArray(keys) ? keys : []).map(String).filter((k) => KEY_RE.test(k)).slice(0, 20);
+    for (const k of valid) db.markNotified(k);
+    json(res, { ok: true, marked: valid.length });
   });
 
   // Yeni kişi kartı formu (takvimden tarih, talepten bilgiler gelebilir)
@@ -183,7 +195,7 @@ function register(router) {
     setFlash(req, {
       message: `${a.name} için randevu oluşturuldu.${sent ? ' Randevu ve giriş bilgileri çifte WhatsApp\'tan gönderildi.' : ''}${assigned ? ` ${assigned} ekip görevi verildi${config.n8nWebhookUrl ? ' ve WhatsApp mesajı gönderildi' : ''}.` : ''}${warn ? ' ' + warn : ''}`,
       type: warn ? 'error' : 'success',
-      credentials: { url: `${config.siteUrl}/uygulama`, link, sent, code, password, phone: a.phone, name: a.name },
+      credentials: { url: `${config.siteUrl}/uygulama`, link, sent, text: wa.templateText('randevu', events.appointmentVars(db.getCouple(id), { link, code, password })), code, password, phone: a.phone, name: a.name },
     });
     redirect(res, `/admin/ciftler/${id}`);
   });
