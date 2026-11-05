@@ -59,10 +59,10 @@ function photosUploaded(coupleId) {
     photoTimers.delete(coupleId);
     const c = db.getCouple(coupleId);
     if (!c) return;
-    const pkey = `push-foto:${c.id}:${new Date().toISOString().slice(0, 10)}`;
+    const edited = db.listPhotos(c.id, 'duzenli').length;
+    const pkey = `push-foto:${c.id}:${edited ? 'duzenli' : 'secim'}:${new Date().toISOString().slice(0, 10)}`;
     if (!db.wasNotified(pkey)) {
       db.markNotified(pkey);
-      const edited = db.listPhotos(c.id, 'duzenli').length;
       safePush(() => push.toCouple(c.id, edited
         ? { title: 'Düzenlenmiş fotoğraflarınız hazır', body: `${edited} fotoğraf panelinizde. Dilediğiniz zaman indirebilirsiniz.`, url: '/panel/fotograflar?g=duzenli', tag: 'foto' }
         : { title: 'Fotoğraflarınız yüklendi', body: 'Albümünüz için seçime başlayabilirsiniz.', url: '/panel/fotograflar', tag: 'foto' }));
