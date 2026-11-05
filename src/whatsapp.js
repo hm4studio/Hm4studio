@@ -72,7 +72,7 @@ function taskVars(member, ev, coupleName) {
   };
 }
 // wa.me bağlantısı için hazır metin (WhatsApp API kurulmadan da elle gönderilebilsin)
-const taskText = (member, ev, coupleName) => fill(getWhatsapp().otomatikCevap.ekipGorev || '', taskVars(member, ev, coupleName)).replace(/\n{3,}/g, '\n\n').trim();
+const taskText = (member, ev, coupleName) => templateText('gorev', taskVars(member, ev, coupleName));
 
 const panelLink = () => `${config.siteUrl}/uygulama`;
 const enabled = () => Boolean(config.n8nApiKey);

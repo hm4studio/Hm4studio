@@ -79,7 +79,7 @@ function addColumn(table, column, def) {
   if (!cols.includes(column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${def}`);
 }
 addColumn('couples', 'due_date', 'TEXT');
-addColumn('couples', 'album_limit', 'INTEGER NOT NULL DEFAULT 60');
+addColumn('couples', 'album_limit', 'INTEGER NOT NULL DEFAULT 35');
 addColumn('couples', 'album_locked', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('couples', 'plan_json', "TEXT NOT NULL DEFAULT '{}'");
 addColumn('couples', 'phone', 'TEXT');

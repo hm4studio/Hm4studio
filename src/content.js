@@ -48,11 +48,12 @@ function baseContent() {
   return cache;
 }
 
-// content/whatsapp.json: WhatsApp mesaj metinleri ve kuralları
+// content/whatsapp.json: WhatsApp mesaj metinleri ve kuralları.
+// Panelden (Ayarlar › Mesajlar) düzenlenen metinler veritabanında durur ve dosyadakinin üzerine yazılır.
 const WA_FILE = path.join(config.ROOT, 'content', 'whatsapp.json');
 let waCache = null;
 let waMtime = 0;
-function getWhatsapp() {
+function baseWhatsapp() {
   try {
     const mtime = fs.statSync(WA_FILE).mtimeMs;
     if (!waCache || mtime !== waMtime) { waCache = JSON.parse(fs.readFileSync(WA_FILE, 'utf8')); waMtime = mtime; }
@@ -62,5 +63,21 @@ function getWhatsapp() {
   }
   return waCache;
 }
+let waKey = null;
+let waMerged = null;
+function getWhatsapp() {
+  const base = baseWhatsapp();
+  let raw = '';
+  try { db ||= require('./db'); raw = db.getSetting('wa_overrides') || ''; } catch { /* veritabanı yoksa yalnızca dosya */ }
+  const key = `${waMtime}|${raw}`;
+  if (waMerged && key === waKey) return waMerged;
+  let over = {};
+  try { over = raw ? JSON.parse(raw) || {} : {}; } catch { over = {}; }
+  const sablonlar = {};
+  for (const [k, t] of Object.entries(base.sablonlar || {})) sablonlar[k] = over.metinler?.[k] ? { ...t, metin: over.metinler[k] } : t;
+  waKey = key;
+  waMerged = { ...base, sablonlar };
+  return waMerged;
+}
 
-module.exports = { getContent, baseContent, getWhatsapp };
+module.exports = { getContent, baseContent, getWhatsapp, baseWhatsapp };

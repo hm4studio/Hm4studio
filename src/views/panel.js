@@ -120,7 +120,7 @@ function galleryTabs(base, view, total, favs) {
 
 // Albüm seçimi: sayaç, ilerleme ve "Seçimi tamamladım"
 function albumBar(couple, favCount, { admin, csrf, base }) {
-  const limit = couple.album_limit || 60;
+  const limit = couple.album_limit || 35;
   const locked = Boolean(couple.album_locked);
   const pct = Math.min(100, Math.round((favCount / limit) * 100));
   let action;
@@ -254,7 +254,7 @@ function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
 function nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages }) {
   const day = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
   const upcoming = events.filter((e) => e.event_date && e.event_date >= day).sort((x, y) => x.event_date.localeCompare(y.event_date))[0];
-  const limit = couple.album_limit || 60;
+  const limit = couple.album_limit || 35;
   if (couple.contract_state === 'bekliyor') return { title: 'Sözleşmenizi onaylayın', text: 'Okuyup birkaç dakikada onaylayabilirsiniz.', href: '/panel/sozlesme', btn: 'Sözleşmeyi aç' };
   if (upcoming && !parsePlan(couple).saved) return { title: 'Çekim günü planınızı doldurun', text: 'Saatleri ve adresleri yazın; ekibimiz hazırlığını bu plana göre yapar.', href: '/panel/plan', btn: 'Planı doldur' };
   if (totalCount && !couple.album_locked) return { title: 'Albüm fotoğraflarınızı seçin', text: favCount ? `${favCount} / ${limit} kare seçtiniz. Bitirince “Seçimi tamamladım”a basın.` : `Albümünüz için ${limit} kare seçin: beğendiğiniz fotoğrafın kalbine dokunun.`, href: '/panel/fotograflar?g=secim', btn: favCount ? 'Seçime devam et' : 'Seçime başla' };
@@ -359,7 +359,7 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
     <section class="panel-section cpage" id="fotograflar" aria-labelledby="gallery-title">
       <div class="panel-section__head">
         <h1 class="panel-section__title" id="gallery-title">${editedCount ? 'Seçim fotoğrafları' : 'Fotoğraflarınız'}</h1>
-        ${totalCount ? h`<p class="muted">${couple.album_locked ? 'Seçtiğiniz kareleri “Albüm seçimi” sekmesinde görebilirsiniz.' : `Albümünüz için ${couple.album_limit || 60} kare seçin: beğendiğiniz fotoğrafın üzerindeki kalbe dokunun.`}</p>` : ''}
+        ${totalCount ? h`<p class="muted">${couple.album_locked ? 'Seçtiğiniz kareleri “Albüm seçimi” sekmesinde görebilirsiniz.' : `Albümünüz için ${couple.album_limit || 35} kare seçin: beğendiğiniz fotoğrafın üzerindeki kalbe dokunun.`}</p>` : ''}
       </div>
       ${sets}
       ${totalCount ? galleryTabs('/panel/fotograflar', view, totalCount, favCount) : ''}
@@ -377,8 +377,8 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
         </div>
       </div>` : ''}
       ${totalCount && !couple.album_locked ? h`<div class="selpill" data-selpill hidden>
-        <a class="selpill__count" href="/panel/fotograflar?g=fav"><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 60} seçildi</a>
-        <form method="post" action="/panel/album-tamamla" class="inline-form" data-selpill-done data-confirm="Seçiminiz HM4 Studio'ya gönderilsin mi? Sonrasında değişiklik için bize yazmanız gerekir."${favCount >= (couple.album_limit || 60) ? '' : raw(' hidden')}>
+        <a class="selpill__count" href="/panel/fotograflar?g=fav"><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 35} seçildi</a>
+        <form method="post" action="/panel/album-tamamla" class="inline-form" data-selpill-done data-confirm="Seçiminiz HM4 Studio'ya gönderilsin mi? Sonrasında değişiklik için bize yazmanız gerekir."${favCount >= (couple.album_limit || 35) ? '' : raw(' hidden')}>
           <input type="hidden" name="csrf" value="${csrf}">
           <button class="selpill__done" type="submit">Tamamla</button>
         </form>

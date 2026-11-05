@@ -64,7 +64,7 @@ function readForm(form, content) {
     photoReady: form.photoReady === '1',
     videoReady: form.videoReady === '1',
     albumReady: form.albumReady === '1',
-    albumLimit: Math.min(Math.max(Number.parseInt(form.albumLimit, 10) || 60, 1), 1000),
+    albumLimit: Math.min(Math.max(Number.parseInt(form.albumLimit, 10) || 35, 1), 1000),
     waOptin: form.waOptin === '1',
     notes: cleanArea(form.notes, 3000),
     deposit: money(form.deposit),

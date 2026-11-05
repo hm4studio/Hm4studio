@@ -477,7 +477,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
         <legend>Teslim</legend>
         <div class="appt-row">
           <div class="field"><label for="dueDate">Teslim tarihi <span class="muted">(boşsa son etkinlikten ${o.defaultDeliveryDays || 45} gün sonra)</span></label><input id="dueDate" name="dueDate" type="date" value="${v('dueDate')}"></div>
-          <div class="field"><label for="albumLimit">Albüm kare sayısı</label><input id="albumLimit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${v('albumLimit') || 60}"></div>
+          <div class="field"><label for="albumLimit">Albüm kare sayısı</label><input id="albumLimit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${v('albumLimit') || 35}"></div>
         </div>
         ${isNew ? '' : h`<div class="appt-checks">${chk('photoReady', 'Fotoğraflar hazır')}${chk('videoReady', 'Video hazır')}${chk('albumReady', 'Albüm hazır')}</div>`}
         ${chk('waOptin', 'WhatsApp bildirimleri gönderilsin')}
@@ -1061,11 +1061,52 @@ function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) 
   return panelLayout(c, { title: 'Ekip', csrf, nav: adminNav('team', csrf, demoAdmin), home: '/admin', tabs: adminTabs('team', demoAdmin), body });
 }
 
+// Ayarlar › Mesajlar: WhatsApp mesaj metinleri
+const MESSAGE_INFO = [
+  ['randevu', 'Randevu oluşturuldu', 'Yeni randevu kaydedilince; panel giriş bilgileriyle birlikte.', ['ad', 'no', 'tarih', 'link', 'kod', 'sifre']],
+  ['sozlesme', 'Sözleşme onaya sunuldu', 'Sözleşme çifte gönderilince.', ['ad', 'link']],
+  ['plan', 'Çekim planı hatırlatması', 'Çekimden 3 gün önce, gün planı doldurulmadıysa.', ['ad', 'gun', 'link']],
+  ['fotograflar', 'Seçim fotoğrafları hazır', 'Seçim fotoğrafları ilk yüklendiğinde.', ['ad', 'link']],
+  ['teslim', 'Teslim edildi (video yok)', 'İş "Teslim" aşamasına alınınca, videosu olmayan işlerde.', ['ad', 'link']],
+  ['teslimVideo', 'Teslim edildi (fotoğraf + video)', 'İş "Teslim" aşamasına alınınca, video da varsa.', ['ad', 'link']],
+  ['yorum', 'Yorum isteği', 'Teslimden 7 gün sonra.', ['ad', 'link']],
+  ['gorev', 'Ekip görevi ve hatırlatması', 'Ekipten biri etkinliğe atanınca ve çekimden 3 gün önce.', ['ad', 'etkinlik', 'cift', 'tarih', 'saat', 'yer', 'not']],
+];
+const VAR_TEXT = { ad: 'çiftin / kişinin adı', no: 'randevu no', tarih: 'tarih', link: 'bağlantı', kod: 'erişim kodu', sifre: 'şifre', gun: 'kalan gün', etkinlik: 'etkinlik türü', cift: 'çiftin adı', saat: 'saat', yer: 'mekân', not: 'not' };
+
+function messagesPage(c, { wa: w, base, csrf, flash: f, demoAdmin }) {
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <h1 class="page-title">Mesajlar</h1>
+    ${flashBlock(f)}
+    <p class="muted">Çiftlere ve ekibe giden WhatsApp mesajları. Süslü parantez içindeki alanlar (örneğin <code>{ad}</code>) her mesajda kendiliğinden dolar; silmeyin. Bir metni boş bırakırsanız ilk hâline döner.</p>
+    <form class="form" method="post" action="/admin/mesajlar">
+      ${csrfField(csrf)}
+      ${MESSAGE_INFO.map(([key, title, when, vars]) => {
+        const cur = w.sablonlar[key]?.metin || '';
+        const def = base.sablonlar[key]?.metin || '';
+        return h`<section class="panel-section msg-edit" id="m-${key}">
+          <div class="panel-section__head"><h2 class="panel-section__title">${title}</h2>${cur !== def ? h`<span class="badge">Düzenlendi</span>` : ''}</div>
+          <p class="muted">${when}</p>
+          <div class="field"><label for="m-t-${key}" class="sr-only">${title}</label><textarea id="m-t-${key}" name="m_${key}" rows="${Math.min(12, cur.split('\n').length + 2)}" maxlength="1000">${cur}</textarea></div>
+          <p class="msg-vars">${vars.map((v) => h`<span><code>{${v}}</code> ${VAR_TEXT[v]}</span>`)}</p>
+          ${cur !== def ? h`<label class="check"><input type="checkbox" name="reset_${key}" value="1"><span>İlk hâline döndür</span></label>` : ''}
+        </section>`;
+      })}
+      <button class="btn btn--primary" type="submit">Kaydet</button>
+      <p class="muted">Not: İleride WhatsApp otomatik gönderim (Meta) kurulursa, Meta'da onaylatılan şablon metinleri buradakilerle aynı olmalıdır.</p>
+    </form>
+  </div>`;
+  return panelLayout(c, { title: 'Mesajlar', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
+}
+
 function account(c, { admin, csrf, flash: f, demoAdmin }) {
   const links = [
     { href: '/admin/site', title: 'Site', text: 'Kapak, duyuru bandı, logo, hakkımızda, iletişim ve hizmetler.' },
     { href: '/admin/paketler', title: 'Paketler', text: 'Paket adları, fiyatları ve içerikleri. Randevu formunda seçince fiyat kendiliğinden gelir.' },
     { href: '/admin/sozlesme', title: 'Sözleşme ve KVKK', text: 'Sözleşme metni, firma bilgileri ve KVKK aydınlatma metni.' },
+    { href: '/admin/mesajlar', title: 'Mesajlar', text: 'Çiftlere ve ekibe giden WhatsApp mesajlarının metinleri.' },
     { href: '/admin/ekip', title: 'Ekip', text: 'Personel, görevleri ve iletişim bilgileri.' },
     { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitede görünen fotoğraflar ve anasayfa kapağı.' },
     { href: '/admin/veriler', title: 'Veriler', text: 'Sezon arşivleri ve her gece alınan veritabanı yedekleri.' },
@@ -1345,4 +1386,4 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=7', '/js/outbox.js?v=1'] });
 }
 
-module.exports = { flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = { messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

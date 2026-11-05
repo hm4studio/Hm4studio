@@ -118,7 +118,7 @@ function register(router) {
   // Yeni kişi kartı formu (takvimden tarih, talepten bilgiler gelebilir)
   router.get('/admin/randevu/yeni', (req, res, { query }) => {
     if (!requireAdmin(req, res)) return;
-    const values = { waOptin: 1, albumLimit: 60, ev0_date: appt.cleanDate(query.get('tarih')) || '', depositDate: today() };
+    const values = { waOptin: 1, albumLimit: 35, ev0_date: appt.cleanDate(query.get('tarih')) || '', depositDate: today() };
     let talepId = null;
     const lead = query.get('talep') ? db.getLead(Number(query.get('talep')) || 0) : null;
     if (lead && !lead.couple_id) {
@@ -452,6 +452,33 @@ function register(router) {
     if (!requireAdmin(req, res)) return;
     const couple = getCoupleOr404(params.id);
     html(res, views.appointmentDoc(getContent(), { card: db.getCoupleCard(couple.id), events: db.listEvents(couple.id), payments: db.listPayments(couple.id), back: `/admin/ciftler/${couple.id}` }));
+  });
+
+  // ── Mesaj metinleri (Ayarlar › Mesajlar) ──
+  router.get('/admin/mesajlar', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const { getWhatsapp, baseWhatsapp } = require('../content');
+    html(res, views.messagesPage(getContent(), { wa: getWhatsapp(), base: baseWhatsapp(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/mesajlar', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const { baseWhatsapp } = require('../content');
+    const base = baseWhatsapp();
+    const metinler = {};
+    const missing = [];
+    for (const [key, title, , vars] of views.MESSAGE_INFO) {
+      const text = String(form[`m_${key}`] || '').replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').trim().slice(0, 1000);
+      if (form[`reset_${key}`] === '1' || !text || text === base.sablonlar[key]?.metin) continue;
+      metinler[key] = text;
+      const lost = vars.filter((v) => ['ad', 'link', 'kod', 'sifre'].includes(v) && !text.includes(`{${v}}`));
+      if (lost.length) missing.push(`${title}: ${lost.map((v) => `{${v}}`).join(', ')}`);
+    }
+    db.setSetting('wa_overrides', JSON.stringify({ metinler }));
+    setFlash(req, missing.length
+      ? { message: `Kaydedildi. Dikkat, şu mesajlarda önemli alan eksik: ${missing.join(' · ')}`, type: 'error' }
+      : { message: 'Mesajlar kaydedildi.', type: 'success' });
+    redirect(res, '/admin/mesajlar');
   });
 
   // ── Sözleşme ──

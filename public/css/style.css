@@ -1751,3 +1751,7 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .outbox__actions .btn svg { width: 15px; height: 15px; }
 @media (max-width: 699px) { .pui .outbox { padding: 16px; } .outbox__item { flex-wrap: wrap; } .outbox__actions { width: 100%; } .outbox__actions .btn--primary { flex: 1; justify-content: center; } }
 @media (max-width: 699px) { .outbox .sec-note { display: none; } }
+/* Ayarlar › Mesajlar */
+.msg-edit textarea { font: inherit; font-size: .92rem; line-height: 1.5; min-height: 110px; }
+.msg-vars { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; font-size: .8rem; color: var(--pencil, #6e6e6b); }
+.msg-vars code { font-size: .78rem; color: var(--graphite, #1a1a1a); }
