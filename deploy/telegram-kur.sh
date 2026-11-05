@@ -12,11 +12,22 @@ if ! grep -q '^OPENAI_API_KEY=sk-' "$ENV_FILE"; then
 fi
 
 say "1/3 · Bot anahtarı"
-echo "@BotFather'ın verdiği anahtarı yapıştırın (123456:ABC... biçiminde; ekranda görünmez)."
-read -r -s -p "Anahtar: " TOKEN </dev/tty; echo
-TOKEN="$(printf '%s' "$TOKEN" | tr -d '[:space:]')"
-ME="$(curl -s "https://api.telegram.org/bot$TOKEN/getMe" || true)"
-if ! printf '%s' "$ME" | grep -q '"ok":true'; then echo "Anahtar çalışmadı. Kontrol edip yeniden deneyin."; exit 1; fi
+echo "@BotFather'ın verdiği anahtarı yapıştırın (123456789:AAH... biçiminde) ve Enter'a basın."
+echo "(Tarayıcı terminalinde yapıştırmak için sağ tık › Yapıştır ya da Ctrl+Shift+V kullanın.)"
+read -r -p "Anahtar: " TOKEN </dev/tty
+TOKEN="$(printf '%s' "$TOKEN" | tr -d '[:space:]' | sed 's/^bot//')"
+clear 2>/dev/null || true
+if ! printf '%s' "$TOKEN" | grep -Eq '^[0-9]{6,}:[A-Za-z0-9_-]{30,}$'; then
+  echo "Bu bir bot anahtarına benzemiyor (${#TOKEN} karakter geldi; '${TOKEN:0:4}…' ile başlıyor)."
+  echo "Doğru biçim: rakamlar, iki nokta, ardından ~35 harf/rakam. Örn. 123456789:AAH4x…"
+  echo "BotFather'daki anahtarın tamamını kopyalayıp betiği yeniden çalıştırın."; exit 1
+fi
+ME="$(curl -s --max-time 15 "https://api.telegram.org/bot$TOKEN/getMe" || true)"
+if ! printf '%s' "$ME" | grep -q '"ok":true'; then
+  if [ -z "$ME" ]; then echo "Sunucu Telegram'a ulaşamadı (internet/engel). Birkaç dakika sonra yeniden deneyin.";
+  else echo "Telegram anahtarı kabul etmedi: $(printf '%s' "$ME" | sed -n 's/.*"description":"\([^"]*\)".*/\1/p')"; echo "BotFather'da /mybots › botunuz › API Token ile anahtarı yeniden kopyalayın."; fi
+  exit 1
+fi
 BOT="$(printf '%s' "$ME" | sed -n 's/.*"username":"\([^"]*\)".*/\1/p')"
 echo "Bot bulundu: @$BOT"
 
