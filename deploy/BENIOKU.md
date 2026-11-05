@@ -45,3 +45,15 @@ Geri açmak (Mac Terminal'de, Drive'dan indirdiğiniz dosya için):
 
 OpenAI anahtarını sorar (ekranda görünmez), `.env`'e yazar ve siteyi yeniden başlatır. Kapatmak için aynı komutu çalıştırıp boş bırakın.
 Model `.env` içindeki `OPENAI_MODEL` ile değiştirilebilir (varsayılan gpt-4.1-mini). Çift başına saatte 30, günde 80 soru sınırı vardır.
+
+
+## Telegram asistanı (stüdyo sahibi için)
+
+Telegram'dan "En yakın çekimim ne zaman?", "Bu ay İstanbul çekimim var mı?", "Menderes sözleşmeyi imzaladı mı?" gibi sorular sorarsınız;
+bot sitedeki güncel verilere bakıp cevaplar. Hiçbir şeyi değiştiremez ve yalnızca sizin hesabınıza cevap verir. OpenAI anahtarı gerekir (asistan-kur.sh).
+
+1. Telegram'da **@BotFather**'ı açın, `/newbot` yazın, bota bir ad ve `_bot` ile biten bir kullanıcı adı verin. Size bir anahtar (token) verir.
+2. Sunucuda: `bash /opt/hm4studio/deploy/telegram-kur.sh` · anahtarı yapıştırın.
+3. Betik söyleyince Telegram'da botunuza `/start` yazın. "Bağlandım" mesajı gelince hazır.
+
+`/yeni` konuşmayı sıfırlar. Botu kapatmak için `.env` içindeki `TELEGRAM_BOT_TOKEN` satırını silip siteyi yeniden başlatın.
