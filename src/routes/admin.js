@@ -193,7 +193,7 @@ function register(router) {
     const link = auth.loginLink(id, hash);
     const sent = events.appointmentCreated(id, { link, code, password });
     setFlash(req, {
-      message: `${a.name} için randevu oluşturuldu.${sent ? ' Randevu ve giriş bilgileri çifte WhatsApp\'tan gönderildi.' : ''}${assigned ? ` ${assigned} ekip görevi verildi${config.n8nWebhookUrl ? ' ve WhatsApp mesajı gönderildi' : ''}.` : ''}${warn ? ' ' + warn : ''}`,
+      message: `${a.name} için randevu oluşturuldu.${sent ? ' Randevu ve giriş bilgileri çifte WhatsApp\'tan gönderildi.' : ''}${assigned ? ` ${assigned} ekip görevi verildi${wa.autoSend() ? ' ve WhatsApp mesajı gönderildi' : ' (mesajı Panel › Gönderilecek mesajlar listesinden gönderebilirsiniz)'}.` : ''}${warn ? ' ' + warn : ''}`,
       type: warn ? 'error' : 'success',
       credentials: { url: `${config.siteUrl}/uygulama`, link, sent, text: wa.templateText('randevu', events.appointmentVars(db.getCouple(id), { link, code, password })), code, password, phone: a.phone, name: a.name },
     });
@@ -224,7 +224,7 @@ function register(router) {
     const assigned = saveEvents(couple.id, list);
     if (!couple.ref_no) db.setRefNo(couple.id, db.nextRefNo(today().slice(0, 4)));
     const warn = conflictText(couple.id, list);
-    setFlash(req, { message: `Kaydedildi.${assigned ? ` ${assigned} yeni ekip görevi${config.n8nWebhookUrl ? ', WhatsApp mesajı gönderildi' : ''}.` : ''}${warn ? ' ' + warn : ''}`, type: warn ? 'error' : 'success' });
+    setFlash(req, { message: `Kaydedildi.${assigned ? ` ${assigned} yeni ekip görevi${wa.autoSend() ? ', WhatsApp mesajı gönderildi' : ' (mesajı Panel › Gönderilecek mesajlar listesinden gönderebilirsiniz)'}.` : ''}${warn ? ' ' + warn : ''}`, type: warn ? 'error' : 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
 

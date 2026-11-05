@@ -1,4 +1,6 @@
 'use strict';
+// WhatsApp mesajları yalnızca otomatik gönderim kuruluysa (n8n + Meta numarası) işaretlenip gönderilir;
+// kurulu değilse panelde 'Gönderilecek mesajlar' listesine düşer (src/outbox.js).
 // Sitede olan önemli olayları n8n'e bildirir (aşama değişti, fotoğraflar yüklendi, yeni talep...).
 // N8N_WEBHOOK_URL tanımlı değilse hiçbir şey yapmaz. Gönderim arka planda yapılır; hata siteyi durdurmaz.
 const config = require('./config');
@@ -44,7 +46,7 @@ function stageChanged(couple, stageIndex) {
   const payload = { event: 'asama_degisti', at: new Date().toISOString(), couple: coupleInfo(c), stage: stageIndex, stageName: stages[stageIndex] || '', note: c.stage_note || '' };
   // WhatsApp yalnızca "Teslim" aşamasında, bir kez: video da varsa "fotoğraflarınız ve videonuz", yoksa "fotoğraflarınız"
   const key = `teslim:${c.id}`;
-  if (last && canMessage(c) && !db.wasNotified(key)) {
+  if (last && wa.autoSend() && canMessage(c) && !db.wasNotified(key)) {
     db.markNotified(key);
     payload.whatsapp = wa.templateMessage(c.phone, db.videoCount(c.id) > 0 ? 'teslimVideo' : 'teslim', { ad: c.name, link: wa.panelLink() });
   }
@@ -75,7 +77,7 @@ function photosUploaded(coupleId, kind = 'secim') {
     const payload = { event: 'fotograflar_yuklendi', at: new Date().toISOString(), couple: coupleInfo(c), photoCount: count, kind };
     // WhatsApp: yalnızca seçim fotoğrafları için ve bir kez. Düzenlenmiş fotoğraflar "Teslim" mesajıyla duyurulur.
     const key = `fotograflar:${c.id}`;
-    if (kind === 'secim' && canMessage(c) && !db.wasNotified(key)) {
+    if (kind === 'secim' && wa.autoSend() && canMessage(c) && !db.wasNotified(key)) {
       payload.whatsapp = wa.templateMessage(c.phone, 'fotograflar', { ad: c.name, link: wa.panelLink() });
       db.markAlbumInfoSent(c.id);
       db.markNotified(key);
@@ -95,7 +97,7 @@ function appointmentVars(c, { link, code, password }) {
 function appointmentCreated(coupleId, creds) {
   const c = db.getCouple(coupleId);
   const key = `randevu:${coupleId}`;
-  if (!config.n8nWebhookUrl || !canMessage(c) || db.wasNotified(key)) return false;
+  if (!wa.autoSend() || !canMessage(c) || db.wasNotified(key)) return false;
   db.markNotified(key);
   post({ event: 'randevu_olusturuldu', at: new Date().toISOString(), couple: coupleInfo(c), whatsapp: wa.templateMessage(c.phone, 'randevu', appointmentVars(c, creds)) });
   return true;
@@ -103,7 +105,7 @@ function appointmentCreated(coupleId, creds) {
 
 // Ekipten birine etkinlik görevi verildi: o kişiye WhatsApp mesajı (aynı görev için tarih değişmedikçe bir kez)
 function teamAssigned(eventId, memberIds) {
-  if (!config.n8nWebhookUrl || !memberIds.length) return;
+  if (!wa.autoSend() || !memberIds.length) return;
   const ev = db.getEvent(eventId);
   if (!ev) return;
   const couple = db.getCouple(ev.couple_id);
@@ -157,7 +159,7 @@ function contractSigned(couple, signerName) {
 function contractSent(coupleId, contractId) {
   const c = db.getCouple(coupleId);
   const key = `sozlesme:${coupleId}:${contractId}`;
-  if (config.n8nWebhookUrl && canMessage(c) && !db.wasNotified(key)) {
+  if (wa.autoSend() && canMessage(c) && !db.wasNotified(key)) {
     db.markNotified(key);
     post({ event: 'sozlesme_gonderildi', at: new Date().toISOString(), couple: coupleInfo(c), whatsapp: wa.templateMessage(c.phone, 'sozlesme', { ad: c.name, link: wa.panelLink() }) });
   }
