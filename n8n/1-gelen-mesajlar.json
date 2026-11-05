@@ -1,4 +1,5 @@
 {
+  "id": "hm4Flow1Gelen001",
   "name": "HM4 · 1 · WhatsApp gelen mesajlar",
   "nodes": [
     {
@@ -27,7 +28,7 @@
             {
               "id": "fd0b974b-df38-41be-a0a3-bc3bfeaf65ad",
               "name": "siteUrl",
-              "value": "https://SITENIZIN-ADRESI.onrender.com",
+              "value": "http://site:3000",
               "type": "string"
             }
           ]
@@ -63,7 +64,13 @@
         440,
         0
       ],
-      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)"
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hm4SiteKey000001",
+          "name": "HM4 Site"
+        }
+      }
     },
     {
       "parameters": {
@@ -106,7 +113,7 @@
             {
               "id": "7903d149-a574-4648-8bdb-b1b78bad6231",
               "name": "siteUrl",
-              "value": "https://SITENIZIN-ADRESI.onrender.com",
+              "value": "http://site:3000",
               "type": "string"
             }
           ]
@@ -145,7 +152,13 @@
         440,
         260
       ],
-      "notes": "Kimlik bilgisi: HM4 Site (Header Auth) — Site talebi kaydeder ve gerekirse otomatik cevabı hazırlar."
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth) — Site talebi kaydeder ve gerekirse otomatik cevabı hazırlar.",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hm4SiteKey000001",
+          "name": "HM4 Site"
+        }
+      }
     },
     {
       "parameters": {
@@ -182,7 +195,13 @@
         260
       ],
       "notes": "Kimlik bilgisi: WhatsApp Cloud API (Header Auth)",
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hm4WhatsApp00001",
+          "name": "WhatsApp Cloud API"
+        }
+      }
     }
   ],
   "connections": {

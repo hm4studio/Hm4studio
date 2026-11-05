@@ -55,9 +55,21 @@ function dueReminders() {
     if (!events.canMessage(c)) continue;
     const who = { id: c.id, name: c.name, phone: c.phone };
 
+    const shoot = c.next_date; // sıradaki etkinlik (bir çiftin birden çok tarihi olabilir)
+    // 0) Çekimden birkaç gün önce kalan ödeme hatırlatması (diğer hatırlatmalardan bağımsız; aynı gün plan hatırlatmasıyla birlikte gidebilir)
+    const due = Math.max((c.total || 0) - (c.paid || 0), 0);
+    if (shoot && due > 0) {
+      const leftDays = daysBetween(t, shoot);
+      const n = rules.odemeHatirlatmaGunOnce ?? 3;
+      const key = `odeme:${c.id}:${shoot}`;
+      if (leftDays > 0 && leftDays <= n && !db.wasNotified(key)) {
+        const tarih = new Date(`${shoot}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
+        items.push({ type: 'odeme', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'odeme', { ad: c.name, tutar: `${due.toLocaleString('tr-TR')} TL`, tarih }) });
+      }
+    }
+
     // 1) Çekimden önce plan formu hatırlatması (plan henüz kaydedilmediyse)
     const planSaved = (() => { try { return Boolean(JSON.parse(c.plan_json || '{}').saved); } catch { return false; } })();
-    const shoot = c.next_date; // sıradaki etkinlik (bir çiftin birden çok tarihi olabilir)
     if (shoot && !planSaved) {
       const left = daysBetween(t, shoot);
       const offsets = [...(rules.planHatirlatmaGunOnce || [7, 2])].sort((a, b) => b - a);
@@ -69,7 +81,17 @@ function dueReminders() {
       }
     }
 
-    // 2) Fotoğraflar yüklendikten birkaç gün sonra albüm seçimi hatırlatması
+    // 2) Gönderilen sözleşme birkaç gündür onaylanmadıysa bir kez hatırlat
+    const k = db.activeContract(c.id);
+    if (k && !k.signed_at && daysBetween(k.sent_at.slice(0, 10), t) >= (rules.sozlesmeHatirlatmaGunSonra ?? 3)) {
+      const key = `sozhat:${c.id}:${k.id}`;
+      if (!db.wasNotified(key)) {
+        items.push({ type: 'sozlesme', keys: [key], couple: who, whatsapp: wa.templateMessage(c.phone, 'sozlesme', { ad: c.name, link: wa.panelLink() }) });
+        continue;
+      }
+    }
+
+    // 3) Fotoğraflar yüklendikten birkaç gün sonra albüm seçimi hatırlatması
     const lastUpload = db.lastUploadDay(c.id);
     if (lastUpload && !c.album_locked && c.stage < last && daysBetween(lastUpload, t) >= (rules.albumHatirlatmaGunSonra ?? 5)) {
       const key = `album:${c.id}:${lastUpload}`;
@@ -79,7 +101,7 @@ function dueReminders() {
       }
     }
 
-    // 3) Teslimden bir süre sonra yorum isteme (yorum bağlantısı girildiyse)
+    // 4) Teslimden bir süre sonra yorum isteme (yorum bağlantısı girildiyse)
     if (c.stage >= last && c.stage_changed_at && reviewLink && !reviewLink.startsWith('[')
       && daysBetween(c.stage_changed_at, t) >= (rules.yorumIstemeGunSonra ?? 7)) {
       const key = `yorum:${c.id}`;
@@ -156,7 +178,7 @@ function register(router) {
   router.post('/api/hatirlatmalar/gonderildi', async (req, res) => {
     requireKey(req);
     const { keys } = await readJson(req);
-    const valid = (Array.isArray(keys) ? keys : []).filter((k) => /^(plan|album|yorum):\d+(:[\w-]+)*$/.test(String(k))).slice(0, 500);
+    const valid = (Array.isArray(keys) ? keys : []).filter((k) => /^(plan|album|yorum|odeme|sozhat):\d+(:[\w-]+)*$/.test(String(k))).slice(0, 500);
     for (const k of valid) db.markNotified(k);
     json(res, { ok: true, marked: valid.length });
   });

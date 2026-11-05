@@ -485,8 +485,8 @@ function register(router) {
       setFlash(req, { message: 'Önce kişi kartına en az bir etkinlik girin.', type: 'error' });
       return redirect(res, `/admin/ciftler/${couple.id}#sozlesme`);
     }
-    db.createContract(couple.id, JSON.stringify(contractData(couple)));
-    events.contractSent(couple.id);
+    const contractId = db.createContract(couple.id, JSON.stringify(contractData(couple)));
+    events.contractSent(couple.id, contractId);
     setFlash(req, { message: 'Sözleşme çiftin paneline gönderildi. WhatsApp ile haber verebilirsiniz.', type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}#sozlesme`);
   });
@@ -825,7 +825,7 @@ function register(router) {
     media.saveCouplePhoto(couple.id, fileKey, parts);
     const kind = decodeURIComponent(String(req.headers['x-category'] || '')) === 'duzenli' ? 'duzenli' : 'secim';
     const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt, kind });
-    events.photosUploaded(couple.id);
+    events.photosUploaded(couple.id, kind);
     json(res, { ok: true, id });
   });
 

@@ -51,16 +51,17 @@ function stageChanged(couple, stageIndex) {
 
 // Fotoğraflar tek tek yüklenir; çifte tek mesaj gitsin diye son yüklemeden sonra bir süre beklenir
 const photoTimers = new Map();
-function photosUploaded(coupleId) {
+function photosUploaded(coupleId, kind = 'secim') {
   const waitMin = Number(getWhatsapp().kurallar?.fotografBildirimiBekleme) || 15;
   const waitMs = Number(process.env.HM4_PHOTO_NOTIFY_WAIT_MS) || waitMin * 60 * 1000; // testler için kısaltılabilir
-  clearTimeout(photoTimers.get(coupleId));
-  photoTimers.set(coupleId, setTimeout(() => {
-    photoTimers.delete(coupleId);
+  const tkey = `${coupleId}:${kind}`;
+  clearTimeout(photoTimers.get(tkey));
+  photoTimers.set(tkey, setTimeout(() => {
+    photoTimers.delete(tkey);
     const c = db.getCouple(coupleId);
     if (!c) return;
-    const edited = db.listPhotos(c.id, 'duzenli').length;
-    const pkey = `push-foto:${c.id}:${edited ? 'duzenli' : 'secim'}:${new Date().toISOString().slice(0, 10)}`;
+    const edited = kind === 'duzenli' ? db.listPhotos(c.id, 'duzenli').length : 0;
+    const pkey = `push-foto:${c.id}:${kind}:${new Date().toISOString().slice(0, 10)}`;
     if (!db.wasNotified(pkey)) {
       db.markNotified(pkey);
       safePush(() => push.toCouple(c.id, edited
@@ -69,12 +70,14 @@ function photosUploaded(coupleId) {
     }
     if (!config.n8nWebhookUrl) return;
     const count = db.listPhotos(c.id).length;
-    const payload = { event: 'fotograflar_yuklendi', at: new Date().toISOString(), couple: coupleInfo(c), photoCount: count };
-    // Aynı gün içinde ikinci kez "fotoğraflarınız hazır" mesajı gitmesin
-    const key = `fotograflar:${c.id}:${new Date().toISOString().slice(0, 10)}`;
+    const payload = { event: 'fotograflar_yuklendi', at: new Date().toISOString(), couple: coupleInfo(c), photoCount: count, kind };
+    // Aynı gün içinde aynı türde ikinci bir "fotoğraflarınız hazır" mesajı gitmesin
+    const key = `fotograflar:${c.id}:${kind}:${new Date().toISOString().slice(0, 10)}`;
     if (canMessage(c) && !db.wasNotified(key)) {
-      payload.whatsapp = wa.templateMessage(c.phone, 'fotograflar', { ad: c.name, link: wa.panelLink() });
-      db.markAlbumInfoSent(c.id);
+      payload.whatsapp = edited
+        ? wa.templateMessage(c.phone, 'teslim', { ad: c.name, adet: edited, link: wa.panelLink() })
+        : wa.templateMessage(c.phone, 'fotograflar', { ad: c.name, link: wa.panelLink() });
+      if (!edited) db.markAlbumInfoSent(c.id);
       db.markNotified(key);
     }
     post(payload);
@@ -134,10 +137,22 @@ function contractSigned(couple, signerName) {
 }
 
 // Çifte: sözleşme gönderildi, video eklendi, video durumu değişti
-function contractSent(coupleId) {
+function contractSent(coupleId, contractId) {
+  const c = db.getCouple(coupleId);
+  const key = `sozlesme:${coupleId}:${contractId}`;
+  if (config.n8nWebhookUrl && canMessage(c) && !db.wasNotified(key)) {
+    db.markNotified(key);
+    post({ event: 'sozlesme_gonderildi', at: new Date().toISOString(), couple: coupleInfo(c), whatsapp: wa.templateMessage(c.phone, 'sozlesme', { ad: c.name, link: wa.panelLink() }) });
+  }
   safePush(() => push.toCouple(coupleId, { title: 'Sözleşmeniz onayınıza sunuldu', body: 'Hizmet sözleşmenizi panelinizden inceleyip onaylayabilirsiniz.', url: '/panel/sozlesme', tag: 'sozlesme' }));
 }
 function videoAdded(coupleId, title) {
+  const c = db.getCouple(coupleId);
+  const key = `video:${coupleId}:${new Date().toISOString().slice(0, 10)}`;
+  if (config.n8nWebhookUrl && canMessage(c) && !db.wasNotified(key)) {
+    db.markNotified(key);
+    post({ event: 'video_teslim', at: new Date().toISOString(), couple: coupleInfo(c), whatsapp: wa.templateMessage(c.phone, 'video', { ad: c.name, video: title || 'Videonuz', link: wa.panelLink() }) });
+  }
   safePush(() => push.toCouple(coupleId, { title: 'Videonuz teslim edildi', body: title ? `“${title}” panelinize eklendi. İzleyebilir ve indirebilirsiniz.` : 'Yeni videonuz panelinize eklendi. İzleyebilir ve indirebilirsiniz.', url: '/panel/video', tag: 'video' }));
 }
 function videoStatusChanged(coupleId, status) {

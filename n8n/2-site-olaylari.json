@@ -1,4 +1,5 @@
 {
+  "id": "hm4Flow2Olay0001",
   "name": "HM4 · 2 · Site olayları → WhatsApp",
   "nodes": [
     {
@@ -18,7 +19,13 @@
         0
       ],
       "webhookId": "51f12925-0c49-453d-84e6-60d66033102e",
-      "notes": "Bu düğümün Production URL'ini sitedeki N8N_WEBHOOK_URL ayarına yazın. Kimlik bilgisi: HM4 Site (Header Auth)"
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hm4SiteKey000001",
+          "name": "HM4 Site"
+        }
+      }
     },
     {
       "parameters": {
@@ -55,7 +62,13 @@
         0
       ],
       "notes": "Kimlik bilgisi: WhatsApp Cloud API (Header Auth)",
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hm4WhatsApp00001",
+          "name": "WhatsApp Cloud API"
+        }
+      }
     }
   ],
   "connections": {
@@ -95,5 +108,5 @@
   "tags": [],
   "staticData": null,
   "versionId": "ba8ec4b8-d54b-4450-9d6b-68cdd545fce7",
-  "description": "Sitede aşama değişince, fotoğraflar yüklenince ve yeni talep gelince sitenin hazırladığı WhatsApp mesajını gönderir."
+  "description": "Sitede aşama değişince, fotoğraf/video teslim edilince, sözleşme gönderilince, talep gelince ve ekipten birine görev verilince sitenin hazırladığı WhatsApp mesajını gönderir."
 }

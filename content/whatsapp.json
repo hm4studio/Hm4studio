@@ -17,13 +17,19 @@
     "plan": { "ad": "hm4_plan_hatirlatma", "degiskenler": ["ad", "gun", "link"] },
     "album": { "ad": "hm4_album_hatirlatma", "degiskenler": ["ad", "kare", "link"] },
     "yorum": { "ad": "hm4_yorum_iste", "degiskenler": ["ad", "link"] },
-    "gorev": { "ad": "hm4_ekip_gorev", "degiskenler": ["ad", "etkinlik", "cift", "tarih", "saat", "yer", "not"] }
+    "gorev": { "ad": "hm4_ekip_gorev", "degiskenler": ["ad", "etkinlik", "cift", "tarih", "saat", "yer", "not"] },
+    "teslim": { "ad": "hm4_teslim_hazir", "degiskenler": ["ad", "adet", "link"] },
+    "video": { "ad": "hm4_video_hazir", "degiskenler": ["ad", "video", "link"] },
+    "sozlesme": { "ad": "hm4_sozlesme_onay", "degiskenler": ["ad", "link"] },
+    "odeme": { "ad": "hm4_odeme_hatirlatma", "degiskenler": ["ad", "tutar", "tarih"] }
   },
 
   "kurallar": {
     "planHatirlatmaGunOnce": [7, 2],
     "albumHatirlatmaGunSonra": 5,
     "yorumIstemeGunSonra": 7,
-    "fotografBildirimiBekleme": 15
+    "fotografBildirimiBekleme": 15,
+    "odemeHatirlatmaGunOnce": 3,
+    "sozlesmeHatirlatmaGunSonra": 3
   }
 }

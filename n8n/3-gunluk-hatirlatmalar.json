@@ -1,4 +1,5 @@
 {
+  "id": "hm4Flow3Hatir001",
   "name": "HM4 · 3 · Günlük hatırlatmalar",
   "nodes": [
     {
@@ -29,7 +30,7 @@
             {
               "id": "523707cd-87fb-4f60-9962-b1e1def06ded",
               "name": "siteUrl",
-              "value": "https://SITENIZIN-ADRESI.onrender.com",
+              "value": "http://site:3000",
               "type": "string"
             }
           ]
@@ -65,7 +66,13 @@
         440,
         0
       ],
-      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)"
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hm4SiteKey000001",
+          "name": "HM4 Site"
+        }
+      }
     },
     {
       "parameters": {
@@ -102,7 +109,13 @@
         0
       ],
       "notes": "Kimlik bilgisi: WhatsApp Cloud API (Header Auth)",
-      "onError": "continueRegularOutput"
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hm4WhatsApp00001",
+          "name": "WhatsApp Cloud API"
+        }
+      }
     },
     {
       "parameters": {
@@ -138,7 +151,13 @@
         1320,
         0
       ],
-      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)"
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hm4SiteKey000001",
+          "name": "HM4 Site"
+        }
+      }
     }
   ],
   "connections": {
