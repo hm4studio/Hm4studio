@@ -1759,3 +1759,5 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .ev-block__tools { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; justify-content: flex-end; }
 .ev-block__same { font-weight: 400; font-size: .85em; color: var(--pencil, #6e6e6b); }
 @media (max-width: 699px) { .ev-block__head { flex-wrap: wrap; } .ev-block__tools { width: 100%; justify-content: flex-start; margin-left: -10px; } }
+/* Toplu yükleme: özet satırı ve "Hatalıları tekrar yükle" */
+.uploader__summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }

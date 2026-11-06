@@ -87,6 +87,8 @@ addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
 addColumn('photos', 'kind', "TEXT NOT NULL DEFAULT 'secim'"); // secim: albüm seçimi için · duzenli: düzenlenmiş (renkli) teslim
+addColumn('photos', 'upload_key', 'TEXT'); // tarayıcının her dosyaya verdiği anahtar: tekrar denemede aynı fotoğraf iki kez eklenmez
+db.exec('CREATE INDEX IF NOT EXISTS photos_upload_key ON photos(couple_id, upload_key)');
 addColumn('couples', 'archived_at', 'TEXT');
 addColumn('couples', 'archived_selection', "TEXT NOT NULL DEFAULT ''");
 addColumn('couples', 'archived_photos', 'INTEGER NOT NULL DEFAULT 0');
@@ -375,9 +377,10 @@ module.exports = {
     SELECT p.*, 1 AS is_fav FROM favorites f JOIN photos p ON p.id = f.photo_id
     WHERE f.couple_id = ? ORDER BY p.id`).all(coupleId),
   getPhoto: (id) => q('SELECT * FROM photos WHERE id = ?').get(id),
-  addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind }) =>
-    Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind) VALUES(?, ?, ?, ?, date('now'), ?)")
-      .run(coupleId, fileKey, originalName, originalExt || null, kind === 'duzenli' ? 'duzenli' : 'secim').lastInsertRowid),
+  addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey }) =>
+    Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind, upload_key) VALUES(?, ?, ?, ?, date('now'), ?, ?)")
+      .run(coupleId, fileKey, originalName, originalExt || null, kind === 'duzenli' ? 'duzenli' : 'secim', uploadKey || null).lastInsertRowid),
+  photoByUploadKey: (coupleId, uploadKey) => q('SELECT id FROM photos WHERE couple_id = ? AND upload_key = ?').get(coupleId, uploadKey),
   deletePhoto: (id) => q('DELETE FROM photos WHERE id = ?').run(id),
 
   // ── Favoriler ──

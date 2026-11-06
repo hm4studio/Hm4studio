@@ -602,6 +602,7 @@ function register(router) {
     if (!u || u.coupleId !== couple.id || u.next !== index) throw new HttpError(409, 'Yükleme sırası bozuldu, baştan deneyin.');
     const chunk = await readBody(req, 17 * 1024 * 1024);
     if (!chunk.length) throw new HttpError(400, 'Boş parça.');
+    media.markUploadActivity();
     u.bytes = media.appendVideoChunk(uploadId, chunk, index === 0);
     u.next++; u.at = Date.now();
     if (u.bytes > MAX_VIDEO) { uploads.delete(uploadId); media.discardVideoUpload(uploadId); throw new HttpError(413, 'Video çok büyük.'); }
@@ -861,13 +862,18 @@ function register(router) {
     if (config.demoMode && db.listPhotos(couple.id).length >= config.demoMaxPhotos) {
       throw new HttpError(400, `Demoda bir çifte en fazla ${config.demoMaxPhotos} fotoğraf yüklenebilir.`);
     }
+    media.markUploadActivity();
+    // Tekrar denemede aynı dosya ikinci kez eklenmesin (ilk deneme kaydedilmiş ama cevap yolda kaybolmuş olabilir)
+    const uploadKey = /^[a-f0-9]{32}$/.test(String(req.headers['x-upload-key'] || '')) ? String(req.headers['x-upload-key']) : null;
+    const seen = uploadKey && db.photoByUploadKey(couple.id, uploadKey);
+    if (seen) { req.resume(); return json(res, { ok: true, id: seen.id, again: true }); }
     const body = await readBody(req, config.maxUploadBytes);
     const parts = media.splitParts(req, body);
     const fileKey = newKey();
     const originalName = cleanText(decodeURIComponent(String(req.headers['x-filename'] || '')), 160);
     media.saveCouplePhoto(couple.id, fileKey, parts);
     const kind = decodeURIComponent(String(req.headers['x-category'] || '')) === 'duzenli' ? 'duzenli' : 'secim';
-    const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt, kind });
+    const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt, kind, uploadKey });
     events.photosUploaded(couple.id, kind);
     json(res, { ok: true, id });
   });
@@ -911,6 +917,11 @@ function register(router) {
     if (config.demoMode && db.listPortfolio().length >= config.demoMaxPhotos) {
       throw new HttpError(400, `Demoda portfolyoya en fazla ${config.demoMaxPhotos} fotoğraf yüklenebilir.`);
     }
+    media.markUploadActivity();
+    // Tekrar denemede aynı dosya ikinci kez eklenmesin (ilk deneme kaydedilmiş ama cevap yolda kaybolmuş olabilir)
+    const uploadKey = /^[a-f0-9]{32}$/.test(String(req.headers['x-upload-key'] || '')) ? String(req.headers['x-upload-key']) : null;
+    const seen = uploadKey && db.photoByUploadKey(couple.id, uploadKey);
+    if (seen) { req.resume(); return json(res, { ok: true, id: seen.id, again: true }); }
     const body = await readBody(req, config.maxUploadBytes);
     const parts = media.splitParts(req, body);
     const fileKey = newKey();

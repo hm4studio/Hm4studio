@@ -177,7 +177,17 @@ function finishVideo(uploadId, coupleId, fileKey) {
 const discardVideoUpload = (uploadId) => fs.rmSync(tmpVideo(uploadId), { force: true });
 const removeVideo = (coupleId, fileKey, ext) => fs.rmSync(path.join(videoDir(coupleId), `${fileKey}.${ext}`), { force: true });
 
+// Sunucu güncellemesi (deploy/guncelle.sh) son dakikalarda yükleme yapıldıysa siteyi yeniden başlatmaz.
+let lastMark = 0;
+function markUploadActivity() {
+  const now = Date.now();
+  if (now - lastMark < 15000) return; // diske en fazla 15 sn'de bir yaz
+  lastMark = now;
+  try { fs.writeFileSync(path.join(config.dataDir, 'yukleme-zamani'), String(Math.floor(now / 1000))); } catch { /* önemsiz */ }
+}
+
 module.exports = {
+  markUploadActivity,
   dirSize, coupleUsage, clearCoupleFiles, removePhotoDirs, photosSize, removeCoupleVideos,
   videoDir, appendVideoChunk, finishVideo, discardVideoUpload, removeVideo,
   couplePhotoEntries,

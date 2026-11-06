@@ -43,6 +43,23 @@
     return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Dönüştürülemedi'))), 'image/jpeg', quality));
   }
 
+  // Geçici hatalar (site yeniden başlıyor, bağlantı koptu) için tekrar denenir; kalıcı hatalar (ör. dosya çok büyük) denenmez
+  const RETRY_WAIT = [3000, 8000, 20000];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const newKey = () => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  class UploadError extends Error { constructor(msg, retry) { super(msg); this.retry = retry; } }
+
+  async function uploadWithRetry(file, opts, onRetry) {
+    file.uploadKey ||= newKey(); // aynı dosyanın tüm denemelerinde aynı anahtar: sunucu iki kez eklemez
+    for (let attempt = 0; ; attempt++) {
+      try { return await uploadOne(file, opts); } catch (err) {
+        if (!err.retry || attempt >= RETRY_WAIT.length) throw err;
+        onRetry(attempt + 2, RETRY_WAIT.length + 1);
+        await sleep(RETRY_WAIT[attempt]);
+      }
+    }
+  }
+
   async function uploadOne(file, { endpoint, keepOriginal, category }) {
     const bitmap = await decode(file);
     const thumb = await resize(bitmap, THUMB);
@@ -56,11 +73,15 @@
       'X-CSRF-Token': csrf,
       'X-Parts': parts.map(([n, b]) => `${n}:${b.size}`).join(','),
       'X-Filename': encodeURIComponent(file.name),
+      'X-Upload-Key': file.uploadKey || '',
     };
     if (category !== undefined) headers['X-Category'] = encodeURIComponent(category);
-    const res = await fetch(endpoint, { method: 'POST', headers, body: new Blob(parts.map(([, b]) => b)), credentials: 'same-origin' });
+    let res;
+    try {
+      res = await fetch(endpoint, { method: 'POST', headers, body: new Blob(parts.map(([, b]) => b)), credentials: 'same-origin' });
+    } catch { throw new UploadError('Bağlantı koptu', true); }
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.ok) throw new Error(data.error || `Sunucu hatası (${res.status})`);
+    if (!res.ok || !data.ok) throw new UploadError(data.error || `Sunucu hatası (${res.status})`, [0, 408, 429, 500, 502, 503, 504].includes(res.status));
   }
 
   document.querySelectorAll('[data-uploader]').forEach((form) => {
@@ -91,34 +112,64 @@
         return li;
       });
       input.disabled = true;
-      let ok = 0, failed = 0, next = 0;
       const opts = { endpoint: form.dataset.endpoint, keepOriginal: keep ? keep.checked : false, category: cat ? cat.value : undefined };
+      let ok = 0;
+      const summary = document.createElement('li');
+      summary.className = 'uploader__summary';
 
-      async function worker() {
-        while (next < files.length) {
-          const i = next++;
-          const state = rows[i].querySelector('.state');
-          state.textContent = 'Yükleniyor…';
-          try {
-            await uploadOne(files[i], opts);
-            state.textContent = 'Tamam'; state.className = 'state ok'; ok++;
-          } catch (err) {
-            state.textContent = err.message; state.className = 'state err'; failed++;
+      // Verilen sıradaki dosyaları 2'şer 2'şer yükler; hata verenlerin sırasını döndürür
+      async function run(indexes) {
+        let next = 0;
+        const failed = [];
+        async function worker() {
+          while (next < indexes.length) {
+            const i = indexes[next++];
+            const row = rows[i];
+            const state = row.querySelector('.state');
+            state.textContent = 'Yükleniyor…'; state.className = 'state';
+            try {
+              await uploadWithRetry(files[i], opts, (n, max) => { state.textContent = `Tekrar deneniyor (${n}/${max})…`; });
+              state.textContent = 'Tamam'; state.className = 'state ok'; ok++;
+            } catch (err) {
+              state.textContent = err.message; state.className = 'state err'; failed.push(i);
+            }
           }
         }
+        await Promise.all(Array.from({ length: Math.min(CONCURRENCY, indexes.length) }, worker));
+        return failed;
       }
-      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
-      input.disabled = false;
-      const summary = document.createElement('li');
-      summary.innerHTML = `<strong>${ok} fotoğraf yüklendi${failed ? `, ${failed} hata` : ''}.</strong><span>${ok ? 'Sayfa yenileniyor…' : ''}</span>`;
-      list.prepend(summary);
-      if (ok && !failed) setTimeout(() => location.reload(), 900);
-      else if (ok) {
-        const btn = document.createElement('button');
-        btn.type = 'button'; btn.className = 'btn btn--outline btn--sm'; btn.textContent = 'Sayfayı yenile';
-        btn.addEventListener('click', () => location.reload());
-        summary.querySelector('span').replaceWith(btn);
+
+      function finish(failed) {
+        input.disabled = false;
+        summary.innerHTML = '';
+        const text = document.createElement('strong');
+        text.textContent = `${ok} fotoğraf yüklendi${failed.length ? `, ${failed.length} fotoğraf yüklenemedi` : ''}.`;
+        summary.appendChild(text);
+        list.prepend(summary);
+        if (!failed.length) {
+          const s = document.createElement('span'); s.textContent = 'Sayfa yenileniyor…'; summary.appendChild(s);
+          setTimeout(() => location.reload(), 900);
+          return;
+        }
+        // Hatalılar listenin en üstüne: hangi dosyalar olduğu tek bakışta görünsün
+        failed.slice().reverse().forEach((i) => summary.after(rows[i]));
+        const again = document.createElement('button');
+        again.type = 'button'; again.className = 'btn btn--primary btn--sm';
+        again.textContent = `Hatalıları tekrar yükle (${failed.length})`;
+        again.addEventListener('click', async () => {
+          again.disabled = true; input.disabled = true;
+          finish(await run(failed));
+        });
+        summary.appendChild(again);
+        if (ok) {
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'btn btn--text btn--sm'; btn.textContent = 'Sayfayı yenile';
+          btn.addEventListener('click', () => location.reload());
+          summary.appendChild(btn);
+        }
       }
+
+      finish(await run(files.map((_, i) => i)));
     });
   });
 })();
