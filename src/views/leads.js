@@ -70,7 +70,7 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin }) {
     <div class="stats stats--4">
       ${Object.entries(STATUS).map(([k, label]) => h`<div class="stat"><span class="stat__num">${counts[k]}</span><span class="stat__label">${label}</span></div>`)}
     </div>
-    <p class="muted">WhatsApp’tan yazan ya da sitedeki “Uygunluk sorun” formunu dolduran herkes burada listelenir.</p>
+    <p class="muted">WhatsApp’tan yazan, sitedeki “Uygunluk sorun” formunu dolduran ve Düğün.com’dan teklif isteyen herkes burada listelenir.</p>
     ${leads.length ? h`
     <ul class="fb-list leads">
       ${leads.map((l) => h`
@@ -78,12 +78,13 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin }) {
         <div class="fb__head">
           <span class="state state--${l.status === 'yeni' ? 'soon' : l.status === 'rezervasyon' ? 'ok' : l.status === 'kayip' ? 'done' : 'upcoming'}">${STATUS[l.status] || l.status}</span>
           <strong>${l.name || 'İsimsiz'}</strong>
-          <span class="fb__meta">${[wa.displayPhone(l.phone), l.event_date ? formatDate(l.event_date) : '', l.place, l.service, l.source === 'whatsapp' ? 'WhatsApp' : 'Site', l.source !== 'whatsapp' && l.kvkk_at && !l.wa_consent ? 'WhatsApp izni yok, telefonla arayın' : ''].filter(Boolean).join(' · ')}</span>
+          <span class="fb__meta">${[wa.displayPhone(l.phone), l.event_date ? formatDate(l.event_date) : '', l.place, l.service, { whatsapp: 'WhatsApp', dugun: 'Düğün.com' }[l.source] || 'Site', l.source === 'site' && l.kvkk_at && !l.wa_consent ? 'WhatsApp izni yok, telefonla arayın' : ''].filter(Boolean).join(' · ')}</span>
           <time class="fb__time">${new Date(`${l.created_at.replace(' ', 'T')}Z`).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>
         </div>
         ${l.message ? h`<p class="fb__msg">${l.message}</p>` : ''}
         <div class="lead__actions">
           ${l.phone ? h`<a class="btn btn--outline btn--sm" href="https://wa.me/${l.phone}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp’tan yaz</a>` : ''}
+          ${l.source === 'dugun' ? h`<a class="btn btn--outline btn--sm" href="https://www.dugun.com" target="_blank" rel="noopener">Düğün.com’da yanıtla ${icon('arrow')}</a>` : ''}
           <form method="post" action="/admin/talepler/${l.id}/durum" class="inline-form lead__status">
             <input type="hidden" name="csrf" value="${csrf}">
             <label class="sr-only" for="st-${l.id}">Durum</label>

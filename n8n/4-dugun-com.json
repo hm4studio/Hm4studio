@@ -1,0 +1,110 @@
+{
+  "id": "hm4Flow4Dugun001",
+  "name": "HM4 · 4 · Düğün.com talepleri (e-posta)",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "postProcessAction": "nothing",
+        "format": "resolved",
+        "options": {
+          "customEmailConfig": "[\"UNSEEN\", [\"FROM\", \"dugun\"]]"
+        }
+      },
+      "id": "4ffa3d90-e4a1-44f2-9276-547eb2f6157b",
+      "name": "Düğün.com e-postası",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "notes": "Kimlik bilgisi: HM4 E-posta (IMAP). Yalnızca gönderen adresinde 'dugun' geçen okunmamış e-postalar okunur; e-postalar okunmamış olarak kalır.",
+      "credentials": {
+        "imap": {
+          "id": "hm4ImapMail00001",
+          "name": "HM4 E-posta"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// E-postanın metnini siteye gönderir; site ayıklar, aynı talebi iki kez eklemez.\nreturn $input.all().map((i) => ({ json: {\n  messageId: i.json.messageId || '',\n  from: (i.json.from && (i.json.from.text || i.json.from.value?.[0]?.address)) || '',\n  subject: i.json.subject || '',\n  text: i.json.text || '',\n  html: i.json.text ? '' : (i.json.html || ''),\n} }));"
+      },
+      "id": "9236e283-e985-44c8-acc6-0551ee8ebc0d",
+      "name": "Metni hazırla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://site:3000/api/dis-talep",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "94fc639f-d2c8-4beb-87f8-67909841d032",
+      "name": "Talepler'e ekle",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "notes": "Kimlik bilgisi: HM4 Site (Header Auth)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "hm4SiteKey000001",
+          "name": "HM4 Site"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Düğün.com e-postası": {
+      "main": [
+        [
+          {
+            "node": "Metni hazırla",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Metni hazırla": {
+      "main": [
+        [
+          {
+            "node": "Talepler'e ekle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Istanbul",
+    "saveDataErrorExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "tags": [],
+  "staticData": null,
+  "versionId": "000e147e-013a-4cd8-8690-4c1e86f2b63f",
+  "description": "Düğün.com'dan gelen teklif talebi e-postalarını okur ve sitedeki Talepler listesine ekler."
+}

@@ -90,6 +90,23 @@ function dueReminders() {
 }
 
 function register(router) {
+  // Düğün.com teklif talebi e-postası (n8n e-posta kutusunu okur, ham metni buraya iletir) → Talepler
+  router.post('/api/dis-talep', async (req, res) => {
+    requireKey(req);
+    const b = JSON.parse((await readBody(req, 2 * 1024 * 1024)).toString('utf8') || '{}');
+    const p = require('../dugun').parse({ subject: b.subject, text: b.text, html: b.html });
+    if (!p) return json(res, { ok: true, skipped: 'tanınmadı' });
+    const id8 = crypto.createHash('sha1').update(String(b.messageId || `${p.name}|${p.eventDate}`)).digest('hex').slice(0, 16);
+    const key = `dugun:${id8}`;
+    const dup = db.listLeads().find((l) => l.source === 'dugun' && l.name === p.name && l.event_date === p.eventDate);
+    if (db.wasNotified(key) || dup) return json(res, { ok: true, skipped: 'zaten var', id: dup?.id });
+    db.markNotified(key);
+    const message = ['Düğün.com üzerinden ayrıntılı fiyat teklifi bekliyor.', p.email ? `E-posta: ${p.email}` : ''].filter(Boolean).join(' ');
+    const id = db.addLead({ name: p.name, phone: p.phone, eventDate: p.eventDate, service: p.service, message, source: 'dugun' });
+    events.newLead({ id, name: `${p.name} (Düğün.com)`, eventDate: p.eventDate, service: p.service, source: 'dugun' });
+    json(res, { ok: true, id, lead: p });
+  });
+
   // Bağlantı testi
   router.get('/api/ping', (req, res) => {
     requireKey(req);

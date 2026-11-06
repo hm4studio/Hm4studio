@@ -82,3 +82,11 @@ Mesaj gelmezse n8n › **Executions** ekranında kırmızı adımı açın; Meta
 En sık nedenler: şablon henüz onaylanmamış, anahtar yanlış, numara doğrulanmamış.
 
 `content/whatsapp.json` içindeki `yorumLinki` alanına Google işletme yorum bağlantınızı yazmayı unutmayın.
+
+## Düğün.com talepleri (e-posta)
+
+Düğün.com yeni teklif talebini e-postayla bildirir ("…, 15-08-2027 tarihindeki düğünü için sizden ayrıntılı bir fiyat teklifi bekliyor").
+`4-dugun-com.json` akışı bu e-postaları okur (gönderen adresinde "dugun" geçen okunmamış e-postalar), site çiftin adını, tarihi ve
+etkinlik türünü ayıklayıp **Talepler**'e "Düğün.com" kaynağıyla ekler. Aynı talep iki kez eklenmez; e-postalar okunmamış kalır.
+
+Kurulum: `bash /opt/hm4studio/deploy/dugun-kur.sh` (e-posta adresi + Gmail için uygulama şifresi).
