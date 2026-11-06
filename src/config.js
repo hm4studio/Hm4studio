@@ -66,6 +66,8 @@ module.exports = {
   openaiKey: env.OPENAI_API_KEY || '',
   openaiModel: env.OPENAI_MODEL || 'gpt-4.1-mini',
   openaiBase: (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, ''),
+  // Düğün.com taleplerini Gmail'den (Apps Script) göndermek için ayrı anahtar (deploy/dugun-gmail-kur.sh)
+  leadApiKey: env.LEAD_API_KEY || '',
   // Stüdyo sahibinin Telegram asistanı (deploy/telegram-kur.sh kurar)
   telegramToken: env.TELEGRAM_BOT_TOKEN || '',
   telegramChatIds: String(env.TELEGRAM_CHAT_IDS || '').split(',').map((x) => x.trim()).filter(Boolean),

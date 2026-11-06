@@ -92,7 +92,10 @@ function dueReminders() {
 function register(router) {
   // Düğün.com teklif talebi e-postası (n8n e-posta kutusunu okur, ham metni buraya iletir) → Talepler
   router.post('/api/dis-talep', async (req, res) => {
-    requireKey(req);
+    // n8n anahtarı ya da yalnızca bu iş için verilen LEAD_API_KEY (Gmail Apps Script)
+    const given = Buffer.from(String(req.headers.authorization || '').replace(/^Bearer\s+/i, ''));
+    const lk = Buffer.from(config.leadApiKey || '');
+    if (!(config.leadApiKey && given.length === lk.length && crypto.timingSafeEqual(given, lk))) requireKey(req);
     const b = JSON.parse((await readBody(req, 2 * 1024 * 1024)).toString('utf8') || '{}');
     const p = require('../dugun').parse({ subject: b.subject, text: b.text, html: b.html });
     if (!p) return json(res, { ok: true, skipped: 'tanınmadı' });
