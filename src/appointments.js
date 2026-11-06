@@ -24,7 +24,7 @@ function displayName(fullName, partnerName) {
   return a && b ? `${a} & ${b}` : (fullName || partnerName || '').trim();
 }
 
-const EVENT_FIELDS = ['id', 'type', 'date', 'time', 'city', 'venue', 'package', 'detail', 'price', 'team'];
+const EVENT_FIELDS = ['id', 'type', 'date', 'time', 'city', 'venue', 'package', 'pkgs', 'detail', 'price', 'team'];
 
 // Formdaki etkinlik blokları: ev0_type, ev0_date … ev5_type
 function readEvents(form, content) {
@@ -40,7 +40,8 @@ function readEvents(form, content) {
       startTime: cleanTime(f('time')),
       city: clean(f('city'), 60),
       venue: clean(f('venue'), 160),
-      package: clean(f('package'), 80),
+      // Seçilen paketler + "Diğer hizmet" → "Fotoğraf + Video + Gelin alma"
+      package: [...new Set([...[].concat(f('pkgs') || []).map((x) => clean(x, 80)), clean(f('package'), 120)].filter(Boolean))].join(' + ').slice(0, 240),
       packageDetail: cleanArea(f('detail'), 1500),
       price: money(f('price')),
       team: '',

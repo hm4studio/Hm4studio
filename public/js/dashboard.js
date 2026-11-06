@@ -187,12 +187,37 @@
     if (p.t && type && !type.value) type.value = p.t;
     updateSum();
   });
+  // Birden fazla paket: işaretlenenlerin fiyatı toplanır, içerikleri alt alta yazılır (elle değiştirilmediyse)
+  form.addEventListener('change', (e) => {
+    if (!e.target.matches('[data-ev-pkg]')) return;
+    const block = e.target.closest('[data-ev]');
+    const on = [...block.querySelectorAll('[data-ev-pkg]:checked')];
+    const price = block.querySelector('[data-ev-price]');
+    const detail = block.querySelector('[name$="_detail"]');
+    const type = block.querySelector('select[name$="_type"]');
+    const total = on.reduce((s, x) => s + num(x.dataset.price), 0);
+    if (!num(price.value) || price.dataset.auto === '1') { price.value = total ? total.toLocaleString('tr-TR') : ''; price.dataset.auto = '1'; }
+    const text = on.map((x) => x.dataset.detail).filter(Boolean).join('\n');
+    if (!detail.value.trim() || detail.dataset.auto === '1') { detail.value = text; detail.dataset.auto = '1'; }
+    const t = on.map((x) => x.dataset.type).find(Boolean);
+    if (t && type && !type.value) type.value = t;
+    updateSum();
+  });
   form.addEventListener('input', (e) => {
     if (e.target.matches('[data-ev-price], [name$="_detail"]')) delete e.target.dataset.auto;
     if (e.target.matches('[data-ev-price], [data-deposit]')) updateSum();
   });
   form.addEventListener('change', (e) => { if (e.target.matches('[data-ev-date]')) { checkDate(e.target); renumber(); } });
   evList.querySelectorAll('[data-ev-date]').forEach((el) => el.value && checkDate(el));
+  // Düzenlerken: tutar/içerik seçili paketlerden geliyorsa "otomatik" say, paket ekleyip çıkarınca güncellensin
+  evList.querySelectorAll('[data-ev]').forEach((block) => {
+    const on = [...block.querySelectorAll('[data-ev-pkg]:checked')];
+    if (!on.length) return;
+    const price = block.querySelector('[data-ev-price]');
+    const detail = block.querySelector('[name$="_detail"]');
+    if (num(price.value) === on.reduce((s, x) => s + num(x.dataset.price), 0)) price.dataset.auto = '1';
+    if (detail.value.trim() === on.map((x) => x.dataset.detail).filter(Boolean).join('\n').trim()) detail.dataset.auto = '1';
+  });
   renumber();
   updateSum();
 })();

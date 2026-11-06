@@ -380,11 +380,11 @@ function dashboard(c, { outbox = [], weekEvents = [], monday, selections = [], c
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=8', '/js/outbox.js?v=1'] });
+  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=1'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
-function eventBlock(c, values, i, n, team = []) {
+function eventBlock(c, values, i, n, team = [], packages = []) {
   const o = c.appointments || {};
   const v = (k) => values[`ev${i}_${k}`] ?? '';
   const id = (k) => `ev${i}_${k}`;
@@ -408,10 +408,27 @@ function eventBlock(c, values, i, n, team = []) {
       <div class="field"><label for="${id('city')}">Şehir</label><input id="${id('city')}" name="${id('city')}" type="text" maxlength="60" value="${v('city')}"></div>
       <div class="field"><label for="${id('venue')}">Mekân</label><input id="${id('venue')}" name="${id('venue')}" type="text" maxlength="160" value="${v('venue')}"></div>
     </div>
-    <div class="appt-row">
-      <div class="field"><label for="${id('package')}">Paket</label><input id="${id('package')}" name="${id('package')}" type="text" maxlength="80" list="pkg-list" value="${v('package')}" data-ev-package autocomplete="off"></div>
-      <div class="field"><label for="${id('price')}">Tutar (₺)</label><input id="${id('price')}" name="${id('price')}" type="text" inputmode="numeric" placeholder="0" value="${v('price')}" data-money data-ev-price></div>
-    </div>
+    ${(() => {
+      // Paketler: birden fazla seçilebilir; listede olmayan bir hizmet "Diğer" alanına yazılır.
+      // Kayıtta "Fotoğraf + Video + Gelin alma" biçiminde tek metin olarak saklanır.
+      const names = new Set(packages.map((x) => x.name));
+      const posted = values[`ev${i}_pkgs`];
+      const whole = String(v('package')).trim();
+      const parts = posted !== undefined ? [].concat(posted) : names.has(whole) ? [whole] : whole.split(' + ').map((x) => x.trim()).filter(Boolean);
+      const checked = new Set(parts.filter((x) => names.has(x)));
+      const custom = posted !== undefined ? v('package') : parts.filter((x) => !names.has(x)).join(' + ');
+      return h`<div class="field ev-pkgs">
+        <span class="ev-team__label">Paket ve hizmetler <span class="muted">(birden fazla seçebilirsiniz; tutar toplanır)</span></span>
+        ${packages.length ? h`<div class="ev-team__list">${packages.map((x) => h`<label class="ev-team__item">
+          <input type="checkbox" name="${id('pkgs')}[]" value="${x.name}" data-ev-pkg data-price="${x.price || 0}" data-detail="${x.detail || ''}" data-type="${x.event_type || ''}"${checked.has(x.name) ? raw(' checked') : ''}>
+          <span>${x.name}${x.price ? h` <span class="muted">· ${tl(x.price)}</span>` : ''}</span>
+        </label>`)}</div>` : h`<p class="muted ev-team__empty">Paket listeniz boş. <a href="/admin/paketler" target="_blank" rel="noopener">Paketler sayfasından</a> hizmetlerinizi ekleyin.</p>`}
+      </div>
+      <div class="appt-row">
+        <div class="field"><label for="${id('package')}">${packages.length ? 'Diğer hizmet' : 'Paket'} <span class="muted">(isteğe bağlı)</span></label><input id="${id('package')}" name="${id('package')}" type="text" maxlength="120" list="pkg-list" value="${custom}" data-ev-package autocomplete="off" placeholder="${packages.length ? 'Listede olmayan bir hizmet' : ''}"></div>
+        <div class="field"><label for="${id('price')}">Tutar (₺)</label><input id="${id('price')}" name="${id('price')}" type="text" inputmode="numeric" placeholder="0" value="${v('price')}" data-money data-ev-price></div>
+      </div>`;
+    })()}
     ${(() => {
       const chosen = new Set([].concat(values[`ev${i}_team`] || []).map(Number));
       const list = team.filter((m) => m.active || chosen.has(m.id));
@@ -461,9 +478,9 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
         <legend>Etkinlikler</legend>
         <p class="muted appt-help">Her hizmeti ayrı etkinlik olarak girin; her birinin kendi paketi, tutarı ve ekibi olur. Aynı gün birden fazla hizmet varsa (örn. dış çekim + düğün) “Aynı güne hizmet ekle”ye dokunun: tarih, şehir ve mekân kopyalanır.</p>
         <div class="ev-list" data-ev-list>
-          ${idx.map((i, n) => eventBlock(c, values, i, n + 1, team))}
+          ${idx.map((i, n) => eventBlock(c, values, i, n + 1, team, packages))}
         </div>
-        <template data-ev-template>${eventBlock(c, {}, '__i__', '__n__', team)}</template>
+        <template data-ev-template>${eventBlock(c, {}, '__i__', '__n__', team, packages)}</template>
         <button type="button" class="btn btn--outline btn--sm ev-add" data-ev-add>${icon('plus')}Tarih ekle</button>
       </fieldset>
 
@@ -497,7 +514,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=8', '/js/outbox.js?v=1'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=1'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -1386,7 +1403,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=8', '/js/outbox.js?v=1'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=1'] });
 }
 
 module.exports = { messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
