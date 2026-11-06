@@ -380,7 +380,7 @@ function dashboard(c, { outbox = [], weekEvents = [], monday, selections = [], c
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=7', '/js/outbox.js?v=1'] });
+  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=8', '/js/outbox.js?v=1'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -391,8 +391,11 @@ function eventBlock(c, values, i, n, team = []) {
   return h`
   <div class="ev-block" data-ev data-ev-index="${i}">
     <div class="ev-block__head">
-      <h3 class="ev-block__title"><span data-ev-num>${n}</span>. etkinlik</h3>
-      <button type="button" class="btn btn--text btn--sm btn--danger-text" data-ev-remove>${icon('trash')}Kaldır</button>
+      <h3 class="ev-block__title"><span data-ev-num>${n}</span>. etkinlik <span class="ev-block__same" data-ev-same hidden>· aynı gün</span></h3>
+      <div class="ev-block__tools">
+        <button type="button" class="btn btn--text btn--sm" data-ev-sameday title="Bu günün tarih, şehir ve mekânıyla yeni bir hizmet ekler">${icon('plus')}Aynı güne hizmet ekle</button>
+        <button type="button" class="btn btn--text btn--sm btn--danger-text" data-ev-remove>${icon('trash')}Kaldır</button>
+      </div>
     </div>
     <input type="hidden" name="${id('id')}" value="${v('id')}">
     <div class="appt-row">
@@ -456,7 +459,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
 
       <fieldset class="appt-group">
         <legend>Etkinlikler</legend>
-        <p class="muted appt-help">Aynı kişi farklı günlerde farklı etkinlikler için randevu alabilir (örn. dış çekim, kına, düğün). Her tarih için ayrı paket ve istek girin.</p>
+        <p class="muted appt-help">Her hizmeti ayrı etkinlik olarak girin; her birinin kendi paketi, tutarı ve ekibi olur. Aynı gün birden fazla hizmet varsa (örn. dış çekim + düğün) “Aynı güne hizmet ekle”ye dokunun: tarih, şehir ve mekân kopyalanır.</p>
         <div class="ev-list" data-ev-list>
           ${idx.map((i, n) => eventBlock(c, values, i, n + 1, team))}
         </div>
@@ -494,7 +497,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=7', '/js/outbox.js?v=1'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=8', '/js/outbox.js?v=1'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -1383,7 +1386,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=7', '/js/outbox.js?v=1'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=8', '/js/outbox.js?v=1'] });
 }
 
 module.exports = { messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

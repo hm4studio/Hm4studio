@@ -1755,3 +1755,7 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .msg-edit textarea { font: inherit; font-size: .92rem; line-height: 1.5; min-height: 110px; }
 .msg-vars { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; font-size: .8rem; color: var(--pencil, #6e6e6b); }
 .msg-vars code { font-size: .78rem; color: var(--graphite, #1a1a1a); }
+/* Randevu formu: aynı güne hizmet ekleme */
+.ev-block__tools { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; justify-content: flex-end; }
+.ev-block__same { font-weight: 400; font-size: .85em; color: var(--pencil, #6e6e6b); }
+@media (max-width: 699px) { .ev-block__head { flex-wrap: wrap; } .ev-block__tools { width: 100%; justify-content: flex-start; margin-left: -10px; } }

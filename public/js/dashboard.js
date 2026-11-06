@@ -110,6 +110,9 @@
     blocks.forEach((b, i) => {
       b.querySelector('[data-ev-num]').textContent = i + 1;
       b.querySelector('[data-ev-remove]').hidden = blocks.length === 1;
+      const d = b.querySelector('[data-ev-date]').value;
+      const tag = b.querySelector('[data-ev-same]');
+      if (tag) tag.hidden = !d || !blocks.some((x) => x !== b && x.querySelector('[data-ev-date]').value === d);
     });
   }
 
@@ -130,28 +133,34 @@
     try {
       const r = await fetch(`/admin/cakisma?tarih=${input.value}&haric=${form.dataset.couple || 0}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
       const data = await r.json();
-      const same = [...evList.querySelectorAll('[data-ev-date]')].filter((x) => x !== input && x.value === input.value).length;
       const items = data.items || [];
-      if (items.length || same) {
-        warn.textContent = 'Bu tarihte: ' + [...items.map((i) => `${i.name} (${i.type || 'etkinlik'}${i.time ? ' ' + i.time : ''})`), ...(same ? ['bu kişinin başka bir etkinliği'] : [])].join(', ');
+      // Yalnızca başka çiftlerle çakışma uyarı sayılır; bu kişinin aynı günkü diğer hizmeti normaldir
+      if (items.length) {
+        warn.textContent = 'Bu tarihte başka çekim var: ' + items.map((i) => `${i.name} (${i.type || 'etkinlik'}${i.time ? ' ' + i.time : ''})`).join(', ');
         warn.hidden = false;
       }
     } catch { /* uyarı gösterilemezse kayıt yine yapılır */ }
   }
 
-  form.querySelector('[data-ev-add]').addEventListener('click', () => {
+  // Yeni etkinlik bloğu; "aynı gün" ise kaynak bloğun hemen altına, tarih/şehir/mekân kopyalanarak
+  function addBlock(source) {
     const i = next++;
     const html = tpl.innerHTML.replaceAll('__i__', String(i)).replaceAll('__n__', '');
-    evList.insertAdjacentHTML('beforeend', html);
-    const block = evList.lastElementChild;
-    // Önceki etkinliğin şehrini öner
-    const prev = block.previousElementSibling;
-    if (prev) block.querySelector(`[name="ev${i}_city"]`).value = prev.querySelector('[name$="_city"]').value;
+    if (source) source.insertAdjacentHTML('afterend', html); else evList.insertAdjacentHTML('beforeend', html);
+    const block = source ? source.nextElementSibling : evList.lastElementChild;
+    const set = (k, from) => { const el = block.querySelector(`[name="ev${i}_${k}"]`); if (el && from) el.value = from.value; };
+    const ref = source || block.previousElementSibling;
+    if (ref) set('city', ref.querySelector('[name$="_city"]'));
+    if (source) { set('date', source.querySelector('[data-ev-date]')); set('venue', source.querySelector('[name$="_venue"]')); }
     renumber();
     block.querySelector('select').focus();
-  });
+    if (source) block.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  form.querySelector('[data-ev-add]').addEventListener('click', () => addBlock(null));
 
   evList.addEventListener('click', (e) => {
+    const same = e.target.closest('[data-ev-sameday]');
+    if (same) { addBlock(same.closest('[data-ev]')); return; }
     const btn = e.target.closest('[data-ev-remove]');
     if (!btn) return;
     const block = btn.closest('[data-ev]');
@@ -182,7 +191,7 @@
     if (e.target.matches('[data-ev-price], [name$="_detail"]')) delete e.target.dataset.auto;
     if (e.target.matches('[data-ev-price], [data-deposit]')) updateSum();
   });
-  form.addEventListener('change', (e) => { if (e.target.matches('[data-ev-date]')) checkDate(e.target); });
+  form.addEventListener('change', (e) => { if (e.target.matches('[data-ev-date]')) { checkDate(e.target); renumber(); } });
   evList.querySelectorAll('[data-ev-date]').forEach((el) => el.value && checkDate(el));
   renumber();
   updateSum();
