@@ -47,6 +47,9 @@
   const RETRY_WAIT = [3000, 8000, 20000];
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const newKey = () => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  // Yükleme sürerken sayfadan çıkılmaya çalışılırsa tarayıcı uyarı gösterir (çıkılırsa yükleme durur)
+  let busy = 0;
+  window.addEventListener('beforeunload', (e) => { if (busy) { e.preventDefault(); e.returnValue = ''; } });
   class UploadError extends Error { constructor(msg, retry) { super(msg); this.retry = retry; } }
 
   async function uploadWithRetry(file, opts, onRetry) {
@@ -119,6 +122,7 @@
 
       // Verilen sıradaki dosyaları 2'şer 2'şer yükler; hata verenlerin sırasını döndürür
       async function run(indexes) {
+        busy++;
         let next = 0;
         const failed = [];
         async function worker() {
@@ -136,6 +140,7 @@
           }
         }
         await Promise.all(Array.from({ length: Math.min(CONCURRENCY, indexes.length) }, worker));
+        busy--;
         return failed;
       }
 

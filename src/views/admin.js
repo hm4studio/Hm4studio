@@ -922,7 +922,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=5', '/js/admin.js?v=4', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=5', '/js/admin.js?v=5', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
 function calendar(c, { couples, csrf, demoAdmin }) {
@@ -1027,7 +1027,7 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       </ul>` : h`<div class="empty-box">${icon('image')}<p>Henüz portfolyo fotoğrafı yok.</p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=4'] });
+  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
 }
 
 // Ekip: personel ekle, düzenle, sil; her kişinin görevleri
@@ -1357,7 +1357,7 @@ function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
       <div class="appt-actions"><button class="btn btn--primary" type="submit">Siteyi güncelle</button></div>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=4'] });
+  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
 }
 
 // Paketler: ad, fiyat, içerik; randevu formunda seçilince fiyat ve içerik dolar
