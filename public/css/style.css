@@ -1893,3 +1893,23 @@ a.todo__name:hover { text-decoration: underline; text-underline-offset: 3px; }
 .docs__main > span { font-size: .84rem; }
 .docs__ok { color: var(--success, #2f5d3a); }
 .page-title + .set-group, .flash + .set-group { margin-top: 24px; }
+/* Galeri: fotoğraflar kırpılmadan kendi oranında, satırlar halinde (JS ile; JS yoksa kare ızgara) */
+.tiles.is-flow { display: flex; flex-wrap: wrap; gap: 6px; }
+.tiles.is-flow::after { content: ""; flex: 999 1 0; }
+.tiles.is-flow > .tile { flex: var(--r, 1.5) 1 calc(var(--r, 1.5) * 120px); min-width: 0; }
+@media (min-width: 600px) { .tiles.is-flow > .tile { flex-basis: calc(var(--r, 1.5) * 170px); } }
+@media (min-width: 1200px) { .tiles.is-flow > .tile { flex-basis: calc(var(--r, 1.5) * 220px); } }
+.tiles.is-flow .tile__img { aspect-ratio: var(--r, 1.5); }
+.tiles.is-flow .tile__img img { object-position: 50% 50%; }
+.tiles.is-flow .tile:hover .tile__img img { transform: none; }
+/* Büyük görüntüleyici: parmakla kaydırma, çift dokunuşla yakınlaştırma */
+.lb { touch-action: none; overscroll-behavior: contain; }
+.lb__stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.lb__img { will-change: transform; }
+.lb.is-dragging .lb__img { transition: none; }
+.lb__img.is-anim { transition: transform .25s ease, opacity .25s; }
+.lb__bar { gap: 14px; }
+.lb__fav { width: auto; padding: 0 18px; border-radius: 999px; gap: 8px; font-size: .9rem; color: #fff; }
+.lb__fav[aria-pressed="true"] { background: rgba(240, 166, 154, .22); }
+.lb__hint { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font-size: .8rem; color: rgba(255, 255, 255, .6); pointer-events: none; }
+.lb { background: #0f0e0d; z-index: 1000; }

@@ -93,9 +93,9 @@ function formatDate(iso) {
 function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFav }) {
   const fav = Boolean(p.is_fav);
   return h`
-  <li class="tile${fav ? ' is-fav' : ''}" data-tile>
+  <li class="tile${fav ? ' is-fav' : ''}" data-tile data-r="${p.w && p.h ? (p.w / p.h).toFixed(3) : ''}">
     <a class="tile__img" href="/m/${p.id}/display" data-lb data-caption="${p.original_name || ''}">
-      <img src="/m/${p.id}/thumb" alt="${p.original_name || 'Fotoğraf'}" loading="lazy" decoding="async" width="640" height="640">
+      <img src="/m/${p.id}/thumb" alt="${p.original_name || 'Fotoğraf'}" loading="lazy" decoding="async" width="${p.w || 640}" height="${p.h || 640}">
     </a>
     <div class="tile__bar">
       ${noFav ? h`<span></span>` : h`<button type="button" class="tile__fav" data-fav="${favEndpoint}" data-photo="${p.id}" aria-pressed="${fav ? 'true' : 'false'}" aria-label="${fav ? 'Albümden çıkar' : 'Albüme ekle'}"${locked ? raw(' disabled') : ''}>

@@ -1075,7 +1075,8 @@ function register(router) {
     const originalName = cleanText(decodeURIComponent(String(req.headers['x-filename'] || '')), 160);
     media.saveCouplePhoto(couple.id, fileKey, parts);
     const kind = decodeURIComponent(String(req.headers['x-category'] || '')) === 'duzenli' ? 'duzenli' : 'secim';
-    const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt, kind, uploadKey });
+    const dim = media.jpegSize(parts.thumb) || {};
+    const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt, kind, uploadKey, w: dim.w || null, h: dim.h || null });
     events.photosUploaded(couple.id, kind);
     json(res, { ok: true, id });
   });

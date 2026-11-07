@@ -73,8 +73,24 @@
     });
   }
 
+  // ── Galeri: fotoğraflar kendi oranında dizilir ──
+  document.querySelectorAll('[data-gallery]').forEach((g) => {
+    g.querySelectorAll('[data-tile]').forEach((li) => {
+      const set = (r) => { if (r > 0.2 && r < 5) li.style.setProperty('--r', r.toFixed(3)); };
+      if (li.dataset.r) set(Number(li.dataset.r));
+      else {
+        const img = li.querySelector('img');
+        const fit = () => img.naturalWidth && set(img.naturalWidth / img.naturalHeight);
+        if (img?.complete) fit(); else img?.addEventListener('load', fit, { once: true });
+      }
+    });
+    g.classList.add('is-flow');
+  });
+
   // ── Büyük görüntüleme (lightbox) ──
-  let lb, imgEl, countEl, favBtn, items = [], index = 0, lastFocus = null;
+  // Yalnızca X düğmesi, Esc ya da telefonun geri tuşu kapatır; kaydırırken yanlışlıkla kapanmaz.
+  let lb, imgEl, countEl, favBtn, items = [], index = 0, lastFocus = null, pushed = false;
+  let zoom = 1, panX = 0, panY = 0;
 
   function buildLightbox() {
     lb = document.createElement('div');
@@ -83,35 +99,67 @@
     lb.setAttribute('aria-modal', 'true');
     lb.setAttribute('aria-label', 'Fotoğraf görüntüleyici');
     lb.innerHTML = `
-      <img class="lb__img" alt="">
+      <div class="lb__stage"><img class="lb__img" alt="" draggable="false"></div>
       <button type="button" class="lb__btn lb__close" aria-label="Kapat">${svg('close')}</button>
       <button type="button" class="lb__btn lb__prev" aria-label="Önceki">${svg('left')}</button>
       <button type="button" class="lb__btn lb__next" aria-label="Sonraki">${svg('right')}</button>
-      <div class="lb__bar"><button type="button" class="lb__btn lb__fav" aria-pressed="false" aria-label="Favorilere ekle" hidden>${svg('heart')}</button><span class="lb__count"></span></div>`;
+      <div class="lb__bar"><span class="lb__count"></span><button type="button" class="lb__btn lb__fav" aria-pressed="false" hidden>${svg('heart')}<span class="lb__fav-text"></span></button></div>`;
     document.body.appendChild(lb);
     imgEl = lb.querySelector('.lb__img');
     countEl = lb.querySelector('.lb__count');
     favBtn = lb.querySelector('.lb__fav');
-    lb.querySelector('.lb__close').addEventListener('click', close);
+    lb.querySelector('.lb__close').addEventListener('click', () => close());
     lb.querySelector('.lb__prev').addEventListener('click', () => show(index - 1));
     lb.querySelector('.lb__next').addEventListener('click', () => show(index + 1));
-    lb.addEventListener('click', (e) => { if (e.target === lb) close(); });
     imgEl.addEventListener('load', () => imgEl.classList.remove('is-loading'));
-    favBtn.addEventListener('click', () => {
-      const tileFav = tileFavFor(items[index]);
-      if (tileFav) tileFav.click();
-    });
+    favBtn.addEventListener('click', () => { const t = tileFavFor(items[index]); if (t) t.click(); });
     document.addEventListener('hm4:fav', syncFav);
 
-    // Kaydırma (swipe) ile geçiş
-    let startX = null;
-    lb.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
-    lb.addEventListener('touchend', (e) => {
-      if (startX === null) return;
-      const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) > 50) show(index + (dx < 0 ? 1 : -1));
-      startX = null;
+    // Parmakla kaydırma: fotoğraf parmağı izler; yeterince kaydırılınca sonrakine geçer, yoksa yerine döner.
+    // Yakınlaştırılmışken parmak fotoğrafı gezdirir. İki parmakla ya da çift dokunuşla yakınlaştırılır.
+    const pts = new Map();
+    let sx = 0, sy = 0, st = 0, moved = false, pinch0 = 0, zoom0 = 1, lastTap = 0, basePan = [0, 0];
+    const stage = lb.querySelector('.lb__stage');
+    stage.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      stage.setPointerCapture(e.pointerId);
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 1) { sx = e.clientX; sy = e.clientY; st = Date.now(); moved = false; basePan = [panX, panY]; lb.classList.add('is-dragging'); }
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = Math.hypot(a[0] - b[0], a[1] - b[1]); zoom0 = zoom; }
     });
+    stage.addEventListener('pointermove', (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 2 && pinch0) {
+        const [a, b] = [...pts.values()];
+        zoom = Math.min(4, Math.max(1, zoom0 * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0));
+        if (zoom === 1) { panX = 0; panY = 0; }
+        moved = true; apply(); return;
+      }
+      const dx = e.clientX - sx, dy = e.clientY - sy;
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) moved = true;
+      if (zoom > 1) { panX = basePan[0] + dx; panY = basePan[1] + dy; apply(); }
+      else apply(dx);
+    });
+    const end = (e) => {
+      if (!pts.has(e.pointerId)) return;
+      pts.delete(e.pointerId);
+      if (pts.size) { const [p] = [...pts.values()]; sx = p[0]; sy = p[1]; basePan = [panX, panY]; pinch0 = 0; return; }
+      lb.classList.remove('is-dragging');
+      const dx = e.clientX - sx, dy = e.clientY - sy, dt = Date.now() - st;
+      if (!moved) { // dokunuş: çift dokunuşta yakınlaştır / uzaklaştır
+        if (Date.now() - lastTap < 300) { zoom = zoom > 1 ? 1 : 2.5; panX = 0; panY = 0; anim(); lastTap = 0; }
+        else lastTap = Date.now();
+        return;
+      }
+      if (zoom > 1) return;
+      const fast = Math.abs(dx) > 25 && dt < 250;
+      if (Math.abs(dx) > Math.abs(dy) && (Math.abs(dx) > window.innerWidth * 0.18 || fast)) slide(dx < 0 ? 1 : -1);
+      else anim();
+    };
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', end);
+    stage.addEventListener('wheel', (e) => { e.preventDefault(); }, { passive: false });
 
     document.addEventListener('keydown', (e) => {
       if (!lb.classList.contains('is-open')) return;
@@ -125,6 +173,20 @@
         focusables[(i + (e.shiftKey ? -1 : 1) + focusables.length) % focusables.length].focus();
       }
     });
+    // Telefonun geri tuşu sayfadan çıkmak yerine görüntüleyiciyi kapatır
+    window.addEventListener('popstate', () => { if (lb.classList.contains('is-open')) { pushed = false; close(true); } });
+  }
+
+  function apply(dx = 0) { imgEl.style.transform = `translate(${dx + panX}px, ${panY}px) scale(${zoom})`; }
+  function anim() { imgEl.classList.add('is-anim'); apply(); setTimeout(() => imgEl.classList.remove('is-anim'), 260); }
+  function slide(dir) {
+    imgEl.classList.add('is-anim');
+    imgEl.style.transform = `translate(${-dir * window.innerWidth}px, 0)`;
+    imgEl.style.opacity = '0';
+    setTimeout(() => {
+      imgEl.classList.remove('is-anim');
+      show(index + dir, dir);
+    }, 180);
   }
 
   function tileFavFor(link) {
@@ -135,26 +197,33 @@
   function syncFav() {
     if (!lb || !lb.classList.contains('is-open')) return;
     const tileFav = tileFavFor(items[index]);
-    favBtn.hidden = !tileFav;
+    favBtn.hidden = !tileFav || tileFav.disabled;
     if (tileFav) {
       const on = tileFav.getAttribute('aria-pressed') === 'true';
+      const n = document.querySelector('[data-album-count]')?.textContent;
+      const limit = document.querySelector('[data-album]')?.dataset.limit;
       favBtn.setAttribute('aria-pressed', String(on));
-      favBtn.setAttribute('aria-label', on ? 'Favorilerden çıkar' : 'Favorilere ekle');
+      favBtn.setAttribute('aria-label', on ? 'Albümden çıkar' : 'Albüme ekle');
+      favBtn.querySelector('.lb__fav-text').textContent = `${on ? 'Albümde' : 'Albüme ekle'}${n && limit ? ` · ${n}/${limit}` : ''}`;
     }
   }
 
-  function show(i) {
+  function show(i, from = 0) {
     if (!items.length) return;
     index = (i + items.length) % items.length;
     const a = items[index];
+    zoom = 1; panX = 0; panY = 0;
     imgEl.classList.add('is-loading');
+    imgEl.style.opacity = '';
+    // Yeni fotoğraf kaydırma yönünden gelir
+    imgEl.style.transform = from ? `translate(${from * window.innerWidth * 0.3}px, 0)` : '';
     imgEl.src = a.getAttribute('href');
     imgEl.alt = a.dataset.caption || a.querySelector('img')?.alt || '';
+    if (from) requestAnimationFrame(() => anim());
     countEl.textContent = `${index + 1} / ${items.length}`;
     syncFav();
-    // Bir sonrakini önceden yükle
-    const next = items[(index + 1) % items.length];
-    if (next) { const pre = new Image(); pre.src = next.getAttribute('href'); }
+    // Öncekini ve sonrakini önceden yükle
+    for (const d of [1, -1]) { const n = items[(index + d + items.length) % items.length]; if (n) { const pre = new Image(); pre.src = n.getAttribute('href'); } }
   }
 
   function open(link) {
@@ -164,15 +233,18 @@
     lastFocus = document.activeElement;
     lb.classList.add('is-open');
     document.body.style.overflow = 'hidden';
+    try { history.pushState({ lb: 1 }, ''); pushed = true; } catch { pushed = false; }
     show(items.indexOf(link));
     lb.querySelector('.lb__close').focus();
   }
 
-  function close() {
+  function close(fromHistory) {
     lb.classList.remove('is-open');
     imgEl.removeAttribute('src');
+    imgEl.style.transform = '';
     document.body.style.overflow = '';
-    if (lastFocus) lastFocus.focus();
+    if (pushed && !fromHistory) { pushed = false; history.back(); }
+    if (lastFocus) lastFocus.focus({ preventScroll: true });
   }
 
   document.addEventListener('click', (e) => {

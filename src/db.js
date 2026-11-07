@@ -87,6 +87,8 @@ addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
 addColumn('photos', 'kind', "TEXT NOT NULL DEFAULT 'secim'"); // secim: albüm seçimi için · duzenli: düzenlenmiş (renkli) teslim
+addColumn('photos', 'w', 'INTEGER'); // küçük önizlemenin boyutu: galeride fotoğraflar kırpılmadan, kendi oranında dizilir
+addColumn('photos', 'h', 'INTEGER');
 addColumn('photos', 'upload_key', 'TEXT'); // tarayıcının her dosyaya verdiği anahtar: tekrar denemede aynı fotoğraf iki kez eklenmez
 db.exec('CREATE INDEX IF NOT EXISTS photos_upload_key ON photos(couple_id, upload_key)');
 addColumn('couples', 'archived_at', 'TEXT');
@@ -294,6 +296,20 @@ const q = (sql) => db.prepare(sql);
   }
 })();
 
+// Boyutu bilinmeyen fotoğrafların önizleme boyutu dosyadan okunup kaydedilir (eski yüklemeler için bir kez)
+function withDims(rows) {
+  const missing = rows.filter((p) => !p.w);
+  if (missing.length) {
+    const media = require('./media');
+    const upd = q('UPDATE photos SET w = ?, h = ? WHERE id = ?');
+    for (const p of missing) {
+      const d = media.thumbSize(p.couple_id, p.file_key);
+      if (d && d.w && d.h) { p.w = d.w; p.h = d.h; upd.run(d.w, d.h, p.id); }
+    }
+  }
+  return rows;
+}
+
 // Kart özeti: etkinlik sayısı, toplam tutar, ödenen, sıradaki etkinlik
 const CARD_SQL = `
   SELECT c.*,
@@ -437,16 +453,16 @@ module.exports = {
 
   // ── Çift fotoğrafları ──
   // kind verilmezse çiftin bütün fotoğrafları; 'secim' veya 'duzenli' ile yalnızca o grup
-  listPhotos: (coupleId, kind) => (kind
+  listPhotos: (coupleId, kind) => withDims(kind
     ? q(`SELECT p.*, EXISTS(SELECT 1 FROM favorites f WHERE f.photo_id = p.id) AS is_fav FROM photos p WHERE p.couple_id = ? AND p.kind = ? ORDER BY p.id`).all(coupleId, kind)
     : q(`SELECT p.*, EXISTS(SELECT 1 FROM favorites f WHERE f.photo_id = p.id) AS is_fav FROM photos p WHERE p.couple_id = ? ORDER BY p.id`).all(coupleId)),
-  listFavoritePhotos: (coupleId) => q(`
+  listFavoritePhotos: (coupleId) => withDims(q(`
     SELECT p.*, 1 AS is_fav FROM favorites f JOIN photos p ON p.id = f.photo_id
-    WHERE f.couple_id = ? ORDER BY p.id`).all(coupleId),
+    WHERE f.couple_id = ? ORDER BY p.id`).all(coupleId)),
   getPhoto: (id) => q('SELECT * FROM photos WHERE id = ?').get(id),
-  addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey }) =>
-    Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind, upload_key) VALUES(?, ?, ?, ?, date('now'), ?, ?)")
-      .run(coupleId, fileKey, originalName, originalExt || null, kind === 'duzenli' ? 'duzenli' : 'secim', uploadKey || null).lastInsertRowid),
+  addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey, w = null, h = null }) =>
+    Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind, upload_key, w, h) VALUES(?, ?, ?, ?, date('now'), ?, ?, ?, ?)")
+      .run(coupleId, fileKey, originalName, originalExt || null, kind === 'duzenli' ? 'duzenli' : 'secim', uploadKey || null, w, h).lastInsertRowid),
   photoByUploadKey: (coupleId, uploadKey) => q('SELECT id FROM photos WHERE couple_id = ? AND upload_key = ?').get(coupleId, uploadKey),
   deletePhoto: (id) => q('DELETE FROM photos WHERE id = ?').run(id),
 

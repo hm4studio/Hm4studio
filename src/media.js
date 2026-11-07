@@ -56,6 +56,32 @@ function saveCouplePhoto(coupleId, fileKey, parts) {
   if (parts.original) fs.writeFileSync(path.join(dir, `original.${parts.originalExt}`), parts.original);
 }
 
+// JPEG genişlik/yükseklik (SOF işaretinden; dosyanın yalnızca başı okunur)
+function jpegSize(buf) {
+  if (!buf || buf[0] !== 0xff || buf[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 9 < buf.length) {
+    if (buf[i] !== 0xff) { i++; continue; }
+    const m = buf[i + 1];
+    if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+    const len = buf.readUInt16BE(i + 2);
+    if ((m >= 0xc0 && m <= 0xc3) || (m >= 0xc5 && m <= 0xc7) || (m >= 0xc9 && m <= 0xcb) || (m >= 0xcd && m <= 0xcf)) {
+      return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+    }
+    i += 2 + len;
+  }
+  return null;
+}
+function thumbSize(coupleId, fileKey) {
+  try {
+    const fd = fs.openSync(path.join(coupleDir(coupleId, fileKey), 'thumb.jpg'), 'r');
+    const buf = Buffer.alloc(65536);
+    const n = fs.readSync(fd, buf, 0, buf.length, 0);
+    fs.closeSync(fd);
+    return jpegSize(buf.subarray(0, n));
+  } catch { return null; }
+}
+
 function removeCouplePhoto(coupleId, fileKey) {
   fs.rmSync(coupleDir(coupleId, fileKey), { recursive: true, force: true });
 }
@@ -187,6 +213,8 @@ function markUploadActivity() {
 }
 
 module.exports = {
+  jpegSize,
+  thumbSize,
   markUploadActivity,
   dirSize, coupleUsage, clearCoupleFiles, removePhotoDirs, photosSize, removeCoupleVideos,
   videoDir, appendVideoChunk, finishVideo, discardVideoUpload, removeVideo,
