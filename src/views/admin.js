@@ -135,7 +135,7 @@ function programBlock(c, upcoming, tomorrowDue) {
   return h`
   <section class="prog" aria-labelledby="prog-title">
     <header class="sec-head">
-      <h2 class="sec-title" id="prog-title">Program</h2>
+      <h2 class="sec-title" id="prog-title">${icon('calendar')}Program</h2>
       <span class="sec-note">Önümüzdeki 7 gün</span>
     </header>
     ${days.length ? days.map((d) => h`
@@ -237,12 +237,13 @@ function stageBoard(c, couples) {
 }
 
 // Yapılacaklar: bekleyen işler, gönderilecek mesajlar, tamamlanan seçimler, kabul edilen teklifler ve yeni talepler tek listede
+const TAG_ICON = { Teslim: ['gift', 'tes'], Ödeme: ['lira', 'pay'], Plan: ['calendar', 'cek'], Sözleşme: ['sign', 'soz'], Albüm: ['book', 'alb'], Hediye: ['gift', 'alb'], Dosyalar: ['folder', 'vid'], Mesaj: ['whatsapp', 'tes'], Ekip: ['users', 'soz'], Seçim: ['heart', 'sec'], Teklif: ['sign', 'pay'], Talep: ['inbox', 'sec'] };
 const TAG_TAB = { Teslim: 'teslim', Ödeme: 'odeme', Plan: 'plan', Sözleşme: 'odeme', Albüm: 'album', Hediye: 'hediye', Dosyalar: 'ayar' };
 function todoList(c, { couples, outbox, selections, quotes, newLeads }) {
   const rows = [];
   for (const x of attentionItems(c, couples)) {
     rows.push({ level: x.level, tag: x.tag, name: x.k.name, href: `/admin/ciftler/${x.k.id}`, text: x.text,
-      actions: h`<a class="btn btn--outline btn--sm" href="/admin/ciftler/${x.k.id}#${TAG_TAB[x.tag] || 'ozet'}">Aç</a>` });
+      actions: h`<a class="go go--${(TAG_ICON[x.tag] || ['', 'soz'])[1]}" href="/admin/ciftler/${x.k.id}#${TAG_TAB[x.tag] || 'ozet'}" aria-label="${x.k.name} aç">${icon('right')}</a>` });
   }
   for (const x of outbox) {
     rows.push({ level: 2, tag: x.team ? 'Ekip' : 'Mesaj', name: x.to, href: x.coupleId && !x.team ? `/admin/ciftler/${x.coupleId}` : '', text: x.label, outbox: x,
@@ -281,6 +282,13 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     </header>
     ${flashBlock(f)}
 
+    <div class="kpis">
+      <a class="kpi kpi--cek" href="/admin/takvim"><span class="dic">${icon('camera')}</span><span><b>${monthEvents.length}</b><span>${MONTHS[Number(ym.slice(5)) - 1]} ayında çekim</span></span></a>
+      <a class="kpi kpi--pay" href="/admin/rapor"><span class="dic">${icon('lira')}</span><span><b>${tl(balance)}</b><span>bekleyen ödeme</span></span></a>
+      <a class="kpi kpi--sec" href="/admin/talepler"><span class="dic">${icon('inbox')}</span><span><b>${newLeads}</b><span>yeni talep</span></span></a>
+      <a class="kpi kpi--${late ? 'late' : 'tes'}" href="/admin/takvim#teslimler"><span class="dic">${icon(late ? 'alert' : 'check')}</span><span><b>${late}</b><span>geciken teslim</span></span></a>
+    </div>
+
     <section class="todo" aria-labelledby="todo-title" data-outbox>
       <header class="sec-head">
         <h2 class="sec-title" id="todo-title">Yapılacaklar <span class="sec-count" data-todo-count>${todo.length}</span></h2>
@@ -288,8 +296,9 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       </header>
       ${todo.length ? h`<ul class="todo__list">${todo.map((x) => h`
         <li class="todo__item${x.level === 3 ? ' is-urgent' : ''}" data-todo-item${x.outbox ? raw(` data-outbox-item data-keys="${x.outbox.keys.join(',')}"`) : ''}>
-          <span class="todo__tag">${x.tag}</span>
+          <span class="dic dic--${(TAG_ICON[x.tag] || ['alert', 'soz'])[1]}" aria-hidden="true">${icon((TAG_ICON[x.tag] || ['alert'])[0])}</span>
           <span class="todo__main">
+            <span class="todo__tag">${x.tag}</span>
             ${x.href ? h`<a class="todo__name" href="${x.href}">${x.name}</a>` : h`<span class="todo__name">${x.name}</span>`}
             <span class="todo__text">${x.text}</span>
           </span>
@@ -298,21 +307,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       <p class="sec-empty" data-todo-empty hidden>Bekleyen iş kalmadı.</p>
     </section>
 
-    <div class="dash-top">
-      ${programBlock(c, upcoming, tomorrowDue)}
-      <section class="month" aria-labelledby="month-title">
-        <header class="sec-head">
-          <h2 class="sec-title" id="month-title">Bu ay</h2>
-          <a class="btn btn--text btn--sm" href="/admin/takvim">Takvime git${icon('right')}</a>
-        </header>
-        <dl class="figures figures--2">
-          <div><dt>${MONTHS[Number(ym.slice(5)) - 1]} ayında çekim</dt><dd>${monthEvents.length}</dd></div>
-          <div><dt>Önümüzdeki 30 gün</dt><dd>${upcoming.length}</dd></div>
-          <div><dt>Bekleyen ödeme</dt><dd>${tl(balance)}</dd></div>
-          <div><dt><a href="/admin/takvim#teslimler">Geciken teslim</a></dt><dd class="${late ? 'is-alert' : ''}">${late}</dd></div>
-        </dl>
-      </section>
-    </div>
+    <div class="dash-one">${programBlock(c, upcoming, tomorrowDue)}</div>
 
     <section class="couples" aria-labelledby="cards-title">
       <header class="sec-head cards-head">
@@ -700,7 +695,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=35"></head>
+  <link rel="stylesheet" href="/css/style.css?v=37"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">

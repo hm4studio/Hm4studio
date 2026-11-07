@@ -264,7 +264,7 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
   const limit = couple.album_limit || 35;
   if (couple.contract_state === 'bekliyor') return { title: 'Sözleşmenizi onaylayın', text: 'Okuyup birkaç dakikada onaylayabilirsiniz.', href: '/panel/sozlesme', btn: 'Sözleşmeyi aç' };
   if (upcoming && !parsePlan(couple).saved) return { title: 'Çekim günü planınızı doldurun', text: 'Saatleri ve adresleri yazın; ekibimiz hazırlığını bu plana göre yapar.', href: '/panel/plan', btn: 'Planı doldur' };
-  if (totalCount && !couple.album_locked) return { title: 'Albüm fotoğraflarınızı seçin', text: favCount ? `${favCount} / ${limit} kare seçtiniz. Bitirince “Seçimi tamamladım”a basın.` : `Albümünüz için ${limit} kare seçin: beğendiğiniz fotoğrafın kalbine dokunun.`, href: '/panel/fotograflar?g=secim', btn: favCount ? 'Seçime devam et' : 'Seçime başla' };
+  if (totalCount && !couple.album_locked) return { title: 'Albüm fotoğraflarınızı seçin', text: favCount ? `${favCount} / ${limit} kare seçtiniz. Bitirince “Seçimi tamamladım”a basın.` : `Albümünüz için ${limit} kare seçin: beğendiğiniz fotoğrafın kalbine dokunun.`, href: '/panel/fotograflar?g=secim', btn: favCount ? 'Seçime devam et' : 'Seçime başla', ring: [favCount, limit] };
   if (couple.album_design_state === 'hazir') return { title: 'Albüm tasarımınızı inceleyin', text: 'Sayfaları tek tek görüp beğendiklerinizi onaylayın, değişiklik istediğiniz sayfaya not bırakın.', href: '/panel/album', btn: 'Albümü aç' };
   if (editedCount) return { title: 'Fotoğraflarınız teslim edildi', text: `${editedCount} düzenlenmiş fotoğrafınızı görüntüleyip indirebilirsiniz.`, href: '/panel/fotograflar?g=duzenli', btn: 'Fotoğraflara git' };
   if (videoCount) return { title: 'Videonuz hazır', text: 'İzleyip indirebilirsiniz.', href: '/panel/video', btn: 'Videoyu aç' };
@@ -283,16 +283,22 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
   const dt = (iso) => new Date(`${String(iso).replace(' ', 'T')}Z`).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', year: 'numeric' });
   const ct = couple.contract_state ? require('../db').activeContract(couple.id) : null;
   const docs = [
-    ...deliveries.map((d) => ({ title: 'Teslim tutanağı', sub: `İmzalandı · ${dt(d.created_at)}`, ok: true, href: `/panel/teslim/${d.id}` })),
-    ...(ct ? [{ title: 'Sözleşme', sub: ct.signed_at ? `Onaylandı · ${dt(ct.signed_at)}` : 'Onayınızı bekliyor', ok: Boolean(ct.signed_at), href: '/panel/sozlesme', btn: ct.signed_at ? 'Aç' : 'Onayla' }] : []),
-    ...(events.length ? [{ title: 'Randevu belgesi', sub: 'Etkinlikler ve paketler', href: '/panel/belge' }] : []),
+    ...deliveries.map((d) => ({ title: 'Teslim tutanağı', sub: `İmzalandı · ${dt(d.created_at)}`, ok: true, href: `/panel/teslim/${d.id}`, ic: 'gift', k: 'tes' })),
+    ...(ct ? [{ title: 'Sözleşme', sub: ct.signed_at ? `Onaylandı · ${dt(ct.signed_at)}` : 'Onayınızı bekliyor', ok: Boolean(ct.signed_at), href: '/panel/sozlesme', btn: ct.signed_at ? 'Aç' : 'Onayla', ic: 'sign', k: 'soz' }] : []),
+    ...(events.length ? [{ title: 'Randevu belgesi', sub: 'Etkinlikler ve paketler', href: '/panel/belge', ic: 'calendar', k: 'cek' }] : []),
   ];
   const pushbox = h`<div class="pushbox" data-push data-push-quiet data-off-text="Fotoğraflarınız ve videonuz hazır olunca telefonunuza haber verelim." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>`;
   const body = h`
     <section class="now${step.href || step.done ? ' now--todo' : ''}" aria-labelledby="now-title">
+      <div class="now__row"><div class="now__body">
       <p class="now__eyebrow">${step.eyebrow || (step.href ? 'Sıradaki adım' : 'Durum')}</p>
       <h1 class="now__title" id="now-title">${step.title}</h1>
       <p class="now__text">${step.text}</p>
+      </div>${step.ring ? (() => {
+        const [n, of] = step.ring;
+        const C = 201.06;
+        return h`<div class="ring" role="img" aria-label="${n} / ${of} kare seçildi"><svg viewBox="0 0 74 74" aria-hidden="true"><circle class="ring__bg" cx="37" cy="37" r="32"/><circle class="ring__fg" cx="37" cy="37" r="32" stroke-dasharray="${C}" stroke-dashoffset="${(C * (1 - Math.min(n / (of || 1), 1))).toFixed(1)}"/></svg><b>${n}/${of}</b></div>`;
+      })() : ''}</div>
       ${step.href ? h`<a class="btn btn--primary" href="${step.href}"${step.download ? raw(' download') : ''}>${step.download ? icon('download') : ''}${step.btn}${step.download ? '' : icon('right')}</a>` : ''}
     </section>
 
@@ -306,13 +312,14 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
     </section>
 
     ${totalCount || editedCount || videoCount ? h`<div class="cquick">
-      ${editedCount ? h`<a class="cquick__item" href="/panel/fotograflar?g=duzenli"><span class="cquick__num">${editedCount}</span><span>düzenlenmiş fotoğraf</span>${icon('right')}</a>` : ''}
-      ${totalCount ? h`<a class="cquick__item" href="/panel/fotograflar?g=secim"><span class="cquick__num">${totalCount}</span><span>seçim fotoğrafı</span>${icon('right')}</a>` : ''}
-      ${videoCount ? h`<a class="cquick__item" href="/panel/video"><span class="cquick__num">${videoCount}</span><span>video</span>${icon('right')}</a>` : ''}
+      ${editedCount ? h`<a class="cquick__item cq--tes" href="/panel/fotograflar?g=duzenli"><span class="ic">${icon('image')}</span><span class="cquick__num">${editedCount}</span><span>düzenlenmiş fotoğraf</span></a>` : ''}
+      ${totalCount ? h`<a class="cquick__item cq--cek" href="/panel/fotograflar?g=secim"><span class="ic">${icon('image')}</span><span class="cquick__num">${totalCount}</span><span>seçim fotoğrafı</span></a>` : ''}
+      ${totalCount ? h`<a class="cquick__item cq--sec" href="/panel/fotograflar?g=fav"><span class="ic">${icon('heart')}</span><span class="cquick__num">${favCount}</span><span>albüme seçildi</span></a>` : ''}
+      ${videoCount ? h`<a class="cquick__item cq--vid" href="/panel/video"><span class="ic">${icon('play')}</span><span class="cquick__num">${videoCount}</span><span>video</span></a>` : ''}
     </div>` : ''}
 
     ${events.length ? h`<section class="panel-section" id="randevular" aria-labelledby="ev-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="ev-title">Randevularınız</h2></div>
+      <div class="panel-section__head"><h2 class="panel-section__title" id="ev-title">${icon('calendar')}Randevularınız</h2></div>
       <ul class="jobs">${events.map((e) => {
         const dt = e.event_date ? new Date(`${e.event_date}T12:00:00`) : null;
         return h`<li class="job">
@@ -337,8 +344,9 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
     })() : ''}
 
     ${docs.length ? h`<section class="panel-section" id="belgeler" aria-labelledby="docs-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="docs-title">Belgelerim</h2></div>
+      <div class="panel-section__head"><h2 class="panel-section__title" id="docs-title">${icon('folder')}Belgelerim</h2></div>
       <ul class="docs">${docs.map((d) => h`<li>
+        <span class="dic dic--${d.k}">${icon(d.ic)}</span>
         <span class="docs__main"><strong>${d.title}</strong><span class="${d.ok ? 'docs__ok' : 'muted'}">${d.sub}</span></span>
         <a class="btn btn--outline btn--sm" href="${d.href}">${d.btn || h`${icon('download')}İndir`}</a>
       </li>`)}</ul>

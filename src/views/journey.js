@@ -34,10 +34,12 @@ function steps(x) {
   return { list, current: cur === -1 ? null : list[cur], next, finished };
 }
 
+const STEP_ICON = { sozlesme: 'sign', cekim: 'camera', secim: 'heart', album: 'book', teslim: 'gift' };
 function road(st, { subs = true, title = '' } = {}) {
-  return h`<ol class="road" aria-label="${title || 'İşin yolu'}">${st.list.map((s, i) => h`
-    <li class="road__step is-${s.state}"${s.state === 'now' ? raw(' aria-current="step"') : ''}>
-      <span class="road__dot">${s.state === 'done' ? icon('check') : String(i + 1)}</span>
+  const at = st.list.filter((s) => s.done).length; // çizginin dolacağı yer
+  return h`<ol class="road" data-at="${Math.min(at, 4)}" aria-label="${title || 'İşin yolu'}">${st.list.map((s) => h`
+    <li class="road__step road__step--${s.key} is-${s.state}"${s.state === 'now' ? raw(' aria-current="step"') : ''}>
+      <span class="road__dot">${icon(STEP_ICON[s.key])}${s.state === 'done' ? h`<span class="sr-only">tamamlandı</span>` : ''}</span>
       <span class="road__label">${s.label}</span>
       ${subs ? h`<span class="road__sub">${s.sub}</span>` : ''}
     </li>`)}</ol>`;
