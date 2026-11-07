@@ -148,6 +148,49 @@ function register(router) {
     html(res, views.coupleVideos(getContent(), { couple, videos: db.listVideos(couple.id), csrf: req.session.csrf, flash: takeFlash(req) }));
   });
 
+  // Albüm tasarımı (stüdyo gönderdiyse)
+  router.get('/panel/album', (req, res) => {
+    if (!requireCouple(req, res)) return;
+    const couple = me(req);
+    if (!couple.album_design_state) return redirect(res, '/panel');
+    html(res, views.coupleAlbum(getContent(), { couple, pages: db.listAlbumPages(couple.id), csrf: req.session.csrf, flash: takeFlash(req) }));
+  });
+  router.post('/panel/album/sayfa/:id', async (req, res, { params }) => {
+    if (!req.session || req.session.kind !== 'couple') throw new HttpError(401, 'Oturum gerekli');
+    checkCsrf(req);
+    const couple = db.getCouple(req.session.userId);
+    const page = db.getAlbumPage(toId(params.id));
+    if (!couple || !page || page.couple_id !== couple.id) throw new HttpError(404, 'Bulunamadı');
+    if (couple.album_design_state !== 'hazir') throw new HttpError(409, 'Albüm şu an incelemeye açık değil.');
+    const b = await readJson(req);
+    const status = ['onay', 'degisiklik'].includes(b.status) ? b.status : 'bekliyor';
+    const note = status === 'degisiklik' ? String(b.note || '').replace(/\s+/g, ' ').trim().slice(0, 500) : page.note;
+    db.reviewAlbumPage(page.id, status, note);
+    json(res, { ok: true, status });
+  });
+  router.post('/panel/album/gonder', async (req, res) => {
+    if (!requireCouple(req, res)) return;
+    const form = await readForm(req);
+    checkCsrf(req, form.csrf);
+    const couple = db.getCouple(req.session.userId);
+    if (couple.album_design_state !== 'hazir') return redirect(res, '/panel/album');
+    const pages = db.listAlbumPages(couple.id);
+    const changes = pages.filter((p) => p.status === 'degisiklik').length;
+    const pending = pages.filter((p) => p.status === 'bekliyor').length;
+    if (form.karar === 'onay') {
+      if (pending || changes) { setFlash(req, { message: 'Onaylamak için tüm sayfaları “Beğendim” olarak işaretleyin.', type: 'error' }); return redirect(res, '/panel/album'); }
+      db.setAlbumDesign(couple.id, 'onaylandi');
+      events.albumDesignReviewed(couple.id, true, 0);
+      setFlash(req, { message: 'Albüm tasarımınızı onayladınız. Teşekkür ederiz!', type: 'success' });
+    } else {
+      if (pending || !changes) { setFlash(req, { message: 'Önce tüm sayfaları inceleyin; değişiklik istediğiniz sayfaya not yazın.', type: 'error' }); return redirect(res, '/panel/album'); }
+      db.setAlbumDesign(couple.id, 'degisiklik');
+      events.albumDesignReviewed(couple.id, false, changes);
+      setFlash(req, { message: 'Değişiklik istekleriniz HM4 Studio’ya iletildi.', type: 'success' });
+    }
+    redirect(res, '/panel/album');
+  });
+
   // Çekim günü planı
   router.get('/panel/plan', (req, res) => {
     if (!requireCouple(req, res)) return;
@@ -232,6 +275,17 @@ function register(router) {
     const couple = db.getCouple(req.session.userId);
     if (!couple) throw new HttpError(404, 'Bulunamadı');
     html(res, adminViews.appointmentDoc(getContent(), { card: db.getCoupleCard(couple.id), events: db.listEvents(couple.id), payments: db.listPayments(couple.id), back: '/panel', forCouple: true }));
+  });
+
+  // Albüm tasarım sayfaları: yalnızca admin veya sahibi çift
+  router.get('/m/a/:id/:variant', (req, res, { params }) => {
+    const s = req.session;
+    const page = db.getAlbumPage(toId(params.id));
+    if (!(s && page && (s.kind === 'admin' || (s.kind === 'couple' && s.userId === page.couple_id)))) throw new HttpError(404, 'Bulunamadı');
+    const file = params.variant === 'thumb' ? 'thumb.jpg' : params.variant === 'display' ? 'display.jpg' : null;
+    const dir = media.coupleDir(page.couple_id, page.file_key);
+    if (!file || !fs.existsSync(path.join(dir, file))) throw new HttpError(404, 'Bulunamadı');
+    sendFile(req, res, dir, file, { cache: 'private, max-age=86400' });
   });
 
   // Gizli fotoğraf dosyaları: yalnızca admin veya fotoğrafın sahibi çift erişebilir

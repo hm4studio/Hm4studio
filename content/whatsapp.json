@@ -82,11 +82,38 @@
         "not"
       ],
       "metin": "Merhaba {ad}, çekim görevi: {etkinlik} · {cift}\nTarih: {tarih} {saat}\nYer: {yer}\nNot: {not}\n\nHM4 Studio"
+    },
+    "teklif": {
+      "ad": "hm4_teklif",
+      "degiskenler": [
+        "ad",
+        "etkinlik",
+        "link"
+      ],
+      "metin": "Merhaba {ad}, {etkinlik} için hazırladığımız fiyat teklifini buradan inceleyebilirsiniz: {link}\n\nUygun bulursanız sayfadaki \"Kabul ediyorum\" düğmesiyle bize iletebilirsiniz.\n\nHM4 Studio"
+    },
+    "albumTasarim": {
+      "ad": "hm4_album_tasarim",
+      "degiskenler": [
+        "ad",
+        "link"
+      ],
+      "metin": "Merhaba {ad}, albüm tasarımınız hazır. Panelinizden sayfa sayfa inceleyip onaylayabilir ya da değişiklik isteyebilirsiniz: {link}\n\nHM4 Studio"
+    },
+    "yildonumu": {
+      "ad": "hm4_yildonumu",
+      "degiskenler": [
+        "ad",
+        "yil",
+        "link"
+      ],
+      "metin": "Merhaba {ad}, evliliğinizin {yil}. yılı kutlu olsun! O günü sizinle yaşamaktan mutluluk duymuştuk. Yıl dönümünüz için bir hatıra çekimi isterseniz size özel fiyatımızla buradayız: {link}\n\nHM4 Studio"
     }
   },
   "kurallar": {
     "hatirlatmaGunOnce": 3,
     "yorumIstemeGunSonra": 7,
-    "fotografBildirimiBekleme": 15
+    "fotografBildirimiBekleme": 15,
+    "yildonumuGunSonra": 7
   }
 }

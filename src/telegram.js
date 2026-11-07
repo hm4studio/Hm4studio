@@ -52,6 +52,7 @@ function studioData() {
       `Sözleşme: ${!ct ? 'gönderilmedi' : ct.signed_at ? `imzalandı (${ct.signed_at.slice(0, 10)})` : `gönderildi, imza bekleniyor (gönderim ${String(ct.sent_at || '').slice(0, 10)})`}`,
       `Fotoğraflar: seçim ${sel}, düzenlenmiş ${edited}, video ${videos} · Albüm seçimi: ${k.album_locked ? `tamamlandı (${k.fav_count}/${k.album_limit})` : sel ? `devam ediyor (${k.fav_count}/${k.album_limit} seçildi)` : 'henüz fotoğraf yok'}`,
       `Gün planı: ${plan.saved ? `dolduruldu (${plan.saved})` : 'doldurulmadı'}`,
+      k.album_design_state ? `Albüm tasarımı: ${{ hazir: 'çiftin incelemesinde', degisiklik: 'çift değişiklik istedi', onaylandi: 'çift onayladı' }[k.album_design_state]}` : '',
       `Ödeme: toplam ${tl(k.total)}, ödenen ${tl(k.paid)}, kalan ${tl(kalan)}`,
       k.notes ? `Not: ${String(k.notes).replace(/\s+/g, ' ').slice(0, 300)}` : '',
       ...evs.map((e) => {
@@ -60,6 +61,7 @@ function studioData() {
       }),
     ].filter(Boolean).join('\n'));
   }
+  const quotes = db.listQuotes().filter((q) => !q.couple_id).slice(0, 30);
   const leads = db.listLeads().filter((l) => ['yeni', 'gorusuldu'].includes(l.status)).slice(0, 40);
   return [
     `Bugün: ${dstr(t)}`,
@@ -67,6 +69,9 @@ function studioData() {
     '',
     '## Çiftler',
     lines.join('\n\n') || 'Kayıt yok.',
+    '',
+    '## Teklifler (randevuya dönmemiş)',
+    quotes.length ? quotes.map((q) => `- ${q.name} · ${q.event_type || ''} ${q.event_date ? dstr(q.event_date) : ''} · durum: ${{ hazir: 'gönderildi, açılmadı', goruldu: 'çift açtı', kabul: 'KABUL ETTİ' }[q.status]} · oluşturma ${q.created_at.slice(0, 10)}`).join('\n') : 'Yok.',
     '',
     '## Açık talepler (henüz randevuya dönmemiş)',
     leads.length ? leads.map((l) => `- ${l.name || 'İsimsiz'} · durum: ${l.status} · geliş: ${String(l.created_at || '').slice(0, 10)}${l.event_date ? ` · istenen tarih: ${dstr(l.event_date)}` : ''}${l.service ? ` · ${l.service}` : ''}${l.place ? ` · ${l.place}` : ''}${l.source ? ` · kaynak: ${l.source}` : ''}`).join('\n') : 'Yok.',

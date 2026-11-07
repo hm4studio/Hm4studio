@@ -190,6 +190,8 @@ function attentionItems(c, couples) {
     if (k.next_date && pay[2] > 0 && daysBetween(t, k.next_date) <= 14) items.push({ k, level: daysBetween(t, k.next_date) <= 3 ? 3 : 2, text: `Etkinlik ${relDays(daysBetween(t, k.next_date))}, ${tl(pay[2])} bakiye var`, tag: 'Ödeme' });
     if (k.next_date && !plan.saved && daysBetween(t, k.next_date) <= 10) items.push({ k, level: 1, text: 'Gün planı doldurulmadı', ctx: `etkinlik ${relDays(daysBetween(t, k.next_date))}`, tag: 'Plan' });
     if (k.contract_status === 'bekliyor') items.push({ k, level: k.next_date && daysBetween(t, k.next_date) <= 14 ? 2 : 1, text: 'Sözleşme onayı bekleniyor', tag: 'Sözleşme' });
+    if (k.album_design_state === 'degisiklik') items.push({ k, level: 2, text: 'Albüm tasarımında değişiklik istendi', tag: 'Albüm' });
+    if (k.album_design_state === 'onaylandi' && k.album_design_at && daysBetween(k.album_design_at.slice(0, 10), t) <= 3) items.push({ k, level: 1, text: 'Albüm tasarımı onaylandı, baskıya hazır', tag: 'Albüm' });
     if (k.photo_count > 0 && !k.album_locked && k.stage < last) items.push({ k, level: 1, text: `Albüm seçimi bekleniyor (${k.fav_count}/${k.album_limit})`, tag: 'Albüm' });
   }
   // Aynı çiftin işleri tek satırda: "Etkinlik yarın, 15.000 ₺ bakiye var · Gün planı doldurulmadı"
@@ -445,7 +447,7 @@ function eventBlock(c, values, i, n, team = [], packages = []) {
 }
 
 // Kişi kartı formu (yeni ve düzenleme ortak)
-function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, errors = [], talepId, back, demoAdmin, isNew, team = [], packages = [] }) {
+function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, errors = [], talepId, teklifId, back, demoAdmin, isNew, team = [], packages = [] }) {
   const o = c.appointments || {};
   const v = (k) => values[k] ?? '';
   const sel = (name, list, placeholder) => h`<select id="${name}" name="${name}"><option value="">${placeholder}</option>${(list || []).map((x) => h`<option${x === v(name) ? raw(' selected') : ''}>${x}</option>`)}</select>`;
@@ -460,6 +462,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
     <form class="form appt-form" method="post" action="${action}" data-appt-form data-couple="${coupleId}" data-packages="${JSON.stringify(packages.map((x) => ({ n: x.name, p: x.price, d: x.detail, t: x.event_type })))}">
       ${csrfField(csrf)}
       ${talepId ? h`<input type="hidden" name="talep" value="${talepId}">` : ''}
+      ${teklifId || values.teklif ? h`<input type="hidden" name="teklif" value="${teklifId || values.teklif}">` : ''}
       <datalist id="pkg-list">${packages.map((x) => h`<option value="${x.name}">${x.price ? tl(x.price) : ''}</option>`)}</datalist>
 
       <fieldset class="appt-group">
@@ -707,7 +710,49 @@ function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
   return panelLayout(c, { title: `Rapor ${year}`, csrf, nav: adminNav('report', csrf, demoAdmin), home: '/admin', tabs: adminTabs('report', demoAdmin), body });
 }
 
-function coupleDetail(c, { couple, card, contract: ct = null, selection = [], videos = [], edited = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
+// Albüm tasarım onayı: sayfaları yükle, çifte gönder, çiftin notlarını gör
+const ALBUM_STATE = { '': 'Henüz gönderilmedi', hazir: 'Çiftin incelemesinde', degisiklik: 'Çift değişiklik istedi', onaylandi: 'Çift onayladı' };
+const PAGE_STATE = { bekliyor: ['İncelenmedi', 'upcoming'], onay: ['Beğendi', 'ok'], degisiklik: ['Değişiklik istiyor', 'soon'] };
+function albumDesignSection(couple, pages, base, csrf) {
+  const st = couple.album_design_state || '';
+  const n = (k) => pages.filter((p) => p.status === k).length;
+  const canSend = pages.length && st !== 'onaylandi' && (st !== 'hazir' || pages.some((p) => p.status === 'bekliyor' && p.version > 1));
+  return h`<section class="panel-section" aria-labelledby="ad-title">
+    <div class="panel-section__head">
+      <h2 class="panel-section__title" id="ad-title">Albüm tasarımı</h2>
+      <span class="state state--${st === 'onaylandi' ? 'ok' : st === 'degisiklik' ? 'soon' : 'upcoming'}">${ALBUM_STATE[st]}${couple.album_design_round > 1 ? ` · ${couple.album_design_round}. tur` : ''}</span>
+    </div>
+    <p class="muted">Tasarım sayfalarını (JPG) yükleyin ve “Çifte gönder”e basın. Çift her sayfayı “beğendim” ya da “değişiklik istiyorum + not” ile işaretler. Düzelttiğiniz sayfayı <strong>aynı dosya adıyla</strong> yüklerseniz eskisinin yerine geçer ve yeniden onaya düşer.</p>
+    ${pages.length ? h`<p class="ad-sum">${pages.length} sayfa · <span class="is-ok">${n('onay')} beğenildi</span> · <span class="is-due">${n('degisiklik')} değişiklik</span> · ${n('bekliyor')} incelenmedi</p>` : ''}
+    <form class="uploader" data-uploader data-endpoint="${base}/album-sayfa">
+      <label class="uploader__drop">
+        ${icon('upload')}
+        <span><strong>Albüm sayfalarını seçin</strong> veya buraya sürükleyin</span>
+        <span class="muted">JPG · sayfa sırası dosya adına göre (01.jpg, 02.jpg …)</span>
+        <input type="file" accept="image/jpeg,image/png,image/webp" multiple data-files>
+      </label>
+      <ul class="uploader__list" data-list aria-live="polite"></ul>
+    </form>
+    ${pages.length ? h`<ul class="ad-grid">${pages.map((p, i) => h`<li class="ad-page ad-page--${p.status}">
+      <a href="/m/a/${p.id}/display?v=${p.version}" data-lb data-caption="Sayfa ${i + 1} · ${p.original_name}"><img src="/m/a/${p.id}/thumb?v=${p.version}" alt="Sayfa ${i + 1}" loading="lazy" decoding="async"></a>
+      <div class="ad-page__meta">
+        <span><strong>${i + 1}.</strong> ${p.original_name}${p.version > 1 ? h` <span class="muted">· ${p.version}. sürüm</span>` : ''}</span>
+        <span class="state state--${PAGE_STATE[p.status][1]}">${PAGE_STATE[p.status][0]}</span>
+      </div>
+      ${p.note ? h`<p class="ad-page__note">“${p.note}”</p>` : ''}
+      <form method="post" action="${base}/album-sayfa/${p.id}/sil" class="inline-form" data-confirm="Bu sayfa silinsin mi?">
+        <input type="hidden" name="csrf" value="${csrf}"><button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button>
+      </form>
+    </li>`)}</ul>` : ''}
+    ${canSend ? h`<form method="post" action="${base}/album-gonder" class="ad-send">
+      <input type="hidden" name="csrf" value="${csrf}">
+      <button class="btn btn--primary" type="submit">${icon('send')}${st === 'degisiklik' || st === 'hazir' ? 'Düzeltmeleri çifte gönder' : 'Çifte gönder'}</button>
+      <span class="muted">Çifte telefon bildirimi gider; WhatsApp mesajı “Gönderilecek mesajlar”a düşer.</span>
+    </form>` : ''}
+  </section>`;
+}
+
+function coupleDetail(c, { couple, card, contract: ct = null, selection = [], videos = [], edited = [], albumPages = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
@@ -734,7 +779,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     })()}
 
     <nav class="cd-tabs" data-cd-tabs aria-label="Çift sayfası bölümleri" hidden>
-      ${[['ozet', 'Özet'], ['odeme', 'Ödeme ve sözleşme'], ['foto', `Fotoğraflar${totalCount + edited.length ? ` ${totalCount + edited.length}` : ''}`], ['video', `Video${videos.length ? ` ${videos.length}` : ''}`], ['plan', 'Gün planı'], ['ayar', 'Giriş ve dosyalar']]
+      ${[['ozet', 'Özet'], ['odeme', 'Ödeme ve sözleşme'], ['foto', `Fotoğraflar${totalCount + edited.length ? ` ${totalCount + edited.length}` : ''}`], ['album', `Albüm tasarımı${albumPages.length ? ` ${albumPages.length}` : ''}`], ['video', `Video${videos.length ? ` ${videos.length}` : ''}`], ['plan', 'Gün planı'], ['ayar', 'Giriş ve dosyalar']]
         .map(([k, l]) => h`<a href="#${k}" data-tab="${k}">${l}</a>`)}
     </nav>
 
@@ -847,6 +892,8 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     </section>
 
     </div>
+
+    <div class="cd-pane" data-pane="album">${albumDesignSection(couple, albumPages, base, csrf)}</div>
 
     <div class="cd-pane" data-pane="video">
     <section class="panel-section" id="video" aria-labelledby="video-title">
@@ -1090,9 +1137,12 @@ const MESSAGE_INFO = [
   ['teslim', 'Teslim edildi (video yok)', 'İş "Teslim" aşamasına alınınca, videosu olmayan işlerde.', ['ad', 'link']],
   ['teslimVideo', 'Teslim edildi (fotoğraf + video)', 'İş "Teslim" aşamasına alınınca, video da varsa.', ['ad', 'link']],
   ['yorum', 'Yorum isteği', 'Teslimden 7 gün sonra.', ['ad', 'link']],
+  ['teklif', 'Fiyat teklifi', 'Teklif sayfasından “WhatsApp’tan gönder” ya da “Mesajı kopyala” ile.', ['ad', 'etkinlik', 'link']],
+  ['albumTasarim', 'Albüm tasarımı hazır', 'Albüm sayfalarını çifte gönderdiğinizde.', ['ad', 'link']],
+  ['yildonumu', 'Yıl dönümü kutlaması', 'Düğünden bir yıl (ve her yıl) sonra.', ['ad', 'yil', 'link']],
   ['gorev', 'Ekip görevi ve hatırlatması', 'Ekipten biri etkinliğe atanınca ve çekimden 3 gün önce.', ['ad', 'etkinlik', 'cift', 'tarih', 'saat', 'yer', 'not']],
 ];
-const VAR_TEXT = { ad: 'çiftin / kişinin adı', no: 'randevu no', tarih: 'tarih', link: 'bağlantı', kod: 'erişim kodu', sifre: 'şifre', gun: 'kalan gün', etkinlik: 'etkinlik türü', cift: 'çiftin adı', saat: 'saat', yer: 'mekân', not: 'not' };
+const VAR_TEXT = { yil: 'kaçıncı yıl', ad: 'çiftin / kişinin adı', no: 'randevu no', tarih: 'tarih', link: 'bağlantı', kod: 'erişim kodu', sifre: 'şifre', gun: 'kalan gün', etkinlik: 'etkinlik türü', cift: 'çiftin adı', saat: 'saat', yer: 'mekân', not: 'not' };
 
 // Ayarlar › Google ve şehir sayfaları
 function citiesPage(c, { csrf, flash: f, demoAdmin, siteUrl }) {

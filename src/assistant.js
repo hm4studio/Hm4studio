@@ -50,6 +50,7 @@ function coupleContext(couple) {
     `Videolar: ${videos.length ? videos.map((v) => `${v.kind}${v.title ? ` "${v.title}"` : ''}`).join(', ') : 'henüz eklenmedi'}`,
     `Sözleşme: ${!k ? 'henüz gönderilmedi' : k.signed_at ? 'onaylandı' : 'onay bekliyor (Sözleşme sayfasından okunup imzalanır)'}`,
     `Çekim günü planı: ${plan.saved ? 'dolduruldu' : 'henüz doldurulmadı (Plan sayfasından)'}`,
+    `Albüm tasarımı: ${{ hazir: 'stüdyo gönderdi, çiftin incelemesini bekliyor (Albüm sayfasından sayfa sayfa onaylanır)', degisiklik: 'çift değişiklik istedi, stüdyo düzeltiyor', onaylandi: 'çift onayladı, baskıya hazırlanıyor' }[couple.album_design_state] || 'henüz gönderilmedi'}`,
     ...PLAN_FIELDS.filter((f) => plan[f.key]).map((f) => `  ${f.short}: ${String(plan[f.key]).replace(/\s+/g, ' ').slice(0, 400)}`),
   ];
   if (c.couplePanel?.showPayments && card?.total) lines.push(`Ödeme: toplam ${tl(card.total)}, ödenen ${tl(card.paid)}, kalan ${tl(Math.max(card.total - card.paid, 0))}`);
@@ -72,6 +73,7 @@ const PANEL_GUIDE = `Panel kullanımı:
 - Video sayfası: klip, düğün hikâyesi, reels gibi teslim videoları; izlenebilir ve indirilebilir.
 - Plan sayfası: çekim günü akışı (hazırlık yeri, saatler, önemli kişiler, notlar) doldurulur; stüdyo ekibi buna göre hazırlanır.
 - Sözleşme sayfası (gönderildiyse): metin okunur, ad soyad, T.C. kimlik no ve adres yazılır, paylaşım izni seçilir, imza parmakla çizilir ve onaylanır. Onaydan sonra PDF olarak indirilebilir.
+- Albüm sayfası (stüdyo albüm tasarımını gönderince açılır): her sayfa için "Beğendim" ya da "Değişiklik istiyorum" seçilir, değişiklik için kısa not yazılıp "Notu kaydet"e basılır. Tüm sayfalar beğenilince "Albümü onaylıyorum", değişiklik varsa tüm sayfalar incelendikten sonra "Değişiklikleri gönder" kullanılır.
 - Randevu belgesi Durum sayfasından indirilebilir.
 - Uygulama gibi kullanmak için: iPhone'da Safari > Paylaş > Ana Ekrana Ekle; Android'de Chrome menüsü > Ana ekrana ekle. Bildirimler iPhone'da yalnızca ana ekrana eklenmiş uygulamada çalışır.
 - Şifre unutulursa stüdyodan yeni şifre istenir.`;

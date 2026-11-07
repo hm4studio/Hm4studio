@@ -195,6 +195,7 @@ function planView(couple) {
 const COUPLE_PAGES = [
   { key: 'durum', href: '/panel', label: 'Durum', icon: 'clock' },
   { key: 'foto', href: '/panel/fotograflar', label: 'Fotoğraflar', icon: 'image' },
+  { key: 'album', href: '/panel/album', label: 'Albüm', icon: 'book' },
   { key: 'video', href: '/panel/video', label: 'Video', icon: 'play' },
   { key: 'plan', href: '/panel/plan', label: 'Plan', icon: 'pin' },
 ];
@@ -203,7 +204,7 @@ const COUPLE_PAGES = [
 // Plan çekimler bitince, Video da video işi yoksa gizlenir (sayfalar adresle yine açılır).
 function pagesFor(couple) {
   const ct = { key: 'sozlesme', href: '/panel/sozlesme', label: 'Sözleşme', icon: 'check' };
-  const base = COUPLE_PAGES.filter((p) => (p.key !== 'plan' || couple.show_plan !== false) && (p.key !== 'video' || couple.show_video !== false));
+  const base = COUPLE_PAGES.filter((p) => (p.key !== 'plan' || couple.show_plan !== false) && (p.key !== 'video' || couple.show_video !== false) && (p.key !== 'album' || Boolean(couple.album_design_state)));
   if (couple.contract_state === 'bekliyor') return [base[0], ct, ...base.slice(1)];
   if (couple.contract_state === 'imzali') return [...base, ct];
   return base;
@@ -258,6 +259,7 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
   if (couple.contract_state === 'bekliyor') return { title: 'Sözleşmenizi onaylayın', text: 'Okuyup birkaç dakikada onaylayabilirsiniz.', href: '/panel/sozlesme', btn: 'Sözleşmeyi aç' };
   if (upcoming && !parsePlan(couple).saved) return { title: 'Çekim günü planınızı doldurun', text: 'Saatleri ve adresleri yazın; ekibimiz hazırlığını bu plana göre yapar.', href: '/panel/plan', btn: 'Planı doldur' };
   if (totalCount && !couple.album_locked) return { title: 'Albüm fotoğraflarınızı seçin', text: favCount ? `${favCount} / ${limit} kare seçtiniz. Bitirince “Seçimi tamamladım”a basın.` : `Albümünüz için ${limit} kare seçin: beğendiğiniz fotoğrafın kalbine dokunun.`, href: '/panel/fotograflar?g=secim', btn: favCount ? 'Seçime devam et' : 'Seçime başla' };
+  if (couple.album_design_state === 'hazir') return { title: 'Albüm tasarımınızı inceleyin', text: 'Sayfaları tek tek görüp beğendiklerinizi onaylayın, değişiklik istediğiniz sayfaya not bırakın.', href: '/panel/album', btn: 'Albümü aç' };
   if (editedCount) return { title: 'Fotoğraflarınız teslim edildi', text: `${editedCount} düzenlenmiş fotoğrafınızı görüntüleyip indirebilirsiniz.`, href: '/panel/fotograflar?g=duzenli', btn: 'Fotoğraflara git' };
   if (videoCount) return { title: 'Videonuz hazır', text: 'İzleyip indirebilirsiniz.', href: '/panel/video', btn: 'Videoyu aç' };
   if (upcoming) {
@@ -388,6 +390,56 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
 }
 
 // Video: klip, film, reels — izle ve indir
+// Albüm tasarımı: sayfa sayfa "beğendim" / "değişiklik istiyorum + not", sonunda onay ya da değişiklikleri gönder
+function coupleAlbum(c, { couple, pages, csrf, flash: f }) {
+  const st = couple.album_design_state;
+  const open = st === 'hazir';
+  const reviewed = pages.filter((p) => p.status !== 'bekliyor').length;
+  const head = {
+    hazir: 'Her sayfayı inceleyin: beğendiyseniz “Beğendim”e, değiştirmek istediğiniz bir şey varsa “Değişiklik istiyorum”a basıp kısaca yazın. Bitince sayfanın altından onaylayın ya da değişiklikleri gönderin.',
+    degisiklik: 'Değişiklik isteklerinizi aldık. Düzeltilmiş sayfalar hazır olunca size haber vereceğiz.',
+    onaylandi: 'Albüm tasarımınızı onayladınız, teşekkür ederiz. Albümünüz baskıya hazırlanıyor.',
+  }[st] || '';
+  const body = h`
+    <section class="panel-section cpage" aria-labelledby="alb-title">
+      <div class="panel-section__head">
+        <h1 class="panel-section__title" id="alb-title">Albüm tasarımı</h1>
+        <p class="muted">${head}</p>
+      </div>
+      ${open ? h`<p class="alb-progress" data-alb-progress>${reviewed} / ${pages.length} sayfa incelendi</p>` : ''}
+      <ol class="alb-pages" data-album data-total="${pages.length}">
+        ${pages.map((p, i) => h`<li class="alb-page" data-alb-page="${p.id}" data-status="${p.status}">
+          <a class="alb-page__img" href="/m/a/${p.id}/display?v=${p.version}" data-lb data-caption="Sayfa ${i + 1}"><img src="/m/a/${p.id}/display?v=${p.version}" alt="Albüm sayfası ${i + 1}" loading="lazy" decoding="async"></a>
+          <div class="alb-page__bar">
+            <span class="alb-page__num">Sayfa ${i + 1}${p.version > 1 && p.status === 'bekliyor' ? h` <span class="alb-page__new">Düzeltildi</span>` : ''}</span>
+            ${open ? h`<div class="alb-page__btns" role="group" aria-label="Sayfa ${i + 1}">
+              <button type="button" class="alb-btn" data-alb-set="onay" aria-pressed="${p.status === 'onay'}">${icon('check')}Beğendim</button>
+              <button type="button" class="alb-btn" data-alb-set="degisiklik" aria-pressed="${p.status === 'degisiklik'}">Değişiklik istiyorum</button>
+            </div>` : h`<span class="alb-page__state">${{ onay: 'Beğendiniz', degisiklik: 'Değişiklik istediniz', bekliyor: '' }[p.status]}</span>`}
+          </div>
+          ${open ? h`<div class="alb-page__note" data-alb-note${p.status === 'degisiklik' ? '' : raw(' hidden')}>
+            <label class="sr-only" for="n-${p.id}">Sayfa ${i + 1} için not</label>
+            <textarea id="n-${p.id}" rows="2" maxlength="500" placeholder="Ne değişsin? Örn. soldaki fotoğraf yerine başka bir kare">${p.note}</textarea>
+            <button type="button" class="btn btn--outline btn--sm" data-alb-save>Notu kaydet</button>
+          </div>` : p.note ? h`<p class="alb-page__said">Notunuz: “${p.note}”</p>` : ''}
+          ${open && p.note && p.version > 1 && p.status === 'bekliyor' ? h`<p class="alb-page__said">Önceki notunuz: “${p.note}”</p>` : ''}
+        </li>`)}
+      </ol>
+      ${open ? h`<div class="alb-finish">
+        <form method="post" action="/panel/album/gonder" data-confirm="Albüm tasarımını onaylıyor musunuz? Onaydan sonra baskıya hazırlanır.">
+          <input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="karar" value="onay">
+          <button class="btn btn--primary" type="submit" data-alb-approve disabled>${icon('check')}Albümü onaylıyorum</button>
+        </form>
+        <form method="post" action="/panel/album/gonder">
+          <input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="karar" value="degisiklik">
+          <button class="btn btn--outline" type="submit" data-alb-changes disabled>Değişiklikleri gönder</button>
+        </form>
+        <p class="muted" data-alb-hint>Onaylamak için tüm sayfaları “Beğendim” olarak işaretleyin; değişiklik istediğiniz sayfa varsa hepsini inceledikten sonra “Değişiklikleri gönder”e basın.</p>
+      </div>` : ''}
+    </section>`;
+  return coupleShell(c, { couple, page: 'album', csrf, flash: f, body, scripts: ['/js/panel.js?v=5', '/js/album.js?v=1'] });
+}
+
 function coupleVideos(c, { couple, videos, csrf, flash: f }) {
   const wide = videos.filter((v) => v.kind !== 'Reels');
   const reels = videos.filter((v) => v.kind === 'Reels');
@@ -420,4 +472,4 @@ function couplePlan(c, { couple, csrf, flash: f }) {
   return coupleShell(c, { couple, page: 'plan', csrf, flash: f, body: planSection(couple, csrf), scripts: ['/js/panel.js?v=5'] });
 }
 
-module.exports = { coupleShell, couplePhotos, coupleVideos, couplePlan, coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };
+module.exports = { coupleAlbum, coupleShell, couplePhotos, coupleVideos, couplePlan, coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };

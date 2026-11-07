@@ -61,11 +61,12 @@ function form(c, { values = {}, error, thanks, services }) {
   return publicLayout(c, { title: 'Uygunluk sorun', body });
 }
 
-function adminList(c, { leads, csrf, flash: f, demoAdmin }) {
+function adminList(c, { leads, csrf, flash: f, demoAdmin, quotes = [] }) {
+  const qOf = new Map(quotes.map((q) => [q.lead_id, q])); // her talebin son teklifi
   const counts = Object.fromEntries(Object.keys(STATUS).map((k) => [k, leads.filter((l) => l.status === k).length]));
   const body = h`
   <div class="container">
-    <div class="panel-title-row"><h1 class="page-title">Talepler</h1></div>
+    <div class="panel-title-row"><h1 class="page-title">Talepler</h1><a class="btn btn--outline btn--sm" href="/admin/teklifler">Teklifler</a></div>
     ${f ? flash(f.message, f.type) : ''}
     <div class="stats stats--4">
       ${Object.entries(STATUS).map(([k, label]) => h`<div class="stat"><span class="stat__num">${counts[k]}</span><span class="stat__label">${label}</span></div>`)}
@@ -92,7 +93,9 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin }) {
             <button class="btn btn--text btn--sm" type="submit">Kaydet</button>
           </form>
           ${l.couple_id ? h`<a class="btn btn--text btn--sm" href="/admin/ciftler/${l.couple_id}">Çifti aç ${icon('arrow')}</a>` : h`
-          <a class="btn btn--primary btn--sm" href="/admin/randevu/yeni?talep=${l.id}">Randevu oluştur</a>`}
+          ${qOf.get(l.id) ? h`<a class="btn btn--outline btn--sm" href="/admin/teklif/${qOf.get(l.id).id}">Teklif · ${{ hazir: 'açılmadı', goruldu: 'görüldü', kabul: 'kabul edildi' }[qOf.get(l.id).status]}</a>`
+            : h`<a class="btn btn--outline btn--sm" href="/admin/teklif/yeni?talep=${l.id}">Teklif hazırla</a>`}
+          <a class="btn btn--primary btn--sm" href="/admin/randevu/yeni?${qOf.get(l.id) ? `teklif=${qOf.get(l.id).id}` : `talep=${l.id}`}">Randevu oluştur</a>`}
           <form method="post" action="/admin/talepler/${l.id}/sil" class="inline-form" data-confirm="Bu talep silinsin mi?">
             <input type="hidden" name="csrf" value="${csrf}">
             <button class="btn btn--text btn--sm btn--danger-text" type="submit" aria-label="Talebi sil">${icon('trash')}</button>

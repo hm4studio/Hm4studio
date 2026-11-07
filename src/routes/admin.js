@@ -125,12 +125,32 @@ function register(router) {
       talepId = lead.id;
       Object.assign(values, {
         fullName: lead.name, phone: lead.phone ? wa.displayPhone(lead.phone) : '', ev0_date: lead.event_date || values.ev0_date,
-        ev0_venue: lead.place, source: lead.source === 'whatsapp' ? 'WhatsApp' : 'Site formu',
+        ev0_venue: lead.place, source: { whatsapp: 'WhatsApp', dugun: 'Düğün.com' }[lead.source] || 'Site formu',
         ev0_type: (getContent().appointments?.eventTypes || []).find((t) => lead.service && lead.service.includes(t)) || '',
         notes: lead.message,
       });
     }
-    html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }));
+    // Kabul edilen (ya da hazırlanan) tekliften: paketler, tutar ve kapora forma gelir
+    const quote = query.get('teklif') ? db.getQuote(Number(query.get('teklif')) || 0) : null;
+    let teklifId = null;
+    if (quote && !quote.couple_id) {
+      teklifId = quote.id;
+      const qi = require('../views/quotes');
+      const items = qi.items(quote);
+      const pkgNames = new Set(db.listPackages().map((p) => p.name));
+      const ql = quote.lead_id ? db.getLead(quote.lead_id) : null;
+      if (ql && !ql.couple_id) talepId = ql.id;
+      Object.assign(values, {
+        fullName: quote.accepted_name || quote.name, phone: wa.displayPhone(quote.accepted_phone || quote.phone || '') || '',
+        ev0_type: quote.event_type || values.ev0_type || '', ev0_date: quote.event_date || values.ev0_date, ev0_venue: quote.place || values.ev0_venue || '',
+        ev0_pkgs: items.filter((x) => pkgNames.has(x.name)).map((x) => x.name),
+        ev0_package: items.filter((x) => !pkgNames.has(x.name)).map((x) => x.name).join(' + '),
+        ev0_price: qi.total(quote) || '', ev0_detail: items.map((x) => x.detail).filter(Boolean).join('\n'),
+        deposit: quote.deposit || '', notes: [values.notes, quote.note].filter(Boolean).join('\n'),
+        source: ql?.source === 'dugun' ? 'Düğün.com' : values.source || '',
+      });
+    }
+    html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, teklifId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }));
   });
 
   // Etkinlikleri kaydet: gönderilenleri güncelle/ekle, formdan kaldırılanları sil
@@ -189,6 +209,7 @@ function register(router) {
     db.setRefNo(id, db.nextRefNo((first || today()).slice(0, 4)));
     const lead = form.talep ? db.getLead(Number(form.talep) || 0) : null;
     if (lead && !lead.couple_id) db.setLeadStatus(lead.id, 'rezervasyon', id);
+    if (form.teklif) { const qt = db.getQuote(Number(form.teklif) || 0); if (qt && !qt.couple_id) db.setQuoteCouple(qt.id, id); }
     const warn = conflictText(id, list);
     const link = auth.loginLink(id, hash);
     const sent = events.appointmentCreated(id, { link, code, password });
@@ -819,8 +840,45 @@ function register(router) {
       events: db.listEvents(couple.id).map((e) => ({ ...e, members: db.eventMembers(e.id) })),
       payments: db.listPayments(couple.id),
       contract: db.activeContract(couple.id),
+      albumPages: db.listAlbumPages(couple.id),
       demoAdmin: demo.isDemoAdmin(req),
     }));
+  });
+
+  // ── Albüm tasarımı: sayfa yükle (aynı adlı sayfa varsa yerine geçer), sil, çifte gönder ──
+  router.post('/admin/ciftler/:id/album-sayfa', async (req, res, { params }) => {
+    apiGuard(req);
+    const couple = getCoupleOr404(params.id);
+    media.markUploadActivity();
+    const name = cleanText(decodeURIComponent(String(req.headers['x-filename'] || '')), 160) || 'sayfa.jpg';
+    const body = await readBody(req, config.maxUploadBytes);
+    const parts = media.splitParts(req, body);
+    const fileKey = newKey();
+    media.saveCouplePhoto(couple.id, fileKey, { thumb: parts.thumb, display: parts.display });
+    const old = db.albumPageByName(couple.id, name);
+    if (old) { db.replaceAlbumPage(old.id, fileKey); media.removeCouplePhoto(couple.id, old.file_key); }
+    const id = old ? old.id : db.addAlbumPage(couple.id, fileKey, name);
+    json(res, { ok: true, id, replaced: Boolean(old) });
+  });
+
+  router.post('/admin/ciftler/:id/album-sayfa/:pid/sil', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const page = db.getAlbumPage(toId(params.pid));
+    if (page && page.couple_id === couple.id) { db.deleteAlbumPage(page.id); media.removeCouplePhoto(couple.id, page.file_key); }
+    redirect(res, `/admin/ciftler/${couple.id}#album`);
+  });
+
+  router.post('/admin/ciftler/:id/album-gonder', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    if (!db.listAlbumPages(couple.id).length) throw new HttpError(400, 'Önce albüm sayfalarını yükleyin.');
+    db.setAlbumDesign(couple.id, 'hazir', true);
+    events.albumDesignReady(couple.id);
+    setFlash(req, { message: `Albüm tasarımı ${couple.name} çiftine gönderildi.${wa.autoSend() ? '' : ' WhatsApp mesajı Panel › Gönderilecek mesajlar listesinde.'}`, type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}#album`);
   });
 
   router.post('/admin/ciftler/:id/asama', async (req, res, { params }) => {

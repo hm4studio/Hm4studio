@@ -94,6 +94,48 @@ addColumn('couples', 'archived_selection', "TEXT NOT NULL DEFAULT ''");
 addColumn('couples', 'archived_photos', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('couples', 'wa_consent_at', 'TEXT');
 addColumn('couples', 'video_status', "TEXT NOT NULL DEFAULT ''");
+// Albüm tasarım onayı: çift sayfaları tek tek onaylar ya da değişiklik ister
+addColumn('couples', 'album_design_state', "TEXT NOT NULL DEFAULT ''"); // '' | hazir | degisiklik | onaylandi
+addColumn('couples', 'album_design_round', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('couples', 'album_design_at', 'TEXT');
+db.exec(`
+CREATE TABLE IF NOT EXISTS album_pages (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  file_key TEXT NOT NULL UNIQUE,
+  original_name TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'bekliyor',
+  note TEXT NOT NULL DEFAULT '',
+  version INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS album_pages_couple ON album_pages(couple_id);
+CREATE TABLE IF NOT EXISTS quotes (
+  id INTEGER PRIMARY KEY,
+  token TEXT NOT NULL UNIQUE,
+  lead_id INTEGER REFERENCES leads(id) ON DELETE SET NULL,
+  couple_id INTEGER REFERENCES couples(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL DEFAULT '',
+  event_type TEXT NOT NULL DEFAULT '',
+  event_date TEXT,
+  place TEXT NOT NULL DEFAULT '',
+  items_json TEXT NOT NULL DEFAULT '[]',
+  discount INTEGER NOT NULL DEFAULT 0,
+  deposit INTEGER NOT NULL DEFAULT 0,
+  note TEXT NOT NULL DEFAULT '',
+  valid_until TEXT,
+  status TEXT NOT NULL DEFAULT 'hazir',
+  viewed_at TEXT,
+  accepted_at TEXT,
+  accepted_name TEXT NOT NULL DEFAULT '',
+  accepted_phone TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS quotes_lead ON quotes(lead_id);
+`);
 // Randevu kartı alanları
 for (const [col, def] of [
   ['ref_no', 'TEXT'], ['full_name', "TEXT NOT NULL DEFAULT ''"], ['partner_name', "TEXT NOT NULL DEFAULT ''"],
@@ -401,6 +443,32 @@ module.exports = {
     .run(l.name || '', l.phone || '', l.eventDate || null, l.place || '', l.service || '', l.message || '', l.source || 'site', l.waConsent ? 1 : 0, l.kvkk ? 1 : 0).lastInsertRowid),
   setLeadConsent: (id, waConsent) => q("UPDATE leads SET wa_consent = ?, kvkk_at = datetime('now') WHERE id = ?").run(waConsent ? 1 : 0, id),
   // KVKK: sonuçlanmayan ve 1 yıldır dokunulmamış talepler silinir
+  // ── Albüm tasarım sayfaları ──
+  listAlbumPages: (coupleId) => q('SELECT * FROM album_pages WHERE couple_id = ?').all(coupleId)
+    .sort((a, b) => a.original_name.localeCompare(b.original_name, 'tr', { numeric: true }) || a.id - b.id),
+  getAlbumPage: (id) => q('SELECT * FROM album_pages WHERE id = ?').get(id),
+  albumPageByName: (coupleId, name) => q('SELECT * FROM album_pages WHERE couple_id = ? AND original_name = ?').get(coupleId, name),
+  addAlbumPage: (coupleId, fileKey, name) => Number(q('INSERT INTO album_pages(couple_id, file_key, original_name) VALUES(?, ?, ?)').run(coupleId, fileKey, name).lastInsertRowid),
+  // Revize sayfa: dosya değişir, inceleme sıfırlanır (çiftin önceki notu görünür kalır ki neyin düzeltildiği bilinsin)
+  replaceAlbumPage: (id, fileKey) => q("UPDATE album_pages SET file_key = ?, status = 'bekliyor', version = version + 1, updated_at = datetime('now') WHERE id = ?").run(fileKey, id),
+  reviewAlbumPage: (id, status, note) => q("UPDATE album_pages SET status = ?, note = ?, updated_at = datetime('now') WHERE id = ?").run(status, note, id),
+  deleteAlbumPage: (id) => q('DELETE FROM album_pages WHERE id = ?').run(id),
+  setAlbumDesign: (coupleId, state, bumpRound = false) => q(`UPDATE couples SET album_design_state = ?, album_design_at = datetime('now')${bumpRound ? ', album_design_round = album_design_round + 1' : ''} WHERE id = ?`).run(state, coupleId),
+
+  // ── Teklifler ──
+  addQuote: (x) => Number(q(`INSERT INTO quotes(token, lead_id, name, phone, event_type, event_date, place, items_json, discount, deposit, note, valid_until)
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(x.token, x.leadId || null, x.name, x.phone || '', x.eventType || '', x.eventDate || null, x.place || '', JSON.stringify(x.items || []), x.discount || 0, x.deposit || 0, x.note || '', x.validUntil || null).lastInsertRowid),
+  updateQuote: (id, x) => q(`UPDATE quotes SET name = ?, phone = ?, event_type = ?, event_date = ?, place = ?, items_json = ?, discount = ?, deposit = ?, note = ?, valid_until = ?, updated_at = datetime('now') WHERE id = ?`)
+    .run(x.name, x.phone || '', x.eventType || '', x.eventDate || null, x.place || '', JSON.stringify(x.items || []), x.discount || 0, x.deposit || 0, x.note || '', x.validUntil || null, id),
+  getQuote: (id) => q('SELECT * FROM quotes WHERE id = ?').get(id),
+  quoteByToken: (token) => q('SELECT * FROM quotes WHERE token = ?').get(token),
+  listQuotes: () => q('SELECT * FROM quotes ORDER BY id DESC LIMIT 300').all(),
+  quotesForLeads: () => q('SELECT * FROM quotes WHERE lead_id IS NOT NULL ORDER BY id').all(),
+  markQuoteViewed: (id) => q("UPDATE quotes SET viewed_at = datetime('now'), status = CASE WHEN status = 'hazir' THEN 'goruldu' ELSE status END WHERE id = ? AND viewed_at IS NULL").run(id).changes,
+  acceptQuote: (id, name, phone) => q("UPDATE quotes SET status = 'kabul', accepted_at = datetime('now'), accepted_name = ?, accepted_phone = ? WHERE id = ? AND status <> 'kabul'").run(name, phone, id).changes,
+  setQuoteCouple: (id, coupleId) => q('UPDATE quotes SET couple_id = ? WHERE id = ?').run(coupleId, id),
+  deleteQuote: (id) => q('DELETE FROM quotes WHERE id = ?').run(id),
+
   purgeOldLeads: () => q("DELETE FROM leads WHERE couple_id IS NULL AND status IN ('yeni', 'gorusuldu', 'kayip') AND updated_at < datetime('now', '-1 year')").run().changes,
   setCoupleWaConsent: (id, on) => q("UPDATE couples SET wa_optin = ?, wa_consent_at = datetime('now') WHERE id = ?").run(on ? 1 : 0, id),
   updateLeadDetails: (id, l) => q("UPDATE leads SET name = COALESCE(NULLIF(?, ''), name), event_date = COALESCE(?, event_date), place = COALESCE(NULLIF(?, ''), place), service = COALESCE(NULLIF(?, ''), service), message = CASE WHEN ? = '' THEN message WHEN message = '' THEN ? ELSE message || char(10) || ? END, updated_at = datetime('now') WHERE id = ?")

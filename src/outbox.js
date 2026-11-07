@@ -12,8 +12,16 @@ const { dueReminders } = require('./routes/api');
 const LABELS = {
   sozlesme: 'Sözleşme onaya sunuldu', fotograflar: 'Seçim fotoğrafları hazır', teslim: 'Teslim edildi',
   plan: 'Çekim planı hatırlatması', yorum: 'Yorum isteği', gorev: 'Ekip görevi', ekip: 'Ekip hatırlatması',
+  albumTasarim: 'Albüm tasarımı hazır', yildonumu: 'Yıl dönümü kutlaması',
 };
-const KEY_RE = /^(sozlesme|fotograflar|teslim|plan|yorum|gorev|ekiphat):\d+(:[\w-]+)*$/;
+const KEY_RE = /^(sozlesme|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|yildonumu):\d+(:[\w-]+)*$/;
+
+// Yıl dönümü için esas tarih: "Düğün" etkinliği, yoksa çiftin ana tarihi
+function anniversaryBase(c) {
+  const evs = db.listEvents(c.id).filter((e) => e.event_date);
+  const w = evs.find((e) => /düğün|dugun|nikah|nikâh/i.test(e.event_type || ''));
+  return (w || evs.find((e) => e.event_date === c.event_date) || {}).event_date || null;
+}
 
 function list() {
   const t = today();
@@ -34,6 +42,17 @@ function list() {
     const sel = db.listPhotos(c.id, 'secim');
     const firstUp = sel.map((p) => p.uploaded_on).filter(Boolean).sort()[0];
     if (sel.length && !c.album_locked && recent(firstUp, 7)) add('fotograflar', `fotograflar:${c.id}`, who, c.phone, 'fotograflar', { ad: c.name, link });
+    if (c.album_design_state === 'hazir' && recent(c.album_design_at, 7)) add('albumTasarim', `albumtasarim:${c.id}:${c.album_design_round}`, who, c.phone, 'albumTasarim', { ad: c.name, link: `${link}` });
+    // Yıl dönümü: düğün tarihinden her yıl sonra, o günden itibaren bir hafta listede kalır
+    const wedding = anniversaryBase(c);
+    if (wedding) {
+      const years = Number(t.slice(0, 4)) - Number(wedding.slice(0, 4));
+      const day = `${t.slice(0, 4)}${wedding.slice(4) === '-02-29' ? '-02-28' : wedding.slice(4)}`;
+      const late = daysBetween(day, t);
+      if (years >= 1 && late >= 0 && late <= (Number(require('./content').getWhatsapp().kurallar?.yildonumuGunSonra) || 7)) {
+        add('yildonumu', `yildonumu:${c.id}:${years}`, who, c.phone, 'yildonumu', { ad: c.name, yil: years, link: `${require('./config').siteUrl}/talep` });
+      }
+    }
     if (c.stage >= last && recent(c.stage_changed_at, 7)) add('teslim', `teslim:${c.id}`, who, c.phone, db.videoCount(c.id) > 0 ? 'teslimVideo' : 'teslim', { ad: c.name, link });
   }
 

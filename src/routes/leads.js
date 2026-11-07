@@ -114,7 +114,7 @@ function register(router) {
 
   router.get('/admin/talepler', (req, res) => {
     if (!requireAdmin(req, res)) return;
-    html(res, views.adminList(getContent(), { leads: db.listLeads(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    html(res, views.adminList(getContent(), { leads: db.listLeads(), quotes: db.quotesForLeads(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.post('/admin/talepler/:id/durum', async (req, res, { params }) => {

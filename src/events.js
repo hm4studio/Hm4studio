@@ -165,6 +165,17 @@ function contractSent(coupleId, contractId) {
   }
   safePush(() => push.toCouple(coupleId, { title: 'Sözleşmeniz onayınıza sunuldu', body: 'Hizmet sözleşmenizi panelinizden inceleyip onaylayabilirsiniz.', url: '/panel/sozlesme', tag: 'sozlesme' }));
 }
+// Albüm tasarımı: stüdyo çifte gönderdi / çift onayladı ya da değişiklik istedi (telefon bildirimi; WhatsApp "Gönderilecek mesajlar"da)
+function albumDesignReady(coupleId) {
+  safePush(() => push.toCouple(coupleId, { title: 'Albüm tasarımınız hazır', body: 'Sayfaları panelinizden inceleyip onaylayabilir ya da değişiklik isteyebilirsiniz.', url: '/panel/album', tag: 'album-tasarim' }));
+}
+function albumDesignReviewed(coupleId, approved, changes) {
+  const c = db.getCouple(coupleId);
+  safePush(() => push.toAdmin(approved
+    ? { title: 'Albüm tasarımı onaylandı', body: `${c.name} albüm tasarımını onayladı. Baskıya gönderebilirsiniz.`, url: `/admin/ciftler/${c.id}#album`, tag: `ad-${c.id}` }
+    : { title: 'Albümde değişiklik istendi', body: `${c.name} ${changes} sayfada değişiklik istedi.`, url: `/admin/ciftler/${c.id}#album`, tag: `ad-${c.id}` }));
+}
+
 function videoAdded(coupleId, title) {
   safePush(() => push.toCouple(coupleId, { title: 'Videonuz teslim edildi', body: title ? `“${title}” panelinize eklendi. İzleyebilir ve indirebilirsiniz.` : 'Yeni videonuz panelinize eklendi. İzleyebilir ve indirebilirsiniz.', url: '/panel/video', tag: 'video' }));
 }
@@ -173,4 +184,4 @@ function videoStatusChanged(coupleId, status) {
   safePush(() => push.toCouple(coupleId, { title: 'Video çalışmanız güncellendi', body: `Güncel durum: ${status}.`, url: '/panel/video', tag: 'video-durum' }));
 }
 
-module.exports = { appointmentVars, appointmentCreated, contractSent, videoAdded, videoStatusChanged, contractSigned, teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };
+module.exports = { albumDesignReady, albumDesignReviewed, appointmentVars, appointmentCreated, contractSent, videoAdded, videoStatusChanged, contractSigned, teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };
