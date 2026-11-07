@@ -120,6 +120,7 @@ function register(router) {
       events: db.listEvents(couple.id),
       totalCount: sel.length,
       favCount: sel.filter((p) => p.is_fav).length,
+      deliveries: db.listDeliveries(couple.id),
       gifts: (() => {
         // Hediye kuponları: program açıksa ve iş "Teslim" aşamasına geldiyse
         const gifts = require('../gifts');
@@ -154,6 +155,14 @@ function register(router) {
     if (!requireCouple(req, res)) return;
     const couple = me(req);
     html(res, views.coupleVideos(getContent(), { couple, videos: db.listVideos(couple.id), csrf: req.session.csrf, flash: takeFlash(req) }));
+  });
+
+  // Teslim tutanağı (çift kendi kopyasını görür)
+  router.get('/panel/teslim/:id', (req, res, { params }) => {
+    if (!requireCouple(req, res)) return;
+    const d = db.getDelivery(toId(params.id));
+    if (!d || d.couple_id !== req.session.userId) throw new HttpError(404, 'Bulunamadı');
+    html(res, require('../views/delivery').doc(getContent(), { d, back: '/panel' }));
   });
 
   // Albüm tasarımı (stüdyo gönderdiyse)

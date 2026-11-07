@@ -8,7 +8,7 @@ const auth = require('../auth');
 const media = require('../media');
 const config = require('../config');
 const { getContent } = require('../content');
-const { html, json, redirect, readForm, readJson, readBody, HttpError } = require('../http');
+const { html, json, redirect, readForm, readJson, readBody, HttpError, clientIp } = require('../http');
 const panelViews = require('../views/panel');
 const views = require('../views/admin');
 const { portfolioItems, heroUrl } = require('./public');
@@ -852,9 +852,68 @@ function register(router) {
       payments: db.listPayments(couple.id),
       contract: db.activeContract(couple.id),
       albumPages: db.listAlbumPages(couple.id),
+      deliveries: db.listDeliveries(couple.id),
       gift: (() => { const gifts = require('../gifts'); return { codes: db.giftCodesFor(couple.id), settings: gifts.settings(), cameWith: db.giftUsedBy(couple.id), today: today() }; })(),
       demoAdmin: demo.isDemoAdmin(req),
     }));
+  });
+
+  // ── Teslim tutanağı (ofiste, çift stüdyonun cihazında imzalar) ──
+  const deliveryViews = require('../views/delivery');
+  const deliveryForm = (req, res, couple, extra = {}) => {
+    const card = db.getCoupleCard(couple.id);
+    html(res, deliveryViews.formPage(getContent(), {
+      couple: { ...couple, full_name: card?.full_name && card?.partner_name ? `${card.full_name}` : card?.full_name || '' },
+      items: getContent().delivery?.items || [], existing: db.listDeliveries(couple.id),
+      balance: card?.total ? Math.max(card.total - card.paid, 0) : 0, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req), ...extra,
+    }), extra.errors ? 400 : 200);
+  };
+  router.get('/admin/ciftler/:id/teslim', (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    deliveryForm(req, res, getCoupleOr404(params.id));
+  });
+  router.post('/admin/ciftler/:id/teslim', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const picked = new Set([].concat(form.item || []).map(String));
+    const items = [];
+    for (let i = 0; i < 20; i++) {
+      const name = cleanText(form[`name_${i}`], 80);
+      if (!name) continue;
+      const isDefault = i < (getContent().delivery?.items || []).length;
+      if (isDefault && !picked.has(String(i))) continue;
+      items.push({ name, detail: cleanText(form[`detail_${i}`], 120) });
+    }
+    const ad = cleanText(form.ad, 80);
+    const errors = [];
+    if (!items.length) errors.push('Teslim edilen en az bir şeyi işaretleyin.');
+    if (ad.length < 3) errors.push('Teslim alanın adını soyadını yazın.');
+    if (!contract.validSignature(String(form.imza || ''))) errors.push('Lütfen imzanızı çizin.');
+    if (form.kabul !== '1') errors.push('“Eksiksiz teslim aldım” kutusunu işaretleyin.');
+    if (errors.length) return deliveryForm(req, res, couple, { values: form, errors });
+    const c = getContent();
+    const co = contract.settings(c).company;
+    const card = db.getCoupleCard(couple.id);
+    const now = new Date().toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', year: 'numeric' });
+    const snapshot = {
+      couple: couple.name, refNo: card?.ref_no || '', items, note: String(form.note || '').trim().slice(0, 500),
+      statement: String(c.delivery?.statement || '').replace(/\{ad\}/g, ad).replace(/\{tarih\}/g, now).replace(/\{firma\}/g, co.unvan || c.brand.name),
+      company: { unvan: co.unvan, sorumlu: co.sorumlu, imza: contract.studioSignature() },
+    };
+    const hash = require('node:crypto').createHash('sha256').update(JSON.stringify({ snapshot, ad, imza: form.imza })).digest('hex');
+    const did = db.addDelivery({ coupleId: couple.id, snapshot, signerName: ad, signature: form.imza, ip: clientIp(req), userAgent: String(req.headers['user-agent'] || '').slice(0, 300), hash });
+    const last = c.stages.length - 1;
+    if (couple.stage < last) { db.setCoupleStage(couple.id, last, couple.stage_note || ''); events.stageChanged(couple, last); }
+    setFlash(req, { message: `Teslim tutanağı imzalandı; iş “${c.stages[last]}” aşamasında.`, type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}/teslim/${did}`);
+  });
+  router.get('/admin/ciftler/:id/teslim/:did', (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    const couple = getCoupleOr404(params.id);
+    const d = db.getDelivery(toId(params.did));
+    if (!d || d.couple_id !== couple.id) throw new HttpError(404, 'Tutanak bulunamadı');
+    html(res, deliveryViews.doc(getContent(), { d, back: `/admin/ciftler/${couple.id}` }));
   });
 
   // ── Hediye kuponları ──

@@ -98,6 +98,7 @@ addColumn('couples', 'video_status', "TEXT NOT NULL DEFAULT ''");
 addColumn('couples', 'album_design_state', "TEXT NOT NULL DEFAULT ''"); // '' | hazir | degisiklik | onaylandi
 addColumn('couples', 'album_design_round', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('couples', 'album_design_at', 'TEXT');
+addColumn('couples', 'delivered_at', 'TEXT'); // teslim tutanağı imzalandı
 db.exec(`
 CREATE TABLE IF NOT EXISTS album_pages (
   id INTEGER PRIMARY KEY,
@@ -147,6 +148,17 @@ CREATE TABLE IF NOT EXISTS gift_codes (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS gift_codes_couple ON gift_codes(couple_id);
+CREATE TABLE IF NOT EXISTS deliveries (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  snapshot TEXT NOT NULL,
+  signer_name TEXT NOT NULL,
+  signature TEXT NOT NULL,
+  ip TEXT, user_agent TEXT,
+  hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS deliveries_couple ON deliveries(couple_id);
 `);
 // Randevu kartı alanları
 for (const [col, def] of [
@@ -468,6 +480,16 @@ module.exports = {
   reviewAlbumPage: (id, status, note) => q("UPDATE album_pages SET status = ?, note = ?, updated_at = datetime('now') WHERE id = ?").run(status, note, id),
   deleteAlbumPage: (id) => q('DELETE FROM album_pages WHERE id = ?').run(id),
   setAlbumDesign: (coupleId, state, bumpRound = false) => q(`UPDATE couples SET album_design_state = ?, album_design_at = datetime('now')${bumpRound ? ', album_design_round = album_design_round + 1' : ''} WHERE id = ?`).run(state, coupleId),
+
+  // ── Teslim tutanakları ──
+  addDelivery: (x) => {
+    const id = Number(q('INSERT INTO deliveries(couple_id, snapshot, signer_name, signature, ip, user_agent, hash) VALUES(?, ?, ?, ?, ?, ?, ?)')
+      .run(x.coupleId, JSON.stringify(x.snapshot), x.signerName, x.signature, x.ip || null, x.userAgent || null, x.hash).lastInsertRowid);
+    q("UPDATE couples SET delivered_at = datetime('now') WHERE id = ?").run(x.coupleId);
+    return id;
+  },
+  listDeliveries: (coupleId) => q('SELECT id, couple_id, signer_name, created_at, snapshot FROM deliveries WHERE couple_id = ? ORDER BY id').all(coupleId),
+  getDelivery: (id) => q('SELECT * FROM deliveries WHERE id = ?').get(id),
 
   // ── Hediye kuponları ──
   giftCodesFor: (coupleId) => q('SELECT g.*, u.name AS used_by FROM gift_codes g LEFT JOIN couples u ON u.id = g.used_couple_id WHERE g.couple_id = ? ORDER BY g.id').all(coupleId),

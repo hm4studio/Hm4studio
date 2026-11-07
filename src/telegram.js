@@ -53,6 +53,7 @@ function studioData() {
       `Fotoğraflar: seçim ${sel}, düzenlenmiş ${edited}, video ${videos} · Albüm seçimi: ${k.album_locked ? `tamamlandı (${k.fav_count}/${k.album_limit})` : sel ? `devam ediyor (${k.fav_count}/${k.album_limit} seçildi)` : 'henüz fotoğraf yok'}`,
       `Gün planı: ${plan.saved ? `dolduruldu (${plan.saved})` : 'doldurulmadı'}`,
       (() => { const g = db.giftUsedBy(k.id); return g ? `Hediye kuponuyla geldi: ${g.owner} tavsiyesi (${g.code})` : ''; })(),
+      k.delivered_at ? `Teslim tutanağı imzalandı: ${k.delivered_at.slice(0, 10)}` : '',
       k.album_design_state ? `Albüm tasarımı: ${{ hazir: 'çiftin incelemesinde', degisiklik: 'çift değişiklik istedi', onaylandi: 'çift onayladı' }[k.album_design_state]}` : '',
       `Ödeme: toplam ${tl(k.total)}, ödenen ${tl(k.paid)}, kalan ${tl(kalan)}`,
       k.notes ? `Not: ${String(k.notes).replace(/\s+/g, ' ').slice(0, 300)}` : '',

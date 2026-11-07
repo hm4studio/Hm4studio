@@ -1836,3 +1836,12 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .gcard__qr { display: grid; justify-items: center; align-content: center; gap: 2mm; font-size: 7.5pt; color: #666; text-align: center; }
 .gcard__qr svg { width: 34mm; height: 34mm; }
 @media print { .no-print { display: none; } .gift-print main { padding: 0; } @page { size: A4; margin: 12mm; } }
+/* Teslim tutanağı */
+.dl-items { list-style: none; margin: 8px 0 16px; padding: 0; display: grid; gap: 8px; }
+.dl-items li { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
+@media (max-width: 599px) { .dl-items li { grid-template-columns: 1fr; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--rule, #e8e8e5); } }
+.dl-sign { border-color: var(--graphite, #1a1a1a); }
+.dl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.dl-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.dl-head { margin-bottom: 14px; }
+.dl-statement { margin: 18px 0; padding: 12px 14px; border-left: 3px solid #1a1a1a; background: #f6f6f3; line-height: 1.6; }

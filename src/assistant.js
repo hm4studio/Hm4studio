@@ -48,6 +48,7 @@ function coupleContext(couple) {
     `Seçim fotoğrafları: ${sel.length} yüklendi. Albüm için seçilen: ${favs}/${couple.album_limit}. Albüm seçimi ${couple.album_locked ? 'tamamlandı ve kilitlendi' : 'açık'}.`,
     `Düzenlenmiş (renkli) teslim fotoğrafları: ${edited.length ? `${edited.length} adet hazır` : 'henüz yüklenmedi'}`,
     `Videolar: ${videos.length ? videos.map((v) => `${v.kind}${v.title ? ` "${v.title}"` : ''}`).join(', ') : 'henüz eklenmedi'}`,
+    couple.delivered_at ? `Teslim: ${couple.delivered_at.slice(0, 10)} tarihinde ofiste teslim tutanağı imzalanarak teslim edildi (tutanak Durum sayfasından görüntülenebilir).` : '',
     `Sözleşme: ${!k ? 'henüz gönderilmedi' : k.signed_at ? 'onaylandı' : 'onay bekliyor (Sözleşme sayfasından okunup imzalanır)'}`,
     `Çekim günü planı: ${plan.saved ? 'dolduruldu' : 'henüz doldurulmadı (Plan sayfasından)'}`,
     `Albüm tasarımı: ${{ hazir: 'stüdyo gönderdi, çiftin incelemesini bekliyor (Albüm sayfasından sayfa sayfa onaylanır)', degisiklik: 'çift değişiklik istedi, stüdyo düzeltiyor', onaylandi: 'çift onayladı, baskıya hazırlanıyor' }[couple.album_design_state] || 'henüz gönderilmedi'}`,

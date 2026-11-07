@@ -249,5 +249,14 @@
     "gift": "Albümünüze 10 sayfa hediye",
     "reward": "Çerçeveli 50×70 baskı",
     "rules": "Yalnızca düğün ve nişan paketlerinde geçerlidir. Tek kullanımlıktır, başka kampanyayla birleştirilemez."
+  },
+  "delivery": {
+    "_aciklama": "Teslim tutanağı: ofiste teslimde çiftin ekranda imzaladığı belge. {ad}, {tarih}, {firma} otomatik dolar.",
+    "items": [
+      "Flash bellek (düzenlenmiş fotoğraflar ve videolar)",
+      "Albüm",
+      "Baskılar"
+    ],
+    "statement": "Ben {ad}, {tarih} tarihinde {firma} tarafından teslim edilen ve yukarıda listelenen ürün ve dosyaların tamamını eksiksiz, çalışır durumda ve hasarsız olarak teslim aldım. Teslim edilen dosyaların yedeğini almanın tarafıma ait olduğunu ve dosyaların teslimden 90 gün sonra stüdyo sunucularından silineceğini biliyorum."
   }
 }

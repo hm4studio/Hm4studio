@@ -167,7 +167,7 @@ function render(data, signer = {}) {
       <tr><td>Kalan ödeme tarihi</td><td class="num">${data.kalanTarih}</td></tr>
     </tbody></table>`,
     IMZA: () => h`<div class="ct-sign">
-      <div><p class="ct-k">${co.unvan || 'HM4 Studio'} yetkilisi</p><p>${co.sorumlu}</p>${(co.imza || studioSignature()) ? h`<img class="ct-sig" src="${co.imza || studioSignature()}" alt="Yetkili imzası">` : ''}</div>
+      <div><p class="ct-k"><span lang="en">${co.unvan || 'HM4 Studio'}</span> yetkilisi</p><p>${co.sorumlu}</p>${(co.imza || studioSignature()) ? h`<img class="ct-sig" src="${co.imza || studioSignature()}" alt="Yetkili imzası">` : ''}</div>
       <div><p class="ct-k">Müşteri</p><p>${signer.ad || '……………………'}</p>${signer.imza ? h`<img class="ct-sig" src="${signer.imza}" alt="Müşteri imzası">` : h`<p class="muted">İmza bekleniyor</p>`}</div>
     </div>`,
   };

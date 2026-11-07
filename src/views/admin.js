@@ -744,7 +744,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=32"></head>
+  <link rel="stylesheet" href="/css/style.css?v=33"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -829,7 +829,7 @@ function albumDesignSection(couple, pages, base, csrf) {
   </section>`;
 }
 
-function coupleDetail(c, { couple, card, contract: ct = null, selection = [], videos = [], edited = [], albumPages = [], gift = null, events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
+function coupleDetail(c, { couple, card, contract: ct = null, selection = [], videos = [], edited = [], albumPages = [], gift = null, deliveries = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
@@ -848,7 +848,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
       const nd = card.next_date;
       return h`<dl class="cd-facts">
         <div><dt>Sıradaki çekim</dt><dd>${nd ? h`${shortDate(nd)} <span class="muted">${relDays(daysBetween(today(), nd))}</span>` : 'Yok'}</dd></div>
-        <div><dt>Aşama</dt><dd>${c.stages[couple.stage] || '-'}${couple.video_status ? h` <span class="muted">· Video: ${couple.video_status.toLocaleLowerCase('tr-TR')}</span>` : ''}</dd></div>
+        <div><dt>Aşama</dt><dd>${c.stages[couple.stage] || '-'}${couple.delivered_at ? h` <span class="muted">· teslim tutanağı ${couple.delivered_at.slice(8, 10)}.${couple.delivered_at.slice(5, 7)}.${couple.delivered_at.slice(0, 4)}</span>` : couple.video_status ? h` <span class="muted">· Video: ${couple.video_status.toLocaleLowerCase('tr-TR')}</span>` : ''}</dd></div>
         <div><dt>Kalan ödeme</dt><dd class="${pay[2] ? 'is-due' : ''}">${card.total ? (pay[2] ? tl(pay[2]) : 'Ödendi') : 'Tutar yok'}</dd></div>
         <div><dt>Sözleşme</dt><dd class="${ct && !ct.signed_at ? 'is-due' : ''}">${ctState}</dd></div>
         <div><dt>Albüm</dt><dd>${totalCount ? h`${favCount}/${couple.album_limit} seçildi${couple.album_locked ? ' · tamam' : ''}` : 'Fotoğraf yok'}</dd></div>
@@ -897,6 +897,14 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     </div>
 
     <div class="cd-pane" data-pane="odeme">
+      <section class="panel-section" id="teslim" aria-labelledby="dl-title">
+        <div class="panel-section__head appt-card__head">
+          <h2 class="panel-section__title" id="dl-title">Teslim tutanağı</h2>
+          <a class="btn btn--primary btn--sm" href="${base}/teslim">${icon('check')}${deliveries.length ? 'Yeni tutanak' : 'Teslim et'}</a>
+        </div>
+        ${deliveries.length ? h`<ul class="dl-list">${deliveries.map((d) => h`<li><span class="paypill paypill--paid">İmzalandı</span> ${require('./contract').trTime(d.created_at)} · ${d.signer_name} · <a href="${base}/teslim/${d.id}">Tutanağı aç</a></li>`)}</ul>`
+          : h`<p class="muted">Flash bellek, albüm ve baskıları ofiste teslim ederken “Teslim et”e basın; çift ekranda imzalar, iş “Teslim” aşamasına geçer.</p>`}
+      </section>
     ${paymentsSection(c, card, payments, csrf)}
     ${require('./contract').adminSection({ coupleId: couple.id, k: ct, csrf, phone: couple.phone, loginUrl, coupleName: couple.name })}
     </div>
