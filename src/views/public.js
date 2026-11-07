@@ -15,35 +15,87 @@ function heroMedia(c, heroUrl) {
   return h`<div class="hero__media hero__media--empty" aria-hidden="true"><span>${icon('image')}Kapak fotoğrafı — Admin › Portfolyo'dan seçin</span></div>`;
 }
 
+// Başlığı iki satıra böler; ikinci satır eğik ("Gününüz, / olduğu gibi.")
+function heroTitle(t) {
+  const m = /^(.{3,40}?[,.])\s+(.+)$/.exec(String(t || ''));
+  if (!m) return h`<span class="line"><span>${t}</span></span>`;
+  return h`<span class="line"><span>${m[1]}</span></span> <span class="line"><span><em>${m[2]}</em></span></span>`;
+}
+// Bir hizmete uygun portfolyo fotoğrafı (kategori adı eşleşirse o, yoksa sıradaki)
+function pickFor(portfolio, title, i, used) {
+  const key = String(title || '').toLocaleLowerCase('tr-TR').split(/[\s&]+/)[0];
+  const hit = portfolio.find((p) => !used.has(p) && String(p.category || '').toLocaleLowerCase('tr-TR').includes(key))
+    || portfolio.find((p, j) => !used.has(p) && j >= i) || portfolio.find((p) => !used.has(p));
+  if (hit) used.add(hit);
+  return hit;
+}
+
+// Süreç: ince çizgiyle bağlanan adımlar (çizgi kaydırınca dolar)
+function processSteps(c, { link = false } = {}) {
+  return h`
+  <section class="section" aria-labelledby="steps-title">
+    <div class="container">
+      <div class="section-head-row">
+        <div class="section-head rv"><p class="eyebrow eyebrow--line">Nasıl çalışıyoruz</p><h2 class="section-title" id="steps-title">Tanışmadan <em>teslime</em></h2></div>
+        ${link ? h`<a class="text-link rv" href="/hakkimizda">Bizi tanıyın ${icon('arrow')}</a>` : ''}
+      </div>
+      <ol class="flow rv">
+        ${(c.about.approach || []).map((x, i) => h`<li class="flow__step"><span class="flow__num">${i + 1}</span><h3>${x.title}</h3><p>${x.text}</p></li>`)}
+      </ol>
+    </div>
+  </section>`;
+}
+
 function home(c, { portfolio, heroUrl }) {
+  const used = new Set();
+  const svc = c.services.map((x, i) => ({ ...x, photo: pickFor(portfolio, x.title, i, used) }));
+  const rest = portfolio.filter((p) => !used.has(p));
+  const pool = rest.length >= 5 ? rest : portfolio;
+  const grid = pool.slice(0, 5);
+  const introA = portfolio[0];
+  const introB = portfolio.find((p) => p !== introA && (p.category || '') !== (introA?.category || '')) || portfolio[1];
+  const bandImg = pool[5] || portfolio[portfolio.length - 1];
+  const quote = c.quote || 'Yıllar sonra açıp baktığınızda, o günün sesini duyabilmelisiniz.';
   const body = h`
-  <section class="hero" aria-labelledby="hero-title">
+  <section class="hero hero--motion" aria-labelledby="hero-title">
     ${heroMedia(c, heroUrl)}
     <div class="hero__shade" aria-hidden="true"></div>
     <div class="container hero__content">
-      <p class="eyebrow eyebrow--light">${c.hero.eyebrow}</p>
-      <h1 class="hero__title" id="hero-title">${c.hero.title}</h1>
-      <p class="hero__text">${c.hero.text}</p>
-      <div class="btn-row">
+      <p class="eyebrow eyebrow--light hero__in">${c.hero.eyebrow}</p>
+      <h1 class="hero__title" id="hero-title">${heroTitle(c.hero.title)}</h1>
+      <p class="hero__text hero__in">${c.hero.text}</p>
+      <div class="btn-row hero__in">
         ${button('/portfolyo', c.hero.primaryButton, 'light')}
         ${button('/iletisim', c.hero.secondaryButton, 'ghost-light')}
       </div>
     </div>
+    <span class="hero__scroll" aria-hidden="true">Kaydırın</span>
   </section>
 
   <section class="section">
-    <div class="container intro">
-      <div class="intro__copy">
-        <p class="eyebrow">${c.brand.tagline}</p>
-        <h2 class="section-title">${c.intro.title}</h2>
+    <div class="container lead-split">
+      <div class="lead-split__copy rv">
+        <p class="eyebrow eyebrow--line">${c.brand.tagline}</p>
+        <h2 class="lead-split__title">${c.intro.title}</h2>
         <p class="section-text">${c.intro.text}</p>
+        <p class="lead-split__sign">— ${c.brand.name}</p>
       </div>
-      <ul class="services">
-        ${c.services.map((s, i) => h`
-        <li class="services__item">
-          <span class="services__num">${String(i + 1).padStart(2, '0')}</span>
-          <div><h3>${s.title}</h3><p>${s.text}</p></div>
-        </li>`)}
+      ${introA ? h`<div class="lead-split__media rv">
+        <div class="lead-split__a mask"><img src="${introA.display}" alt="${introA.alt || ''}" loading="lazy" decoding="async"></div>
+        ${introB ? h`<div class="lead-split__b mask"><img src="${introB.thumb}" alt="${introB.alt || ''}" loading="lazy" decoding="async"></div>` : ''}
+      </div>` : ''}
+    </div>
+  </section>
+
+  <section class="section section--flush-top" aria-labelledby="svc-title">
+    <div class="container">
+      <div class="section-head rv"><p class="eyebrow eyebrow--line">Hizmetler</p><h2 class="section-title" id="svc-title">Her gün için <em>ayrı bir dil</em></h2></div>
+      <ul class="svc-cards">
+        ${svc.map((x, i) => h`<li class="svc-card rv d${i % 4}">
+          <a href="/portfolyo">
+            <span class="svc-card__ph mask">${x.photo ? h`<img src="${x.photo.thumb}" alt="${x.photo.alt || x.title}" loading="lazy" decoding="async">` : ''}<span class="svc-card__n">${String(i + 1).padStart(2, '0')}</span></span>
+            <h3>${x.title}</h3><p>${x.text}</p>
+          </a></li>`)}
       </ul>
     </div>
   </section>
@@ -51,35 +103,25 @@ function home(c, { portfolio, heroUrl }) {
   <section class="section section--tint" aria-labelledby="pf-title">
     <div class="container">
       <div class="section-head-row">
-        <div class="section-head">
-          <p class="eyebrow">Seçilmiş kareler</p>
-          <h2 class="section-title" id="pf-title">${c.portfolio.title}</h2>
-        </div>
-        <a class="text-link" href="/portfolyo">Tümünü gör ${icon('arrow')}</a>
+        <div class="section-head rv"><p class="eyebrow eyebrow--line">Seçilmiş kareler</p><h2 class="section-title" id="pf-title">${c.portfolio.title}</h2></div>
+        <a class="btn btn--primary rv" href="/portfolyo">Tümünü gör</a>
       </div>
-      ${portfolio.length
-        ? portfolioGrid(portfolio, { limit: 8 })
+      ${grid.length >= 3 ? h`<ul class="mosaic" data-gallery>${grid.map((p, i) => h`
+        <li class="mosaic__item mosaic__item--${i + 1} rv mask d${i % 3}">
+          <a href="${p.display}" data-lb data-caption="${p.alt || p.category}"><img src="${i === 0 || i === 4 ? p.display : p.thumb}" alt="${p.alt || `${p.category || 'Düğün'} fotoğrafı`}" loading="lazy" decoding="async">${p.category ? h`<span class="mosaic__cap">${p.category}</span>` : ''}</a>
+        </li>`)}</ul>`
+        : portfolio.length ? portfolioGrid(portfolio, { limit: 8 })
         : h`<div class="gallery gallery--placeholder">${[1, 2, 3, 4].map(() => placeholder('Örnek fotoğraf alanı'))}</div>`}
-      <div class="btn-row btn-row--center">
-        ${button('/portfolyo', c.hero.primaryButton, 'primary')}
-        <a class="btn btn--outline" href="${links.instagram(c)}" target="_blank" rel="noopener">${icon('instagram')}Instagram</a>
-      </div>
+      <p class="mosaic__more rv"><a class="text-link" href="${links.instagram(c)}" target="_blank" rel="noopener">${icon('instagram')}@${c.contact.instagram} ${icon('arrow')}</a></p>
     </div>
   </section>
 
-  <section class="section">
-    <div class="container split">
-      <div class="split__media">
-        ${c.about.image ? h`<img src="${c.about.image}" alt="${c.brand.name} ekibi" loading="lazy" decoding="async">` : placeholder('Ekip / stüdyo fotoğrafı')}
-      </div>
-      <div class="split__copy">
-        <p class="eyebrow">${c.about.title}</p>
-        <h2 class="section-title">${c.about.lead}</h2>
-        <p class="section-text">${c.about.paragraphs[0] || ''}</p>
-        ${button('/hakkimizda', 'Bizi tanıyın', 'outline', 'arrow')}
-      </div>
-    </div>
-  </section>
+  ${bandImg ? h`<section class="quote-band" aria-label="Söz">
+    <img class="quote-band__img" src="${bandImg.display}" alt="" loading="lazy" decoding="async" data-parallax>
+    <blockquote class="quote-band__q rv">“${quote}”<cite>${c.brand.name}</cite></blockquote>
+  </section>` : ''}
+
+  ${processSteps(c, { link: true })}
 
   ${contactBand(c)}`;
 
@@ -88,13 +130,12 @@ function home(c, { portfolio, heroUrl }) {
 
 function contactBand(c) {
   return h`
-  <section class="band" aria-labelledby="band-title">
-    <div class="container band__inner">
-      <div>
-        <h2 class="band__title" id="band-title">Tarihiniz belli mi?</h2>
-        <p class="band__text">Uygunluk için bize yazın; gününüzü birlikte planlayalım.</p>
-      </div>
-      <div class="btn-row">
+  <section class="band band--center" aria-labelledby="band-title">
+    <div class="container rv">
+      <p class="eyebrow eyebrow--light eyebrow--line">Tarihiniz belli mi?</p>
+      <h2 class="band__title" id="band-title">Gününüzü <em>birlikte</em> planlayalım.</h2>
+      <p class="band__text">Uygunluk için bize yazın; genellikle aynı gün dönüş yapıyoruz.</p>
+      <div class="btn-row btn-row--center">
         <a class="btn btn--light" href="/talep">Uygunluk sorun</a>
         <a class="btn btn--ghost-light" href="${links.whatsapp(c)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan Yaz</a>
       </div>
@@ -158,28 +199,16 @@ function aboutPage(c) {
   ${pageHero(c.brand.name, c.about.title, c.about.lead)}
   <section class="section section--flush-top">
     <div class="container split split--top">
-      <div class="split__media">
+      <div class="split__media rv mask">
         ${c.about.image ? h`<img src="${c.about.image}" alt="${c.brand.name} ekibi" loading="lazy" decoding="async">` : placeholder('Ekip / stüdyo fotoğrafı')}
       </div>
-      <div class="split__copy prose">
+      <div class="split__copy prose rv d1">
         ${c.about.paragraphs.map((p) => h`<p>${p}</p>`)}
       </div>
     </div>
   </section>
 
-  <section class="section section--tint" aria-labelledby="approach-title">
-    <div class="container">
-      ${sectionHead({ eyebrow: 'Nasıl çalışıyoruz', title: 'Tanışmadan teslime' })}
-      <ol class="steps">
-        ${c.about.approach.map((s, i) => h`
-        <li class="steps__item">
-          <span class="steps__num">${String(i + 1).padStart(2, '0')}</span>
-          <h3>${s.title}</h3>
-          <p>${s.text}</p>
-        </li>`)}
-      </ol>
-    </div>
-  </section>
+  ${processSteps(c)}
 
   ${contactBand(c)}`;
 

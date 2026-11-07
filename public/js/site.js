@@ -9,6 +9,33 @@
     right: '<path d="M9.5 5.5L16 12l-6.5 6.5"/>',
     heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/>',
   };
+  // ── Kaydırınca belirme ve söz bandında derinlik ──
+  (function reveal() {
+    const els = [...document.querySelectorAll('.rv, .mask, .flow')];
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (els.length && 'IntersectionObserver' in window && !reduce) {
+      // Ekranda zaten görünenler yanıp sönmesin: önce "in", sonra js sınıfı
+      const vh = window.innerHeight;
+      els.forEach((el) => { const r = el.getBoundingClientRect(); if (r.top < vh * 0.92 && r.bottom > 0) el.classList.add('in'); });
+      document.documentElement.classList.add('js');
+      const io = new IntersectionObserver((es) => es.forEach((e) => {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      }), { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+      els.filter((el) => !el.classList.contains('in')).forEach((el) => io.observe(el));
+    }
+    const par = document.querySelector('[data-parallax]');
+    if (par && !reduce) {
+      let ticking = false;
+      const move = () => {
+        const r = par.parentElement.getBoundingClientRect();
+        if (r.bottom > 0 && r.top < window.innerHeight) par.style.transform = `translateY(${((r.top + r.height / 2 - window.innerHeight / 2) * -0.12).toFixed(1)}px)`;
+        ticking = false;
+      };
+      window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(move); } }, { passive: true });
+      move();
+    }
+  })();
+
   const svg = (n) => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
 
   // ── Mobil menü ──
