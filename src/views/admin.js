@@ -590,7 +590,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 </div>
 <main class="doc">
   <header class="doc__head">
-    <div><img class="doc-logo doc-logo--h" src="/images/logo/hm4-yatay-lacivert.svg" alt="${c.brand.name}" width="150" height="36"><p class="doc__tag">${c.footer?.note || ''}</p></div>
+    <div><img class="doc-logo doc-logo--h" src="/images/logo/hm4-yatay-lacivert.svg" alt="${c.brand.name}" width="190" height="22"><p class="doc__tag">${c.footer?.note || ''}</p></div>
     <div class="doc__ref"><span>Randevu no</span><strong>${k.ref_no || '—'}</strong><span>${shortDate(today())}</span></div>
   </header>
   <h1 class="doc__title">Randevu belgesi</h1>
@@ -714,7 +714,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=43"></head>
+  <link rel="stylesheet" href="/css/style.css?v=44"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
