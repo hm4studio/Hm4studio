@@ -102,7 +102,7 @@ function register(router) {
     const outbox = wa.autoSend() ? [] : require('../outbox').list();
     const quotes = db.listQuotes().filter((q) => q.status === 'kabul' && !q.couple_id);
     const newLeads = db.listLeads().filter((l) => l.status === 'yeni').length;
-    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, reminders: db.openReminders(), couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   // Elle gönderilen WhatsApp mesajı "gönderildi" (veya "atla") olarak işaretlenir; listeden düşer

@@ -178,3 +178,10 @@
     });
   });
 })();
+
+// Hatırlatma formu: hızlı tarih düğmeleri
+document.querySelectorAll('[data-set-date]').forEach((b) => b.addEventListener('click', () => {
+  const inp = document.getElementById('rm-d');
+  if (inp) inp.value = b.dataset.setDate;
+  document.querySelectorAll('[data-set-date]').forEach((x) => x.classList.toggle('is-active', x === b));
+}));

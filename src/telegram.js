@@ -72,6 +72,9 @@ function studioData() {
     '## Çiftler',
     lines.join('\n\n') || 'Kayıt yok.',
     '',
+    '## Hatırlatıcılar (stüdyonun kendi notları, yapılmadı)',
+    (() => { const r = db.openReminders(); return r.length ? r.map((x) => `- ${dstr(x.due_date)}${x.due_time ? ` ${x.due_time}` : ''} · ${x.title}${x.person ? ` · ${x.person}` : ''}${x.couple_name ? ` · çift: ${x.couple_name}` : ''}${x.note ? ` · not: ${String(x.note).replace(/\s+/g, ' ').slice(0, 160)}` : ''}`).join('\n') : 'Yok.'; })(),
+    '',
     '## Teklifler (randevuya dönmemiş)',
     quotes.length ? quotes.map((q) => `- ${q.name} · ${q.event_type || ''} ${q.event_date ? dstr(q.event_date) : ''} · durum: ${{ hazir: 'gönderildi, açılmadı', goruldu: 'çift açtı', kabul: 'KABUL ETTİ' }[q.status]} · oluşturma ${q.created_at.slice(0, 10)}`).join('\n') : 'Yok.',
     '',
@@ -140,6 +143,16 @@ async function handle(msg) {
   for (let i = 0; i < reply.length; i += 4000) await tg('sendMessage', { chat_id: chatId, text: reply.slice(i, i + 4000) });
 }
 
+// Yetkili sohbetlere düz bildirim (hatırlatıcılar). Asistan kapalı olsa da bot anahtarı varsa çalışır.
+async function notifyAll(text) {
+  if (!config.telegramToken || !config.telegramChatIds.length || config.demoMode) return 0;
+  let n = 0;
+  for (const id of config.telegramChatIds) {
+    try { await tg('sendMessage', { chat_id: id, text }); n++; } catch (err) { console.error('Telegram bildirimi:', err.message); }
+  }
+  return n;
+}
+
 let running = false;
 async function loop() {
   let offset = 0;
@@ -165,4 +178,4 @@ function start() {
   loop();
 }
 
-module.exports = { start, studioData, systemPrompt, enabled };
+module.exports = { start, studioData, systemPrompt, enabled, notifyAll };

@@ -161,6 +161,18 @@ CREATE TABLE IF NOT EXISTS deliveries (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS deliveries_couple ON deliveries(couple_id);
+CREATE TABLE IF NOT EXISTS reminders (
+  id INTEGER PRIMARY KEY,
+  title TEXT NOT NULL,
+  due_date TEXT NOT NULL,
+  due_time TEXT,
+  person TEXT, phone TEXT, note TEXT,
+  couple_id INTEGER REFERENCES couples(id) ON DELETE SET NULL,
+  lead_id INTEGER,
+  notified_at TEXT, done_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS reminders_due ON reminders(done_at, due_date);
 `);
 // Randevu kartı alanları
 for (const [col, def] of [
@@ -498,6 +510,19 @@ module.exports = {
   setAlbumDesign: (coupleId, state, bumpRound = false) => q(`UPDATE couples SET album_design_state = ?, album_design_at = datetime('now')${bumpRound ? ', album_design_round = album_design_round + 1' : ''} WHERE id = ?`).run(state, coupleId),
 
   // ── Teslim tutanakları ──
+  // ── Hatırlatıcılar (stüdyonun kendi girdiği: "yarın 14:00 Ayşe ile görüşme") ──
+  addReminder: (x) => Number(q('INSERT INTO reminders(title, due_date, due_time, person, phone, note, couple_id, lead_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(x.title, x.dueDate, x.dueTime || null, x.person || null, x.phone || null, x.note || null, x.coupleId || null, x.leadId || null).lastInsertRowid),
+  updateReminder: (id, x) => q('UPDATE reminders SET title = ?, due_date = ?, due_time = ?, person = ?, phone = ?, note = ?, notified_at = NULL WHERE id = ?')
+    .run(x.title, x.dueDate, x.dueTime || null, x.person || null, x.phone || null, x.note || null, id),
+  getReminder: (id) => q('SELECT r.*, c.name AS couple_name FROM reminders r LEFT JOIN couples c ON c.id = r.couple_id WHERE r.id = ?').get(id),
+  openReminders: () => q("SELECT r.*, c.name AS couple_name FROM reminders r LEFT JOIN couples c ON c.id = r.couple_id WHERE r.done_at IS NULL ORDER BY r.due_date, COALESCE(r.due_time, '99:99'), r.id").all(),
+  doneReminder: (id) => q("UPDATE reminders SET done_at = datetime('now') WHERE id = ? AND done_at IS NULL").run(id).changes > 0,
+  deleteReminder: (id) => q('DELETE FROM reminders WHERE id = ?').run(id),
+  // Saati gelmiş (ya da saatsizse sabah 9'u geçmiş), henüz bildirilmemiş hatırlatıcılar
+  remindersToNotify: (day, hm) => q("SELECT * FROM reminders WHERE done_at IS NULL AND notified_at IS NULL AND (due_date < ? OR (due_date = ? AND COALESCE(due_time, '09:00') <= ?))").all(day, day, hm),
+  markReminderNotified: (id) => q("UPDATE reminders SET notified_at = datetime('now') WHERE id = ?").run(id),
+
   addDelivery: (x) => {
     const id = Number(q('INSERT INTO deliveries(couple_id, snapshot, signer_name, signature, ip, user_agent, hash) VALUES(?, ?, ?, ?, ?, ?, ?)')
       .run(x.coupleId, JSON.stringify(x.snapshot), x.signerName, x.signature, x.ip || null, x.userAgent || null, x.hash).lastInsertRowid);

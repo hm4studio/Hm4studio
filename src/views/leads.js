@@ -107,6 +107,7 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin, quotes = [], loose = [
           ${l.couple_id ? h`<a class="btn btn--text btn--sm" href="/admin/ciftler/${l.couple_id}">Çifti aç ${icon('arrow')}</a>` : h`
           ${q ? h`<a class="btn btn--outline btn--sm" href="/admin/teklif/${q.id}">Teklifi aç</a>` : h`<a class="btn btn--primary btn--sm" href="/admin/teklif/yeni?talep=${l.id}">Teklif hazırla</a>`}
           <a class="btn btn--${q?.status === 'kabul' || l.status === 'rezervasyon' ? 'primary' : 'text'} btn--sm" href="/admin/randevu/yeni?${q ? `teklif=${q.id}` : `talep=${l.id}`}">${q?.status === 'kabul' ? 'Randevuya çevir' : 'Randevu oluştur'}</a>`}
+          <a class="btn btn--text btn--sm" href="/admin/hatirlatma/yeni?talep=${l.id}">${icon('bell')}Hatırlat</a>
           <details class="lead__more">
             <summary class="btn btn--text btn--sm">Durum</summary>
             <form method="post" action="/admin/talepler/${l.id}/durum" class="inline-form lead__status">
@@ -147,7 +148,7 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin, quotes = [], loose = [
     ${shown.length || shownQ.length ? h`<ul class="fb-list leads">${shown.map(leadRow)}${shownQ.map(quoteRow)}</ul>`
       : h`<div class="empty-box">${icon('whatsapp')}<p>${empty}</p></div>`}
   </div>`;
-  return panelLayout(c, { title: 'Talepler', csrf, nav: adminNav('leads', csrf, demoAdmin), home: '/admin', tabs: adminTabs('leads', demoAdmin), body, scripts: ['/js/admin.js?v=3'] });
+  return panelLayout(c, { title: 'Talepler', csrf, nav: adminNav('leads', csrf, demoAdmin), home: '/admin', tabs: adminTabs('leads', demoAdmin), body, scripts: ['/js/admin.js?v=4'] });
 }
 
 module.exports = { form, adminList, STATUS };

@@ -2057,3 +2057,15 @@ a.todo__name:hover { text-decoration: underline; text-underline-offset: 3px; }
 .pui .nextjob__k { color: var(--navy); }
 .pui .todo__text { color: var(--pencil); }
 .pui { --mark: #a14b3f; --mark-soft: #f6ebe8; }
+/* Hatırlatıcılar */
+.dash-head__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pui .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: -6px 0 18px; }
+.pui .chips .chip { min-height: 34px; padding: 0 14px; border: 1px solid var(--rule-2); border-radius: 999px; background: #fff; color: var(--graphite); font-size: .82rem; letter-spacing: 0; text-transform: none; }
+.pui .chips .chip.is-active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.prog__rem a { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin: 6px 0; border-left: 3px solid var(--c-soz); background: var(--c-soz-bg); border-radius: 0 8px 8px 0; color: var(--graphite); text-decoration: none; font-size: .9rem; }
+.prog__rem .icon { width: 16px; height: 16px; color: var(--c-soz); flex: none; }
+.prog__rem .prog__time { font-weight: 600; }
+.prog__later { margin-top: 14px; }
+.prog__later summary { cursor: pointer; font-size: .85rem; color: var(--pencil); }
+.dic--cek .icon { color: inherit; }
+.todo__actions .inline-form { display: inline-flex; }

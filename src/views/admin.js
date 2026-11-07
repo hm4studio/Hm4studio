@@ -115,12 +115,18 @@ function monthCalendar(monthEvents, ym, base = '/admin/takvim') {
 }
 
 // Program: önümüzdeki 7 gün (bugün dahil), gün gün
-function programBlock(c, upcoming, tomorrowDue) {
+function programBlock(c, upcoming, tomorrowDue, reminders = []) {
   const t = today();
   const tm = addDays(t, 1);
   const end = addDays(t, 6);
   const list = upcoming.filter((e) => e.event_date >= t && e.event_date <= end);
-  const days = [...new Set(list.map((e) => e.event_date))].sort();
+  const rems = reminders.filter((r) => r.due_date > t && r.due_date <= end); // bugünküler Yapılacaklar'da
+  const later = reminders.filter((r) => r.due_date > end);
+  const days = [...new Set([...list.map((e) => e.event_date), ...rems.map((r) => r.due_date)])].sort();
+  const rem = (r) => h`
+    <li class="prog__rem">
+      <a href="/admin/hatirlatma/${r.id}">${icon('bell')}<span class="prog__time">${r.due_time || 'Gün içinde'}</span>${r.title}${r.person ? h` <span class="muted">· ${r.person}</span>` : ''}</a>
+    </li>`;
   const dayLabel = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
   const shoot = (e) => h`
     <li class="prog__shoot">
@@ -141,8 +147,9 @@ function programBlock(c, upcoming, tomorrowDue) {
     ${days.length ? days.map((d) => h`
     <section class="prog__day${d <= tm ? ' is-tomorrow' : ''}">
       <h3 class="prog__date">${d === t ? h`<span class="prog__tag">Bugün</span>` : d === tm ? h`<span class="prog__tag">Yarın</span>` : ''}${dayLabel(d)}</h3>
-      <ul class="prog__list">${list.filter((e) => e.event_date === d).map(shoot)}</ul>
+      <ul class="prog__list">${list.filter((e) => e.event_date === d).map(shoot)}${rems.filter((r) => r.due_date === d).map(rem)}</ul>
     </section>`) : h`<p class="sec-empty">Önümüzdeki 7 günde çekim yok.</p>`}
+    ${later.length ? h`<details class="prog__later"><summary>Sonraki hatırlatmalar (${later.length})</summary><ul class="prog__list">${later.map((r) => h`<li class="prog__rem"><a href="/admin/hatirlatma/${r.id}">${icon('bell')}<span class="prog__time">${formatDate(r.due_date)}${r.due_time ? ` ${r.due_time}` : ''}</span>${r.title}</a></li>`)}</ul></details>` : ''}
     ${tomorrowDue.length ? h`<p class="tmr__due">Yarın teslim: ${tomorrowDue.map((k, i) => h`${i ? ', ' : ''}<a href="/admin/ciftler/${k.id}">${k.name}</a>`)}</p>` : ''}
   </section>`;
 }
@@ -237,10 +244,19 @@ function stageBoard(c, couples) {
 }
 
 // Yapılacaklar: bekleyen işler, gönderilecek mesajlar, tamamlanan seçimler, kabul edilen teklifler ve yeni talepler tek listede
-const TAG_ICON = { Teslim: ['gift', 'tes'], Ödeme: ['lira', 'pay'], Plan: ['calendar', 'cek'], Sözleşme: ['sign', 'soz'], Albüm: ['book', 'alb'], Hediye: ['gift', 'alb'], Dosyalar: ['folder', 'vid'], Mesaj: ['whatsapp', 'tes'], Ekip: ['users', 'soz'], Seçim: ['heart', 'sec'], Teklif: ['sign', 'pay'], Talep: ['inbox', 'sec'] };
+const TAG_ICON = { Hatırlatma: ['bell', 'cek'], Teslim: ['gift', 'tes'], Ödeme: ['lira', 'pay'], Plan: ['calendar', 'cek'], Sözleşme: ['sign', 'soz'], Albüm: ['book', 'alb'], Hediye: ['gift', 'alb'], Dosyalar: ['folder', 'vid'], Mesaj: ['whatsapp', 'tes'], Ekip: ['users', 'soz'], Seçim: ['heart', 'sec'], Teklif: ['sign', 'pay'], Talep: ['inbox', 'sec'] };
 const TAG_TAB = { Teslim: 'teslim', Ödeme: 'odeme', Plan: 'plan', Sözleşme: 'odeme', Albüm: 'album', Hediye: 'hediye', Dosyalar: 'ayar' };
-function todoList(c, { couples, outbox, selections, quotes, newLeads }) {
+function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders = [], csrf = '' }) {
   const rows = [];
+  const t = today();
+  for (const r of reminders.filter((x) => x.due_date <= t)) {
+    const late = r.due_date < t;
+    rows.push({ level: late ? 3 : 2, tag: 'Hatırlatma', name: r.title, href: `/admin/hatirlatma/${r.id}`,
+      text: [late ? `${formatDate(r.due_date)} (geçti)` : r.due_time ? `Bugün ${r.due_time}` : 'Bugün', r.person, r.couple_name, r.note].filter(Boolean).join(' · '),
+      actions: h`${r.phone ? h`<a class="btn btn--text btn--sm" href="https://wa.me/${r.phone}" target="_blank" rel="noopener" aria-label="WhatsApp">${icon('whatsapp')}</a><a class="btn btn--text btn--sm" href="tel:+${r.phone}" aria-label="Ara">${icon('phone')}</a>` : ''}
+        <form method="post" action="/admin/hatirlatma/${r.id}/ertele" class="inline-form">${csrfField(csrf)}<button class="btn btn--text btn--sm" type="submit" title="Yarına ertele">Yarın</button></form>
+        <form method="post" action="/admin/hatirlatma/${r.id}/tamam" class="inline-form">${csrfField(csrf)}<button class="btn btn--primary btn--sm" type="submit">${icon('check')}Tamam</button></form>` });
+  }
   for (const x of attentionItems(c, couples)) {
     rows.push({ level: x.level, tag: x.tag, name: x.k.name, href: `/admin/ciftler/${x.k.id}`, text: x.text,
       actions: h`<a class="go go--${(TAG_ICON[x.tag] || ['', 'soz'])[1]}" href="/admin/ciftler/${x.k.id}#${TAG_TAB[x.tag] || 'ozet'}" aria-label="${x.k.name} aç">${icon('right')}</a>` });
@@ -261,13 +277,13 @@ function todoList(c, { couples, outbox, selections, quotes, newLeads }) {
   return rows.sort((a, b) => b.level - a.level);
 }
 
-function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
   const balance = couples.reduce((s, k) => s + payment(k)[2], 0);
   const late = couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').length;
-  const todo = todoList(c, { couples, outbox, selections, quotes, newLeads });
+  const todo = todoList(c, { couples, outbox, selections, quotes, newLeads, reminders, csrf });
   const todayN = upcoming.filter((e) => e.event_date === t).length;
   const weekN = upcoming.filter((e) => e.event_date <= addDays(t, 6)).length;
   const o = c.appointments || {};
@@ -278,7 +294,10 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
         <p class="dash-head__date">${longDay(t)} · ${todayN ? `bugün ${todayN} çekim` : 'bugün çekim yok'}${weekN > todayN ? `, 7 günde ${weekN}` : ''}</p>
         <h1 class="dash-head__title">Bugün</h1>
       </div>
-      <a class="btn btn--primary" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a>
+      <div class="dash-head__actions">
+        <a class="btn btn--outline" href="/admin/hatirlatma/yeni">${icon('bell')}Hatırlatma</a>
+        <a class="btn btn--primary" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a>
+      </div>
     </header>
     ${flashBlock(f)}
 
@@ -289,7 +308,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       <a class="kpi kpi--${late ? 'late' : 'tes'}" href="/admin/takvim#teslimler"><span class="dic">${icon(late ? 'alert' : 'check')}</span><span><b>${late}</b><span>geciken teslim</span></span></a>
     </div>
 
-    <section class="todo" aria-labelledby="todo-title" data-outbox>
+    <section class="todo" id="yapilacaklar" aria-labelledby="todo-title" data-outbox>
       <header class="sec-head">
         <h2 class="sec-title" id="todo-title">Yapılacaklar <span class="sec-count" data-todo-count>${todo.length}</span></h2>
         <span class="sec-note">Bekleyen işler ve gönderilecek mesajlar</span>
@@ -307,7 +326,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       <p class="sec-empty" data-todo-empty hidden>Bekleyen iş kalmadı.</p>
     </section>
 
-    <div class="dash-one">${programBlock(c, upcoming, tomorrowDue)}</div>
+    <div class="dash-one">${programBlock(c, upcoming, tomorrowDue, reminders)}</div>
 
     <section class="couples" aria-labelledby="cards-title">
       <header class="sec-head cards-head">
@@ -695,7 +714,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=37"></head>
+  <link rel="stylesheet" href="/css/style.css?v=38"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1226,6 +1245,40 @@ function citiesPage(c, { csrf, flash: f, demoAdmin, siteUrl }) {
   return panelLayout(c, { title: 'Google ve şehir sayfaları', csrf, nav: adminNav('cities', csrf, demoAdmin), home: '/admin', tabs: adminTabs('cities', demoAdmin), body });
 }
 
+function reminderForm(c, { id, values: v = {}, action, title, errors = [], csrf, demoAdmin, today: t }) {
+  const tm = addDays(t, 1);
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="${v.back || '/admin'}">${icon('left')}Geri</a>
+    <h1 class="page-title">${title}</h1>
+    ${errors.length ? h`<div class="flash flash--error" role="alert">${errors.map((e) => h`<div>${e}</div>`)}</div>` : ''}
+    <form class="form" method="post" action="${action}">
+      ${csrfField(csrf)}
+      <input type="hidden" name="back" value="${v.back || '/admin'}">
+      <input type="hidden" name="couple" value="${v.couple || ''}"><input type="hidden" name="lead" value="${v.lead || ''}">
+      <div class="field"><label for="rm-t">Ne yapılacak?</label><input id="rm-t" name="title" required maxlength="120" placeholder="Ör. Ayşe ile tanışma görüşmesi" value="${v.title || ''}" autofocus></div>
+      <div class="appt-row">
+        <div class="field"><label for="rm-d">Tarih</label><input id="rm-d" name="dueDate" type="date" required value="${v.dueDate || tm}"></div>
+        <div class="field"><label for="rm-h">Saat <span class="muted">(isteğe bağlı)</span></label><input id="rm-h" name="dueTime" type="time" value="${v.dueTime || ''}"></div>
+      </div>
+      <div class="chips" aria-label="Hızlı tarih">
+        <button type="button" class="chip" data-set-date="${t}">Bugün</button><button type="button" class="chip" data-set-date="${tm}">Yarın</button><button type="button" class="chip" data-set-date="${addDays(t, 7)}">1 hafta sonra</button>
+      </div>
+      <div class="appt-row">
+        <div class="field"><label for="rm-p">Kişi <span class="muted">(isteğe bağlı)</span></label><input id="rm-p" name="person" maxlength="80" placeholder="Ör. Ayşe Yılmaz (Instagram)" value="${v.person || ''}"></div>
+        <div class="field"><label for="rm-tel">Telefon <span class="muted">(isteğe bağlı)</span></label><input id="rm-tel" name="phone" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" value="${v.phone || ''}"></div>
+      </div>
+      <div class="field"><label for="rm-n">Not <span class="muted">(isteğe bağlı)</span></label><textarea id="rm-n" name="note" rows="3" maxlength="600" placeholder="Ör. Ağustos düğünü, dış çekim de istiyor">${v.note || ''}</textarea></div>
+      <p class="muted">Saatinde telefonunuza bildirim ve Telegram’a mesaj gelir; saat girmezseniz o gün sabah 9’da. Bugün sayfasındaki Yapılacaklar’da da görünür.</p>
+      <button class="btn btn--primary" type="submit">${icon('bell')}Kaydet</button>
+    </form>
+    ${id ? h`<div class="cd-danger-row">
+      <form method="post" action="/admin/hatirlatma/${id}/sil" class="inline-form" data-confirm="Bu hatırlatma silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
+    </div>` : ''}
+  </div>`;
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=4'] });
+}
+
 function deliverySettingsPage(c, { csrf, flash: f, demoAdmin }) {
   const d = c.delivery || {};
   const body = h`
@@ -1600,4 +1653,5 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
 }
 
 module.exports = {
+  reminderForm,
   deliverySettingsPage, giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
