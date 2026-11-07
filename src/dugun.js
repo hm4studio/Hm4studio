@@ -40,7 +40,10 @@ function parse({ subject = '', text = '', html = '' } = {}) {
   const service = (TYPES.find(([re]) => re.test(type)) || [null, titleCase(type.replace(/(ı|i|u|ü|sı|si|su|sü)$/i, ''))])[1];
   const phone = (/(?:\+?90|0)?\s*\(?(5\d{2})\)?[\s.-]*(\d{3})[\s.-]*(\d{2})[\s.-]*(\d{2})/.exec(body) || []).slice(1).join('');
   const email = (/[\w.+-]+@[\w-]+\.[\w.-]+/.exec(body.replace(/\S*@dugun\.com\S*/gi, '')) || [''])[0];
+  // Cümlenin altındaki kutu: çiftin istediği hizmet ya da notu (ör. "dış çekimi")
+  const note = ((/fiyat teklifi bekliyor\.?\s*\n+([\s\S]{2,300}?)\n\s*(?:\d+\s*saat içinde|Çifti görüntüle|$)/i.exec(body) || [])[1] || '').replace(/\s+/g, ' ').trim();
   return {
+    note: /saat içinde|görüntüle/i.test(note) ? '' : note,
     name: titleCase(rawName.trim()).slice(0, 80),
     eventDate: `${year}-${String(month_).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
     service,

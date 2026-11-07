@@ -116,7 +116,7 @@ function register(router) {
     const dup = db.listLeads().find((l) => l.source === 'dugun' && l.name === p.name && l.event_date === p.eventDate);
     if (db.wasNotified(key) || dup) return json(res, { ok: true, skipped: 'zaten var', id: dup?.id });
     db.markNotified(key);
-    const message = ['Düğün.com üzerinden ayrıntılı fiyat teklifi bekliyor.', p.email ? `E-posta: ${p.email}` : ''].filter(Boolean).join(' ');
+    const message = ['Düğün.com üzerinden ayrıntılı fiyat teklifi bekliyor.', p.note ? `Çiftin notu: ${p.note}.` : '', p.email ? `E-posta: ${p.email}` : '', 'E-postaya yazacağınız cevap doğrudan çifte gider.'].filter(Boolean).join(' ');
     const id = db.addLead({ name: p.name, phone: p.phone, eventDate: p.eventDate, service: p.service, message, source: 'dugun' });
     events.newLead({ id, name: `${p.name} (Düğün.com)`, eventDate: p.eventDate, service: p.service, source: 'dugun' });
     json(res, { ok: true, id, lead: p });
