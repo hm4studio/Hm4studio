@@ -1194,6 +1194,12 @@ function citiesPage(c, { csrf, flash: f, demoAdmin, siteUrl }) {
     <form class="form" method="post" action="/admin/sehirler">
       ${csrfField(csrf)}
       <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">Google’da görünen başlık</h2></div>
+        <p class="muted">Sitenizin Google arama sonuçlarında görünen başlığı ve altındaki kısa açıklama.</p>
+        <div class="field"><label for="seo-t">Başlık <span class="muted">(en fazla 70 harf)</span></label><input id="seo-t" name="seoTitle" maxlength="70" value="${c.seo?.title || ''}"></div>
+        <div class="field"><label for="seo-d">Açıklama <span class="muted">(en fazla 170 harf)</span></label><textarea id="seo-d" name="seoDescription" rows="3" maxlength="170">${c.seo?.description || ''}</textarea></div>
+      </section>
+      <section class="panel-section">
         <div class="panel-section__head"><h2 class="panel-section__title">İşletme bilgisi</h2></div>
         <p class="muted">Google’a “işletmemiz nerede, nerelere hizmet veriyor” diye bildirilir. Google İşletme Profilinizdeki bilgilerle aynı olmalı.</p>
         <div class="appt-row">
@@ -1220,7 +1226,38 @@ function citiesPage(c, { csrf, flash: f, demoAdmin, siteUrl }) {
   return panelLayout(c, { title: 'Google ve şehir sayfaları', csrf, nav: adminNav('cities', csrf, demoAdmin), home: '/admin', tabs: adminTabs('cities', demoAdmin), body });
 }
 
+function deliverySettingsPage(c, { csrf, flash: f, demoAdmin }) {
+  const d = c.delivery || {};
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <h1 class="page-title">Teslim</h1>
+    ${flashBlock(f)}
+    <form class="form" method="post" action="/admin/teslim-ayarlari">
+      ${csrfField(csrf)}
+      <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">Teslim tutanağındaki ürünler</h2></div>
+        <p class="muted">Her satıra bir ürün. Tutanakta işaretli gelir; teslimde adet/açıklama eklenebilir.</p>
+        <div class="field"><label for="dl-items" class="sr-only">Ürünler</label><textarea id="dl-items" name="items" rows="5">${(d.items || []).join('\n')}</textarea></div>
+      </section>
+      <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">Tutanak metni</h2></div>
+        <p class="muted">Çiftin imzaladığı cümle. <code>{ad}</code> çiftin adı, <code>{tarih}</code> teslim tarihi, <code>{firma}</code> firma adı, <code>{gun}</code> saklama süresi olarak dolar.</p>
+        <div class="field"><label for="dl-st" class="sr-only">Tutanak metni</label><textarea id="dl-st" name="statement" rows="6" maxlength="1500">${d.statement || ''}</textarea></div>
+      </section>
+      <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">Dosyaların saklanma süresi</h2></div>
+        <p class="muted">Teslimden sonra çifte “son indirme günü” olarak gösterilir. Süre dolunca Yapılacaklar’a hatırlatma düşer; dosyaları siz silersiniz.</p>
+        <div class="field field--narrow"><label for="dl-keep">Gün</label><input id="dl-keep" name="keepDays" type="number" min="7" max="730" value="${d.keepDays || 90}"></div>
+      </section>
+      <button class="btn btn--primary" type="submit">Kaydet</button>
+    </form>
+  </div>`;
+  return panelLayout(c, { title: 'Teslim', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
+}
+
 function messagesPage(c, { wa: w, base, csrf, flash: f, demoAdmin }) {
+  const k = w.kurallar || {};
   const body = h`
   <div class="container container--form">
     <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
@@ -1229,6 +1266,19 @@ function messagesPage(c, { wa: w, base, csrf, flash: f, demoAdmin }) {
     <p class="muted">Çiftlere ve ekibe giden WhatsApp mesajları. Süslü parantez içindeki alanlar (örneğin <code>{ad}</code>) her mesajda kendiliğinden dolar; silmeyin. Bir metni boş bırakırsanız ilk hâline döner.</p>
     <form class="form" method="post" action="/admin/mesajlar">
       ${csrfField(csrf)}
+      <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">Google yorum bağlantısı</h2></div>
+        <p class="muted">Google İşletme Profilinizde “Yorum isteyin” / “Profili paylaş” ile alınan bağlantı (https://g.page/r/… gibi). Yorum mesajında ve teslimden sonra çift panelinde kullanılır.</p>
+        <div class="field"><label for="wa-yl" class="sr-only">Google yorum bağlantısı</label><input id="wa-yl" name="yorumLinki" type="url" inputmode="url" placeholder="https://g.page/r/..." value="${/^https:/.test(w.yorumLinki || '') ? w.yorumLinki : ''}"></div>
+      </section>
+      <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">Zamanlama</h2></div>
+        <div class="appt-row">
+          <div class="field"><label for="wa-h">Etkinlik hatırlatması <span class="muted">(kaç gün önce)</span></label><input id="wa-h" name="hatirlatmaGunOnce" type="number" min="1" max="30" value="${k.hatirlatmaGunOnce ?? 3}"></div>
+          <div class="field"><label for="wa-y">Yorum isteği <span class="muted">(çekimden kaç gün sonra)</span></label><input id="wa-y" name="yorumIstemeGunSonra" type="number" min="1" max="60" value="${k.yorumIstemeGunSonra ?? 7}"></div>
+          <div class="field"><label for="wa-a">Yıldönümü mesajı <span class="muted">(en geç kaç gün sonra)</span></label><input id="wa-a" name="yildonumuGunSonra" type="number" min="0" max="60" value="${k.yildonumuGunSonra ?? 7}"></div>
+        </div>
+      </section>
       ${MESSAGE_INFO.map(([key, title, when, vars]) => {
         const cur = w.sablonlar[key]?.metin || '';
         const def = base.sablonlar[key]?.metin || '';
@@ -1254,15 +1304,16 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
       { href: '/admin/paketler', title: 'Paketler', text: 'Hizmetler, fiyatlar ve içerikleri' },
       { href: '/admin/ekip', title: 'Ekip', text: 'Personel ve iletişim' },
       { href: '/admin/sozlesme', title: 'Sözleşme ve KVKK', text: 'Sözleşme metni, firma bilgileri ve KVKK' },
+      { href: '/admin/teslim-ayarlari', title: 'Teslim', text: 'Tutanaktaki ürünler, tutanak metni, dosya saklama süresi' },
     ] },
     { title: 'Müşteriyle iletişim', links: [
-      { href: '/admin/mesajlar', title: 'Mesajlar', text: 'WhatsApp mesaj metinleri' },
+      { href: '/admin/mesajlar', title: 'Mesajlar', text: 'WhatsApp metinleri, zamanlama, Google yorum bağlantısı' },
       { href: '/admin/hediye', title: 'Hediye kuponları', text: `Tavsiye programı · ${gs.active ? 'açık' : 'kapalı'}` },
     ] },
     { title: 'Web sitesi', links: [
       { href: '/admin/site', title: 'Site', text: 'Metinler, renkler, kapak, iletişim' },
       { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitedeki fotoğraflar' },
-      { href: '/admin/sehirler', title: 'Google ve şehir sayfaları', text: 'Ankara, Kastamonu ve işletme bilgileri' },
+      { href: '/admin/sehirler', title: 'Google ve şehir sayfaları', text: 'Google’da görünen başlık, şehir sayfaları, işletme bilgileri' },
     ] },
     { title: 'Hesap', links: [
       { href: '#bildirim', title: 'Telefon bildirimleri', text: 'Bu cihaza bildirim' },
@@ -1548,4 +1599,5 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=2'] });
 }
 
-module.exports = { giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = {
+  deliverySettingsPage, giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

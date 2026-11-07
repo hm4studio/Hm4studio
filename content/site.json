@@ -257,6 +257,7 @@
       "Albüm",
       "Baskılar"
     ],
-    "statement": "Ben {ad}, {tarih} tarihinde {firma} tarafından teslim edilen ve yukarıda listelenen ürün ve dosyaların tamamını eksiksiz, çalışır durumda ve hasarsız olarak teslim aldım. Teslim edilen dosyaların yedeğini almanın tarafıma ait olduğunu ve dosyaların teslimden 90 gün sonra stüdyo sunucularından silineceğini biliyorum."
+    "keepDays": 90,
+    "statement": "Ben {ad}, {tarih} tarihinde {firma} tarafından teslim edilen ve yukarıda listelenen ürün ve dosyaların tamamını eksiksiz, çalışır durumda ve hasarsız olarak teslim aldım. Teslim edilen dosyaların yedeğini almanın tarafıma ait olduğunu ve dosyaların teslimden {gun} gün sonra stüdyo sunucularından silineceğini biliyorum."
   }
 }

@@ -76,7 +76,9 @@ function getWhatsapp() {
   const sablonlar = {};
   for (const [k, t] of Object.entries(base.sablonlar || {})) sablonlar[k] = over.metinler?.[k] ? { ...t, metin: over.metinler[k] } : t;
   waKey = key;
-  waMerged = { ...base, sablonlar };
+  const kurallar = { ...(base.kurallar || {}) };
+  for (const [k, v] of Object.entries(over.kurallar || {})) if (Number.isFinite(Number(v))) kurallar[k] = Number(v);
+  waMerged = { ...base, sablonlar, kurallar, ...(typeof over.yorumLinki === 'string' ? { yorumLinki: over.yorumLinki } : {}) };
   return waMerged;
 }
 

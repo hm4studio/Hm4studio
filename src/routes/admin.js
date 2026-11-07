@@ -492,6 +492,24 @@ function register(router) {
     if (!requireAdmin(req, res)) return;
     html(res, views.citiesPage(getContent(), { csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req), siteUrl: config.siteUrl }));
   });
+  // Teslim ayarları: tutanak kalemleri, metni, dosyaların saklanma süresi
+  router.get('/admin/teslim-ayarlari', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, views.deliverySettingsPage(getContent(), { csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/teslim-ayarlari', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const c = getContent();
+    const items = String(form.items || '').split(/\r?\n/).map((x) => x.replace(/\s+/g, ' ').trim().slice(0, 80)).filter(Boolean).slice(0, 12);
+    const statement = String(form.statement || '').replace(/\r/g, '').trim().slice(0, 1500);
+    const o = siteOver();
+    o.delivery = { ...(c.delivery || {}), items: items.length ? items : c.delivery?.items || [], statement: statement || c.delivery?.statement || '', keepDays: Math.min(Math.max(Number.parseInt(form.keepDays, 10) || 90, 7), 730) };
+    saveOver(o);
+    setFlash(req, { message: 'Teslim ayarları kaydedildi.', type: 'success' });
+    redirect(res, '/admin/teslim-ayarlari');
+  });
+
   router.post('/admin/sehirler', async (req, res) => {
     const form = await formGuard(req, res);
     if (!form) return;
@@ -500,6 +518,7 @@ function register(router) {
     const list = (k, n) => String(form[k] || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 30).map((x) => x.slice(0, n));
     const blocks = (k) => String(form[k] || '').replace(/\r/g, '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
     const o = siteOver();
+    o.seo = { title: t('seoTitle', 70) || c.seo?.title, description: t('seoDescription', 170) || c.seo?.description };
     o.business = { ...(c.business || {}), locality: t('locality', 60), region: t('region', 60), areas: list('areas', 40), dugunProfil: /^https:\/\//.test(String(form.dugunProfil || '')) ? String(form.dugunProfil).trim().slice(0, 300) : '' };
     o.cities = (c.cities || []).map((x, i) => ({
       ...x,
@@ -535,7 +554,11 @@ function register(router) {
       const lost = vars.filter((v) => ['ad', 'link', 'kod', 'sifre'].includes(v) && !text.includes(`{${v}}`));
       if (lost.length) missing.push(`${title}: ${lost.map((v) => `{${v}}`).join(', ')}`);
     }
-    db.setSetting('wa_overrides', JSON.stringify({ metinler }));
+    const link = String(form.yorumLinki || '').trim();
+    if (link && !/^https:\/\/\S+$/.test(link)) missing.push('Google yorum bağlantısı "https://" ile başlamalı');
+    const gun = (k, lo, hi, d) => Math.min(Math.max(Number.parseInt(form[k], 10) || d, lo), hi);
+    const kurallar = { hatirlatmaGunOnce: gun('hatirlatmaGunOnce', 1, 30, 3), yorumIstemeGunSonra: gun('yorumIstemeGunSonra', 1, 60, 7), yildonumuGunSonra: gun('yildonumuGunSonra', 0, 60, 7) };
+    db.setSetting('wa_overrides', JSON.stringify({ metinler, kurallar, yorumLinki: /^https:\/\/\S+$/.test(link) ? link : '' }));
     setFlash(req, missing.length
       ? { message: `Kaydedildi. Dikkat, şu mesajlarda önemli alan eksik: ${missing.join(' · ')}`, type: 'error' }
       : { message: 'Mesajlar kaydedildi.', type: 'success' });
@@ -899,7 +922,7 @@ function register(router) {
     const now = new Date().toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', year: 'numeric' });
     const snapshot = {
       couple: couple.name, refNo: card?.ref_no || '', items, note: String(form.note || '').trim().slice(0, 500),
-      statement: String(c.delivery?.statement || '').replace(/\{ad\}/g, ad).replace(/\{tarih\}/g, now).replace(/\{firma\}/g, co.unvan || c.brand.name),
+      statement: String(c.delivery?.statement || '').replace(/\{ad\}/g, ad).replace(/\{tarih\}/g, now).replace(/\{firma\}/g, co.unvan || c.brand.name).replace(/\{gun\}/g, String(c.delivery?.keepDays || 90)),
       company: { unvan: co.unvan, sorumlu: co.sorumlu, imza: contract.studioSignature() },
     };
     const hash = require('node:crypto').createHash('sha256').update(JSON.stringify({ snapshot, ad, imza: form.imza })).digest('hex');
