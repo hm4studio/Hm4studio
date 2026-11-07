@@ -6,7 +6,7 @@ const ANAHTAR = 'BURAYA-SUNUCUDAKI-ANAHTARI-YAPISTIRIN';
 
 function dugunTalepleri() {
   const gonderilen = PropertiesService.getScriptProperties();
-  const konular = GmailApp.search('from:dugun newer_than:7d', 0, 50);
+  const konular = GmailApp.search('(from:dugun OR "dugun.com" OR "düğün.com") newer_than:14d', 0, 100);
   for (const konu of konular) {
     for (const m of konu.getMessages()) {
       const id = m.getId();
@@ -18,10 +18,16 @@ function dugunTalepleri() {
         payload: JSON.stringify({ messageId: id, from: m.getFrom(), subject: m.getSubject(), text: m.getPlainBody() }),
         muteHttpExceptions: true,
       });
+      console.log(m.getSubject() + ' → ' + cevap.getResponseCode() + ' ' + cevap.getContentText().slice(0, 160));
       if (cevap.getResponseCode() === 200) gonderilen.setProperty(id, '1');
-      else console.log('Site cevabı ' + cevap.getResponseCode() + ': ' + cevap.getContentText().slice(0, 200));
     }
   }
+}
+
+// Son 14 günün Düğün.com e-postalarını yeniden gönderir (sitede olanlar ikinci kez eklenmez).
+function tekrarDene() {
+  PropertiesService.getScriptProperties().getKeys().filter((k) => !/^[A-Z]/.test(k)).forEach((k) => PropertiesService.getScriptProperties().deleteProperty(k));
+  dugunTalepleri();
 }
 
 // Bir kez çalıştırın: 5 dakikalık zamanlayıcıyı kurar ve hemen bir kontrol yapar.

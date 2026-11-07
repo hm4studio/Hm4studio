@@ -97,8 +97,20 @@ function register(router) {
     const lk = Buffer.from(config.leadApiKey || '');
     if (!(config.leadApiKey && given.length === lk.length && crypto.timingSafeEqual(given, lk))) requireKey(req);
     const b = JSON.parse((await readBody(req, 2 * 1024 * 1024)).toString('utf8') || '{}');
-    const p = require('../dugun').parse({ subject: b.subject, text: b.text, html: b.html });
-    if (!p) return json(res, { ok: true, skipped: 'tanınmadı' });
+    const dugun = require('../dugun');
+    const p = dugun.parse({ subject: b.subject, text: b.text, html: b.html });
+    if (!p) {
+      // Biçimi tanınmadı: talep gibi görünüyorsa kaybolmasın, e-postanın özetiyle kaydedilir
+      if (!dugun.looksLikeRequest(b)) return json(res, { ok: true, skipped: 'tanınmadı' });
+      const key = `dugun:${crypto.createHash('sha1').update(String(b.messageId || `${b.subject}|${String(b.text || '').slice(0, 200)}`)).digest('hex').slice(0, 16)}`;
+      if (db.wasNotified(key)) return json(res, { ok: true, skipped: 'zaten var' });
+      db.markNotified(key);
+      const text = String(b.text || dugun.htmlToText(b.html)).replace(/\s+/g, ' ').trim();
+      const subject = String(b.subject || '').trim();
+      const id = db.addLead({ name: subject ? `Düğün.com: ${subject}`.slice(0, 80) : 'Düğün.com bildirimi', phone: '', eventDate: '', service: '', message: text.slice(0, 900), source: 'dugun' });
+      events.newLead({ id, name: 'Düğün.com bildirimi', eventDate: '', service: '', source: 'dugun' });
+      return json(res, { ok: true, id, unparsed: true });
+    }
     const id8 = crypto.createHash('sha1').update(String(b.messageId || `${p.name}|${p.eventDate}`)).digest('hex').slice(0, 16);
     const key = `dugun:${id8}`;
     const dup = db.listLeads().find((l) => l.source === 'dugun' && l.name === p.name && l.event_date === p.eventDate);
