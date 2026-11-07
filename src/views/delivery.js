@@ -62,7 +62,7 @@ function doc(c, { d, back }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Teslim tutanağı ${s.refNo || ''} — ${s.couple || ''}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=39">
+<link rel="stylesheet" href="/css/style.css?v=40">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -70,6 +70,7 @@ function doc(c, { d, back }) {
 </div>
 <main class="doc ct-doc">
   <header class="dl-head">
+    <img class="doc-logo" src="/images/logo/hm4-dikey-lacivert.svg" alt="HM4 Studio" width="110" height="60">
     <p class="ct-k" lang="en">${co.unvan || c.brand.name}</p>
     <h1 class="ct-title">Teslim Tutanağı</h1>
     <p class="muted">${[s.refNo ? `Randevu no ${s.refNo}` : '', s.couple, trTime(d.created_at)].filter(Boolean).join(' · ')}</p>

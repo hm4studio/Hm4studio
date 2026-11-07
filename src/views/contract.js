@@ -36,6 +36,7 @@ function auditBlock(k) {
 function body(k, data) {
   return h`
     <header class="ct-head">
+      <img class="doc-logo" src="/images/logo/hm4-dikey-lacivert.svg" alt="HM4 Studio" width="110" height="60">
       <p class="ct-brand" lang="en">${data.company?.unvan || 'HM4 Studio'}</p>
       <h1 class="ct-title">${data.title}</h1>
       <p class="ct-meta">${data.randevuNo ? h`Randevu no ${data.randevuNo} · ` : ''}${k ? h`Belge no ${docNo(k)}` : 'Önizleme'}</p>
