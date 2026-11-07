@@ -4,7 +4,7 @@
   const box = document.querySelector('[data-outbox]');
   if (!box) return;
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-  const count = box.querySelector('[data-outbox-count]');
+  const count = box.querySelector('[data-todo-count], [data-outbox-count]');
   async function done(item) {
     const keys = (item.dataset.keys || '').split(',').filter(Boolean);
     item.classList.add('is-done');
@@ -13,9 +13,9 @@
     } catch { item.classList.remove('is-done'); return; }
     setTimeout(() => {
       item.remove();
-      const left = box.querySelectorAll('[data-outbox-item]').length;
+      const left = box.querySelectorAll('[data-todo-item], [data-outbox-item]').length;
       if (count) count.textContent = left;
-      if (!left) box.remove();
+      if (!left) box.querySelector('[data-todo-empty]')?.removeAttribute('hidden');
     }, 600);
   }
   box.addEventListener('click', (e) => {

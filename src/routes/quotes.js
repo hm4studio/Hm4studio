@@ -58,9 +58,10 @@ const accepts = new Map(); // ip → zamanlar (kötüye kullanım sınırı)
 function register(router) {
   const page = (req, res, extra) => html(res, views.form(getContent(), { packages: db.listPackages().filter((p) => p.active), csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req), ...extra }));
 
+  // Teklifler artık Talepler sayfasının sekmesinde
   router.get('/admin/teklifler', (req, res) => {
     if (!requireAdmin(req, res)) return;
-    html(res, views.list(getContent(), { quotes: db.listQuotes(), csrf: req.session.csrf, today: today(), demoAdmin: demo.isDemoAdmin(req) }));
+    redirect(res, '/admin/talepler?sekme=teklif');
   });
 
   router.get('/admin/teklif/yeni', (req, res, { query }) => {
@@ -74,7 +75,7 @@ function register(router) {
     // Hediye kuponuyla gelen talep: teklif notuna hediye yazılır
     const gc = lead?.gift_code ? require('../gifts').check(lead.gift_code) : null;
     if (gc?.g) values.note = `${gc.g.owner} çiftinin hediyesi: ${require('../gifts').settings().gift} (kupon ${gc.g.code}).`;
-    page(req, res, { values, action: '/admin/teklif', title: 'Yeni teklif', back: lead ? '/admin/talepler' : '/admin/teklifler' });
+    page(req, res, { values, action: '/admin/teklif', title: 'Yeni teklif', back: '/admin/talepler?sekme=teklif' });
   });
 
   router.post('/admin/teklif', async (req, res) => {
@@ -83,7 +84,7 @@ function register(router) {
     checkCsrf(req, form.csrf);
     const q = fromForm(form);
     const errors = errorsOf(q);
-    if (errors.length) return page(req, res, { values: form, action: '/admin/teklif', title: 'Yeni teklif', back: '/admin/teklifler', errors });
+    if (errors.length) return page(req, res, { values: form, action: '/admin/teklif', title: 'Yeni teklif', back: '/admin/talepler?sekme=teklif', errors });
     const lead = form.lead ? db.getLead(Number(form.lead) || 0) : null;
     const id = db.addQuote({ ...q, token: crypto.randomBytes(12).toString('hex'), leadId: lead?.id });
     if (lead && lead.status === 'yeni') db.setLeadStatus(lead.id, 'gorusuldu');
@@ -125,7 +126,7 @@ function register(router) {
     checkCsrf(req, form.csrf);
     db.deleteQuote(Number(params.id) || 0);
     setFlash(req, { message: 'Teklif silindi.', type: 'success' });
-    redirect(res, '/admin/teklifler');
+    redirect(res, '/admin/talepler?sekme=teklif');
   });
 
   // ── Çiftin gördüğü sayfa ──

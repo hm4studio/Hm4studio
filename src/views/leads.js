@@ -63,48 +63,89 @@ function form(c, { values = {}, error, thanks, services, gift = null }) {
   return publicLayout(c, { title: 'Uygunluk sorun', body });
 }
 
-function adminList(c, { leads, csrf, flash: f, demoAdmin, quotes = [] }) {
+// Talepler ve teklifler tek sayfada: Yeni / Teklif gönderildi / Kabul etti / Olmadı
+const TABS = [['yeni', 'Yeni'], ['teklif', 'Teklif gönderildi'], ['kabul', 'Kabul etti'], ['olmadi', 'Olmadı']];
+const QSTATE = { hazir: 'açılmadı', goruldu: 'görüldü', kabul: 'kabul etti' };
+function bucket(l, q) {
+  if (l.status === 'kayip') return 'olmadi';
+  if (l.status === 'rezervasyon' || q?.status === 'kabul') return 'kabul';
+  if (q || l.status === 'gorusuldu') return 'teklif';
+  return 'yeni';
+}
+const SRC = { whatsapp: 'WhatsApp', dugun: 'Düğün.com' };
+const ago = (iso) => {
+  const d = new Date(`${String(iso).replace(' ', 'T')}Z`);
+  const m = Math.round((Date.now() - d) / 60000);
+  if (m < 60) return `${Math.max(m, 1)} dk önce`;
+  if (m < 1440) return `${Math.round(m / 60)} saat önce`;
+  const n = Math.round(m / 1440);
+  return n === 1 ? 'dün' : n < 30 ? `${n} gün önce` : d.toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+function adminList(c, { leads, csrf, flash: f, demoAdmin, quotes = [], loose = [], tab = 'yeni', total = (q) => 0 }) {
   const qOf = new Map(quotes.map((q) => [q.lead_id, q])); // her talebin son teklifi
-  const counts = Object.fromEntries(Object.keys(STATUS).map((k) => [k, leads.filter((l) => l.status === k).length]));
-  const body = h`
-  <div class="container">
-    <div class="panel-title-row"><h1 class="page-title">Talepler</h1><a class="btn btn--outline btn--sm" href="/admin/teklifler">Teklifler</a></div>
-    ${f ? flash(f.message, f.type) : ''}
-    <div class="stats stats--4">
-      ${Object.entries(STATUS).map(([k, label]) => h`<div class="stat"><span class="stat__num">${counts[k]}</span><span class="stat__label">${label}</span></div>`)}
-    </div>
-    <p class="muted">WhatsApp’tan yazan, sitedeki “Uygunluk sorun” formunu dolduran ve Düğün.com’dan teklif isteyen herkes burada listelenir.</p>
-    ${leads.length ? h`
-    <ul class="fb-list leads">
-      ${leads.map((l) => h`
+  const rows = leads.map((l) => ({ l, q: qOf.get(l.id), b: bucket(l, qOf.get(l.id)) }));
+  // Talepten bağımsız hazırlanan teklifler
+  const qrows = loose.map((q) => ({ q, b: q.status === 'kabul' ? 'kabul' : 'teklif' }));
+  const counts = Object.fromEntries(TABS.map(([k]) => [k, rows.filter((r) => r.b === k).length + qrows.filter((r) => r.b === k).length]));
+  if (!TABS.some(([k]) => k === tab)) tab = 'yeni';
+  const shown = rows.filter((r) => r.b === tab);
+  const shownQ = qrows.filter((r) => r.b === tab);
+  const leadRow = ({ l, q }) => h`
       <li class="fb lead">
         <div class="fb__head">
-          <span class="state state--${l.status === 'yeni' ? 'soon' : l.status === 'rezervasyon' ? 'ok' : l.status === 'kayip' ? 'done' : 'upcoming'}">${STATUS[l.status] || l.status}</span>
           <strong>${l.name || 'İsimsiz'}</strong>
-          <span class="fb__meta">${[wa.displayPhone(l.phone), l.event_date ? formatDate(l.event_date) : '', l.place, l.service, { whatsapp: 'WhatsApp', dugun: 'Düğün.com' }[l.source] || 'Site', l.gift_code ? `Hediye kuponu: ${l.gift_code}` : '', l.source === 'site' && l.kvkk_at && !l.wa_consent ? 'WhatsApp izni yok, telefonla arayın' : ''].filter(Boolean).join(' · ')}</span>
-          <time class="fb__time">${new Date(`${l.created_at.replace(' ', 'T')}Z`).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>
+          ${l.gift_code ? h`<span class="tchip t-soz">Hediye</span>` : ''}
+          ${q ? h`<span class="state state--${q.status === 'kabul' ? 'ok' : q.status === 'goruldu' ? 'soon' : 'upcoming'}">Teklif · ${QSTATE[q.status]}</span>` : l.status === 'gorusuldu' ? h`<span class="state state--upcoming">Görüşülüyor</span>` : ''}
+          <span class="fb__meta">${[l.event_date ? formatDate(l.event_date) : '', l.service, l.place, wa.displayPhone(l.phone), SRC[l.source] || 'Site', l.gift_code ? `kupon ${l.gift_code}` : '', l.source === 'site' && l.kvkk_at && !l.wa_consent ? 'WhatsApp izni yok, telefonla arayın' : ''].filter(Boolean).join(' · ')}</span>
+          <time class="fb__time">${ago(l.created_at)}</time>
         </div>
         ${l.message ? h`<p class="fb__msg">${l.message}</p>` : ''}
         <div class="lead__actions">
-          ${l.phone ? h`<a class="btn btn--outline btn--sm" href="https://wa.me/${l.phone}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp’tan yaz</a>` : ''}
+          ${l.phone ? h`<a class="btn btn--outline btn--sm" href="https://wa.me/${l.phone}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp</a>` : ''}
           ${l.source === 'dugun' ? h`<a class="btn btn--outline btn--sm" href="https://www.dugun.com" target="_blank" rel="noopener">Düğün.com’da yanıtla ${icon('arrow')}</a>` : ''}
-          <form method="post" action="/admin/talepler/${l.id}/durum" class="inline-form lead__status">
-            <input type="hidden" name="csrf" value="${csrf}">
-            <label class="sr-only" for="st-${l.id}">Durum</label>
-            <select id="st-${l.id}" name="status">${Object.entries(STATUS).map(([k, label]) => h`<option value="${k}"${k === l.status ? raw(' selected') : ''}>${label}</option>`)}</select>
-            <button class="btn btn--text btn--sm" type="submit">Kaydet</button>
-          </form>
           ${l.couple_id ? h`<a class="btn btn--text btn--sm" href="/admin/ciftler/${l.couple_id}">Çifti aç ${icon('arrow')}</a>` : h`
-          ${qOf.get(l.id) ? h`<a class="btn btn--outline btn--sm" href="/admin/teklif/${qOf.get(l.id).id}">Teklif · ${{ hazir: 'açılmadı', goruldu: 'görüldü', kabul: 'kabul edildi' }[qOf.get(l.id).status]}</a>`
-            : h`<a class="btn btn--outline btn--sm" href="/admin/teklif/yeni?talep=${l.id}">Teklif hazırla</a>`}
-          <a class="btn btn--primary btn--sm" href="/admin/randevu/yeni?${qOf.get(l.id) ? `teklif=${qOf.get(l.id).id}` : `talep=${l.id}`}">Randevu oluştur</a>`}
-          <form method="post" action="/admin/talepler/${l.id}/sil" class="inline-form" data-confirm="Bu talep silinsin mi?">
-            <input type="hidden" name="csrf" value="${csrf}">
-            <button class="btn btn--text btn--sm btn--danger-text" type="submit" aria-label="Talebi sil">${icon('trash')}</button>
-          </form>
+          ${q ? h`<a class="btn btn--outline btn--sm" href="/admin/teklif/${q.id}">Teklifi aç</a>` : h`<a class="btn btn--primary btn--sm" href="/admin/teklif/yeni?talep=${l.id}">Teklif hazırla</a>`}
+          <a class="btn btn--${q?.status === 'kabul' || l.status === 'rezervasyon' ? 'primary' : 'text'} btn--sm" href="/admin/randevu/yeni?${q ? `teklif=${q.id}` : `talep=${l.id}`}">${q?.status === 'kabul' ? 'Randevuya çevir' : 'Randevu oluştur'}</a>`}
+          <details class="lead__more">
+            <summary class="btn btn--text btn--sm">Durum</summary>
+            <form method="post" action="/admin/talepler/${l.id}/durum" class="inline-form lead__status">
+              <input type="hidden" name="csrf" value="${csrf}">
+              <label class="sr-only" for="st-${l.id}">Durum</label>
+              <select id="st-${l.id}" name="status">${Object.entries(STATUS).map(([k, label]) => h`<option value="${k}"${k === l.status ? raw(' selected') : ''}>${label}</option>`)}</select>
+              <button class="btn btn--text btn--sm" type="submit">Kaydet</button>
+            </form>
+            <form method="post" action="/admin/talepler/${l.id}/sil" class="inline-form" data-confirm="Bu talep silinsin mi?">
+              <input type="hidden" name="csrf" value="${csrf}">
+              <button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button>
+            </form>
+          </details>
         </div>
-      </li>`)}
-    </ul>` : h`<div class="empty-box">${icon('whatsapp')}<p>Henüz talep yok. WhatsApp’tan yazan ya da sitedeki formu dolduran ilk kişi burada görünecek.</p></div>`}
+      </li>`;
+  const quoteRow = ({ q }) => h`
+      <li class="fb lead">
+        <div class="fb__head">
+          <strong>${q.accepted_name || q.name}</strong>
+          <span class="state state--${q.status === 'kabul' ? 'ok' : q.status === 'goruldu' ? 'soon' : 'upcoming'}">Teklif · ${QSTATE[q.status]}</span>
+          <span class="fb__meta">${[q.event_date ? formatDate(q.event_date) : '', q.event_type, q.place, `${Number(total(q)).toLocaleString('tr-TR')} ₺`].filter(Boolean).join(' · ')}</span>
+          <time class="fb__time">${ago(q.created_at)}</time>
+        </div>
+        <div class="lead__actions">
+          <a class="btn btn--outline btn--sm" href="/admin/teklif/${q.id}">Teklifi aç</a>
+          ${q.couple_id ? h`<a class="btn btn--text btn--sm" href="/admin/ciftler/${q.couple_id}">Çifti aç ${icon('arrow')}</a>` : q.status === 'kabul' ? h`<a class="btn btn--primary btn--sm" href="/admin/randevu/yeni?teklif=${q.id}">Randevuya çevir</a>` : ''}
+        </div>
+      </li>`;
+  const empty = { yeni: 'Yeni talep yok. Siteden, WhatsApp’tan ve Düğün.com’dan gelenler burada görünür.', teklif: 'Yanıt bekleyen teklif yok.', kabul: 'Henüz kabul edilen teklif yok.', olmadi: 'Boş.' }[tab];
+  const body = h`
+  <div class="container">
+    <div class="panel-title-row"><div><h1 class="page-title">Talepler</h1><p class="muted">Site formu, WhatsApp, Düğün.com ve hediye kuponuyla gelenler</p></div>
+      <a class="btn btn--outline btn--sm" href="/admin/teklif/yeni">${icon('plus')}Yeni teklif</a></div>
+    ${f ? flash(f.message, f.type) : ''}
+    <nav class="ltabs" aria-label="Talep durumları">
+      ${TABS.map(([k, label]) => h`<a class="ltabs__tab" href="/admin/talepler?sekme=${k}"${k === tab ? raw(' aria-current="page"') : ''}>${label}<span class="ltabs__n">${counts[k]}</span></a>`)}
+    </nav>
+    ${shown.length || shownQ.length ? h`<ul class="fb-list leads">${shown.map(leadRow)}${shownQ.map(quoteRow)}</ul>`
+      : h`<div class="empty-box">${icon('whatsapp')}<p>${empty}</p></div>`}
   </div>`;
   return panelLayout(c, { title: 'Talepler', csrf, nav: adminNav('leads', csrf, demoAdmin), home: '/admin', tabs: adminTabs('leads', demoAdmin), body, scripts: ['/js/admin.js?v=3'] });
 }

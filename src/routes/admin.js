@@ -88,20 +88,21 @@ function register(router) {
     redirect(res, '/admin');
   });
 
-  // ── Panel: takvim, yaklaşanlar, çift kartları ──
-  router.get('/admin', (req, res, { query }) => {
+  // ── Bugün: yapılacaklar, program, bu ay, çiftler ──
+  router.get('/admin', (req, res) => {
     if (!requireAdmin(req, res)) return;
-    const ay = query.get('ay');
-    const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ay || '') ? ay : today().slice(0, 7);
     const t = today();
+    const ym = t.slice(0, 7);
+    const c = getContent();
+    const last = (c.stages || []).length - 1;
     const couplesAll = db.listCouples();
-    const selections = couplesAll.filter((k) => k.album_locked && k.fav_count > 0)
+    // Seçimini bitirmiş, albüm tasarımı henüz gönderilmemiş çiftler
+    const selections = couplesAll.filter((k) => k.album_locked && k.fav_count > 0 && !k.album_design_state && k.stage < last)
       .map((k) => ({ k, names: appt.selectionNames(db.listFavoritePhotos(k.id)) }));
-    const dow = (new Date(`${t}T12:00:00Z`).getUTCDay() + 6) % 7; // pazartesi = 0
-    const monday = addDays(t, -dow);
-    const weekEvents = db.eventsBetween(monday, addDays(monday, 6));
     const outbox = wa.autoSend() ? [] : require('../outbox').list();
-    html(res, views.dashboard(getContent(), { outbox, weekEvents, monday, selections, couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const quotes = db.listQuotes().filter((q) => q.status === 'kabul' && !q.couple_id);
+    const newLeads = db.listLeads().filter((l) => l.status === 'yeni').length;
+    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   // Elle gönderilen WhatsApp mesajı "gönderildi" (veya "atla") olarak işaretlenir; listeden düşer
@@ -1022,9 +1023,11 @@ function register(router) {
   });
 
   // İş takvimi
-  router.get('/admin/takvim', (req, res) => {
+  router.get('/admin/takvim', (req, res, { query }) => {
     if (!requireAdmin(req, res)) return;
-    html(res, views.calendar(getContent(), { couples: db.listCouples(), csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+    const ay = query.get('ay');
+    const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ay || '') ? ay : today().slice(0, 7);
+    html(res, views.calendar(getContent(), { couples: db.listCouples(), monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), ym, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.post('/admin/ciftler/:id/sifre', async (req, res, { params }) => {

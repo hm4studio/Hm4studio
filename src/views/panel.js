@@ -252,8 +252,14 @@ function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
 }
 
 // Durum sayfasının en üstündeki "sıradaki adım" kartı: çiftin şu an yapması gereken tek şey
-function nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages }) {
+function nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages, keepUntil = '' }) {
   const day = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+  if (couple.delivered_at) {
+    const has = editedCount || totalCount || videoCount;
+    return { done: true, eyebrow: 'Teslim edildi', title: 'Hepsi sizde 🤍',
+      text: has ? `Fotoğraflarınız${videoCount ? ' ve videonuz' : ''} panelinizde. Dosyalar teslimden sonra bir süre sunucumuzda kalır; lütfen indirip yedekleyin${keepUntil ? ` (son gün: ${formatDate(keepUntil)})` : ''}.` : 'Bizi tercih ettiğiniz için teşekkür ederiz. Mutluluklar!',
+      href: editedCount ? '/panel/indir?g=duzenli' : totalCount ? '/panel/indir' : '', btn: 'Tümünü indir', download: true };
+  }
   const upcoming = events.filter((e) => e.event_date && e.event_date >= day).sort((x, y) => x.event_date.localeCompare(y.event_date))[0];
   const limit = couple.album_limit || 35;
   if (couple.contract_state === 'bekliyor') return { title: 'Sözleşmenizi onaylayın', text: 'Okuyup birkaç dakikada onaylayabilirsiniz.', href: '/panel/sozlesme', btn: 'Sözleşmeyi aç' };
@@ -270,18 +276,34 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
 }
 
 // Durum: sıradaki adım, iş durumu, randevular, ödeme; en altta bildirim ayarları ve çıkış
-function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favCount = 0, editedCount = 0, videoCount = 0, gifts = null, deliveries = [], csrf, flash: f }) {
-  const step = nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages: c.stages });
+function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favCount = 0, editedCount = 0, videoCount = 0, gifts = null, deliveries = [], reviewLink = '', csrf, flash: f }) {
+  const journey = require('./journey');
+  const step = nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages: c.stages, keepUntil: journey.keepUntil(c, couple) });
+  const road = journey.forCouple(c, { couple, events, totalCount, favCount });
+  const dt = (iso) => new Date(`${String(iso).replace(' ', 'T')}Z`).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', year: 'numeric' });
+  const ct = couple.contract_state ? require('../db').activeContract(couple.id) : null;
+  const docs = [
+    ...deliveries.map((d) => ({ title: 'Teslim tutanağı', sub: `İmzalandı · ${dt(d.created_at)}`, ok: true, href: `/panel/teslim/${d.id}` })),
+    ...(ct ? [{ title: 'Sözleşme', sub: ct.signed_at ? `Onaylandı · ${dt(ct.signed_at)}` : 'Onayınızı bekliyor', ok: Boolean(ct.signed_at), href: '/panel/sozlesme', btn: ct.signed_at ? 'Aç' : 'Onayla' }] : []),
+    ...(events.length ? [{ title: 'Randevu belgesi', sub: 'Etkinlikler ve paketler', href: '/panel/belge' }] : []),
+  ];
   const pushbox = h`<div class="pushbox" data-push data-push-quiet data-off-text="Fotoğraflarınız ve videonuz hazır olunca telefonunuza haber verelim." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>`;
   const body = h`
-    <section class="now${step.href ? ' now--todo' : ''}" aria-labelledby="now-title">
-      <p class="now__eyebrow">${step.href ? 'Sıradaki adım' : 'Durum'}</p>
+    <section class="now${step.href || step.done ? ' now--todo' : ''}" aria-labelledby="now-title">
+      <p class="now__eyebrow">${step.eyebrow || (step.href ? 'Sıradaki adım' : 'Durum')}</p>
       <h1 class="now__title" id="now-title">${step.title}</h1>
       <p class="now__text">${step.text}</p>
-      ${step.href ? h`<a class="btn btn--primary" href="${step.href}">${step.btn}${icon('right')}</a>` : ''}
+      ${step.href ? h`<a class="btn btn--primary" href="${step.href}"${step.download ? raw(' download') : ''}>${step.download ? icon('download') : ''}${step.btn}${step.download ? '' : icon('right')}</a>` : ''}
     </section>
 
-    <div id="durum">${statusBar(c.stages, couple.stage, couple.stage_note, 'İşinizin durumu', { status: couple.video_status, stages: c.appointments?.videoStages || [] })}</div>
+    <section class="panel-section croad" id="durum" aria-labelledby="road-title">
+      <div class="panel-section__head"><h2 class="panel-section__title" id="road-title">${road.finished ? 'Tamamlandı' : 'İşinizin yolu'}</h2></div>
+      ${journey.road(road, { title: 'İşinizin yolu' })}
+      ${(couple.video_status && !road.finished) || couple.due_date || couple.stage_note ? h`<p class="croad__note">${[
+        couple.video_status && !road.finished ? h`Video: <strong>${couple.video_status}</strong>` : '',
+        couple.due_date && !road.finished ? h`Tahmini teslim: <strong>${formatDate(couple.due_date)}</strong>` : '',
+      ].filter(Boolean).map((x, i) => h`${i ? ' · ' : ''}${x}`)}${couple.stage_note ? h`<span class="croad__msg">${couple.stage_note}</span>` : ''}</p>` : ''}
+    </section>
 
     ${totalCount || editedCount || videoCount ? h`<div class="cquick">
       ${editedCount ? h`<a class="cquick__item" href="/panel/fotograflar?g=duzenli"><span class="cquick__num">${editedCount}</span><span>düzenlenmiş fotoğraf</span>${icon('right')}</a>` : ''}
@@ -290,10 +312,7 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
     </div>` : ''}
 
     ${events.length ? h`<section class="panel-section" id="randevular" aria-labelledby="ev-title">
-      <div class="panel-section__head appt-card__head">
-        <h2 class="panel-section__title" id="ev-title">Randevularınız</h2>
-        <a class="btn btn--outline btn--sm" href="/panel/belge">${icon('download')}Belge</a>
-      </div>
+      <div class="panel-section__head"><h2 class="panel-section__title" id="ev-title">Randevularınız</h2></div>
       <ul class="jobs">${events.map((e) => {
         const dt = e.event_date ? new Date(`${e.event_date}T12:00:00`) : null;
         return h`<li class="job">
@@ -317,9 +336,12 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
       </section>`;
     })() : ''}
 
-    ${deliveries.length ? h`<section class="panel-section" id="teslim" aria-labelledby="dl-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="dl-title">Teslim tutanağı</h2></div>
-      <ul class="dl-list">${deliveries.map((d) => h`<li>${new Date(`${d.created_at.replace(' ', 'T')}Z`).toLocaleDateString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', year: 'numeric' })} · ${d.signer_name} <a class="btn btn--outline btn--sm" href="/panel/teslim/${d.id}">${icon('download')}Görüntüle / indir</a></li>`)}</ul>
+    ${docs.length ? h`<section class="panel-section" id="belgeler" aria-labelledby="docs-title">
+      <div class="panel-section__head"><h2 class="panel-section__title" id="docs-title">Belgelerim</h2></div>
+      <ul class="docs">${docs.map((d) => h`<li>
+        <span class="docs__main"><strong>${d.title}</strong><span class="${d.ok ? 'docs__ok' : 'muted'}">${d.sub}</span></span>
+        <a class="btn btn--outline btn--sm" href="${d.href}">${d.btn || h`${icon('download')}İndir`}</a>
+      </li>`)}</ul>
     </section>` : ''}
 
     ${gifts ? h`<section class="panel-section gift-share" id="hediye" aria-labelledby="gift-title">
@@ -332,6 +354,12 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
           : h`<a class="btn btn--primary btn--sm" href="${gifts.wa(g.code)}" target="_blank" rel="noopener">${icon('whatsapp')}Gönder</a>`}
       </li>`)}</ul>
       ${gifts.settings.reward ? h`<p class="muted">Kuponunuzla gelen çift rezervasyon yaptığında size de bizden teşekkür hediyesi: ${gifts.settings.reward}.</p>` : ''}
+    </section>` : ''}
+
+    ${couple.delivered_at && reviewLink ? h`<section class="panel-section" id="yorum" aria-labelledby="rv-title">
+      <div class="panel-section__head"><h2 class="panel-section__title" id="rv-title">Bizi değerlendirin</h2></div>
+      <p class="muted">Birkaç cümleniz, yeni evlenecek çiftlere çok yardımcı olur.</p>
+      <a class="btn btn--outline" href="${reviewLink}" target="_blank" rel="noopener">${icon('star')}Google’da yorum yaz</a>
     </section>` : ''}
 
     <div class="install" data-install hidden>

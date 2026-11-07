@@ -6,11 +6,12 @@ const { photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView } = r
 const { jobStatus, daysBetween, today, addDays } = require('../jobs');
 const { displayPhone, taskText } = require('../whatsapp');
 const { payment, tl, shortDate, eventIndexes } = require('../appointments');
+const journey = require('./journey');
 
 const SETTINGS_KEYS = ['gifts', 'cities', 'messages', 'contract', 'account', 'feedback', 'portfolio', 'team', 'packages', 'site', 'data'];
 function adminNav(active, csrf, demoAdmin = false) {
   const items = [
-    { href: '/admin', label: 'Panel', key: 'couples', icon: 'users' },
+    { href: '/admin', label: 'Bugün', key: 'couples', icon: 'users' },
     { href: '/admin/talepler', label: 'Talepler', key: 'leads', icon: 'whatsapp' },
     { href: '/admin/takvim', label: 'Takvim', key: 'calendar', icon: 'clock' },
     { href: '/admin/rapor', label: 'Rapor', key: 'report', icon: 'chart' },
@@ -26,7 +27,7 @@ function adminNav(active, csrf, demoAdmin = false) {
 // Telefonda alttaki sekme menüsü
 function adminTabs(active, demoAdmin = false) {
   return [
-    { href: '/admin', label: 'Panel', icon: 'users', active: active === 'couples' },
+    { href: '/admin', label: 'Bugün', icon: 'users', active: active === 'couples' },
     { href: '/admin/talepler', label: 'Talepler', icon: 'whatsapp', active: active === 'leads' },
     { href: '/admin/takvim', label: 'Takvim', icon: 'clock', active: active === 'calendar' },
     { href: '/admin/rapor', label: 'Rapor', icon: 'chart', active: active === 'report' },
@@ -68,7 +69,7 @@ const relDays = (n) => (n === 0 ? 'bugün' : n === 1 ? 'yarın' : n > 0 ? `${n} 
 const longDay = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 
 // Ay takvimi: her günde o günün etkinlikleri (bir çiftin farklı günlerdeki etkinlikleri ayrı ayrı görünür)
-function monthCalendar(monthEvents, ym) {
+function monthCalendar(monthEvents, ym, base = '/admin/takvim') {
   const [y, m] = ym.split('-').map(Number);
   const first = new Date(Date.UTC(y, m - 1, 1));
   const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -91,9 +92,9 @@ function monthCalendar(monthEvents, ym) {
     <div class="cal__head">
       <h2 class="sec-title" id="cal-title">${MONTHS[m - 1]} <span class="sec-light">${y}</span></h2>
       <div class="cal__nav">
-        <a class="cal__btn" href="/admin?ay=${prev}" aria-label="Önceki ay">${icon('left')}</a>
-        <a class="cal__today" href="/admin">Bugün</a>
-        <a class="cal__btn" href="/admin?ay=${next}" aria-label="Sonraki ay">${icon('right')}</a>
+        <a class="cal__btn" href="${base}?ay=${prev}" aria-label="Önceki ay">${icon('left')}</a>
+        <a class="cal__today" href="${base}">Bu ay</a>
+        <a class="cal__btn" href="${base}?ay=${next}" aria-label="Sonraki ay">${icon('right')}</a>
       </div>
     </div>
     <div class="cal__grid" role="grid">
@@ -113,40 +114,13 @@ function monthCalendar(monthEvents, ym) {
   </section>`;
 }
 
-// Yarının programı: çekimler (saat, mekân, ekip, istekler) ve yarın teslimi olanlar
-function tomorrowBlock(c, tomorrowEvents, tomorrowDue) {
-  const tm = addDays(today(), 1);
-  return h`
-  <section class="tmr" aria-labelledby="tmr-title">
-    <header class="sec-head">
-      <h2 class="sec-title" id="tmr-title">Yarın</h2>
-      <span class="sec-note">${longDay(tm)}</span>
-    </header>
-    ${tomorrowEvents.length ? h`<ol class="tmr__list">${tomorrowEvents.map((e) => h`
-      <li class="tmr__item">
-        <span class="tmr__time">${e.start_time || '—'}</span>
-        <div class="tmr__main">
-          <a class="tmr__name" href="/admin/ciftler/${e.couple_id}">${e.couple_name}</a>
-          <span class="tmr__meta">${e.event_type || 'Etkinlik'}${e.venue || e.city ? h`, ${[e.venue, e.city].filter(Boolean).join(', ')}` : ''}</span>
-          ${e.team ? h`<span class="tmr__team">${e.team}</span>` : ''}
-          ${e.package_detail ? h`<p class="tmr__note">${e.package_detail}</p>` : ''}
-        </div>
-        ${e.couple_phone ? h`<a class="tmr__call" href="tel:+${e.couple_phone}" aria-label="${e.couple_name} ara">${icon('phone')}</a>` : ''}
-      </li>`)}</ol>` : h`<p class="sec-empty">Yarın çekim yok.</p>`}
-    ${tomorrowDue.length ? h`<p class="tmr__due">Yarın teslim: ${tomorrowDue.map((k, i) => h`${i ? ', ' : ''}<a href="/admin/ciftler/${k.id}">${k.name}</a>`)}</p>` : ''}
-  </section>`;
-}
-
-// Program: önce yarın, sonra bu haftanın çekim olan diğer günleri (gün başlığı, altında büyük çift adı)
-function programBlock(c, weekEvents, upcoming, tomorrowDue) {
+// Program: önümüzdeki 7 gün (bugün dahil), gün gün
+function programBlock(c, upcoming, tomorrowDue) {
   const t = today();
   const tm = addDays(t, 1);
-  const dow = (new Date(`${t}T12:00:00Z`).getUTCDay() + 6) % 7;
-  const sunday = addDays(t, 6 - dow);
-  const all = [...upcoming, ...weekEvents].filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i);
-  const tomorrow = all.filter((e) => e.event_date === tm);
-  const rest = all.filter((e) => e.event_date > tm && e.event_date <= sunday);
-  const days = [...new Set(rest.map((e) => e.event_date))].sort();
+  const end = addDays(t, 6);
+  const list = upcoming.filter((e) => e.event_date >= t && e.event_date <= end);
+  const days = [...new Set(list.map((e) => e.event_date))].sort();
   const dayLabel = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
   const shoot = (e) => h`
     <li class="prog__shoot">
@@ -158,19 +132,17 @@ function programBlock(c, weekEvents, upcoming, tomorrowDue) {
       ${e.team ? h`<p class="prog__team">Ekip: ${e.team}</p>` : ''}
       ${e.package_detail ? h`<p class="prog__note">${e.package_detail}</p>` : ''}
     </li>`;
-  const day = (iso, list, isTomorrow) => h`
-    <section class="prog__day${isTomorrow ? ' is-tomorrow' : ''}">
-      <h3 class="prog__date">${isTomorrow ? h`<span class="prog__tag">Yarın</span>` : ''}${dayLabel(iso)}</h3>
-      <ul class="prog__list">${list.map(shoot)}</ul>
-    </section>`;
   return h`
   <section class="prog" aria-labelledby="prog-title">
     <header class="sec-head">
       <h2 class="sec-title" id="prog-title">Program</h2>
-      <span class="sec-note">${tomorrow.length + rest.length ? `Bu hafta ${tomorrow.length + rest.length} çekim daha` : 'Bu hafta başka çekim yok'}</span>
+      <span class="sec-note">Önümüzdeki 7 gün</span>
     </header>
-    ${tomorrow.length ? day(tm, tomorrow, true) : h`<p class="prog__empty"><span class="prog__tag">Yarın</span>Çekim yok.</p>`}
-    ${days.map((d) => day(d, rest.filter((e) => e.event_date === d), false))}
+    ${days.length ? days.map((d) => h`
+    <section class="prog__day${d <= tm ? ' is-tomorrow' : ''}">
+      <h3 class="prog__date">${d === t ? h`<span class="prog__tag">Bugün</span>` : d === tm ? h`<span class="prog__tag">Yarın</span>` : ''}${dayLabel(d)}</h3>
+      <ul class="prog__list">${list.filter((e) => e.event_date === d).map(shoot)}</ul>
+    </section>`) : h`<p class="sec-empty">Önümüzdeki 7 günde çekim yok.</p>`}
     ${tomorrowDue.length ? h`<p class="tmr__due">Yarın teslim: ${tomorrowDue.map((k, i) => h`${i ? ', ' : ''}<a href="/admin/ciftler/${k.id}">${k.name}</a>`)}</p>` : ''}
   </section>`;
 }
@@ -193,6 +165,8 @@ function attentionItems(c, couples) {
     if (k.album_design_state === 'degisiklik') items.push({ k, level: 2, text: 'Albüm tasarımında değişiklik istendi', tag: 'Albüm' });
     if (k.album_design_state === 'onaylandi' && k.album_design_at && daysBetween(k.album_design_at.slice(0, 10), t) <= 3) items.push({ k, level: 1, text: 'Albüm tasarımı onaylandı, baskıya hazır', tag: 'Albüm' });
     if (k.photo_count > 0 && !k.album_locked && k.stage < last) items.push({ k, level: 1, text: `Albüm seçimi bekleniyor (${k.fav_count}/${k.album_limit})`, tag: 'Albüm' });
+    const until = journey.keepUntil(c, k);
+    if (until && until < t && !k.archived_at && k.photo_count > 0) items.push({ k, level: 1, text: 'İndirme süresi doldu; dosyaları sunucudan silebilirsiniz', tag: 'Dosyalar' });
   }
   // Tavsiye eden çifte borçlu olunan teşekkür hediyeleri
   for (const g of require('../db').giftRewardsDue()) {
@@ -209,7 +183,8 @@ function attentionItems(c, couples) {
   }
   return [...groups.values()].map((g) => {
     const hasWhen = g.items.some((x) => x.text.startsWith('Etkinlik'));
-    return { k: g.k, level: g.level, text: g.items.sort((a, b) => b.level - a.level).map((x) => (x.ctx && !hasWhen ? `${x.text} (${x.ctx})` : x.text)).join(' · ') };
+    const sorted = g.items.sort((a, b) => b.level - a.level);
+    return { k: g.k, level: g.level, tag: sorted[0].tag, text: sorted.map((x) => (x.ctx && !hasWhen ? `${x.text} (${x.ctx})` : x.text)).join(' · ') };
   }).sort((a, b) => b.level - a.level);
 }
 
@@ -261,102 +236,83 @@ function stageBoard(c, couples) {
   </div>`;
 }
 
-// WhatsApp API bağlı değilken: gönderilecek mesajlar (dokun → ofis WhatsApp'ında hazır metin açılır)
-function outboxBlock(items) {
-  if (!items.length) return '';
-  return h`<section class="outbox" aria-labelledby="ob-title" data-outbox>
-    <header class="sec-head">
-      <h2 class="sec-title" id="ob-title">Gönderilecek mesajlar <span class="sec-count" data-outbox-count>${items.length}</span></h2>
-      <span class="sec-note">“Gönder” mesajı WhatsApp'ta hazır açar</span>
-    </header>
-    <ul class="outbox__list">${items.map((x) => h`
-      <li class="outbox__item" data-outbox-item data-keys="${x.keys.join(',')}">
-        <div class="outbox__main">
-          <span class="outbox__label">${x.label}${x.team ? h` <span class="outbox__tag">Ekip</span>` : ''}</span>
-          ${x.coupleId && !x.team ? h`<a class="outbox__to" href="/admin/ciftler/${x.coupleId}">${x.to}</a>` : h`<span class="outbox__to">${x.to}</span>`}
-          <span class="outbox__text">${x.text.split('\n')[0]}</span>
-        </div>
-        <div class="outbox__actions">
-          <a class="btn btn--primary btn--sm" href="${x.href}" target="_blank" rel="noopener" data-outbox-send>${icon('whatsapp')}Gönder</a>
-          <button type="button" class="btn btn--text btn--sm" data-outbox-skip title="Göndermeden listeden kaldır">Atla</button>
-        </div>
-      </li>`)}</ul>
-  </section>`;
+// Yapılacaklar: bekleyen işler, gönderilecek mesajlar, tamamlanan seçimler, kabul edilen teklifler ve yeni talepler tek listede
+const TAG_TAB = { Teslim: 'teslim', Ödeme: 'odeme', Plan: 'plan', Sözleşme: 'odeme', Albüm: 'album', Hediye: 'hediye', Dosyalar: 'ayar' };
+function todoList(c, { couples, outbox, selections, quotes, newLeads }) {
+  const rows = [];
+  for (const x of attentionItems(c, couples)) {
+    rows.push({ level: x.level, tag: x.tag, name: x.k.name, href: `/admin/ciftler/${x.k.id}`, text: x.text,
+      actions: h`<a class="btn btn--outline btn--sm" href="/admin/ciftler/${x.k.id}#${TAG_TAB[x.tag] || 'ozet'}">Aç</a>` });
+  }
+  for (const x of outbox) {
+    rows.push({ level: 2, tag: x.team ? 'Ekip' : 'Mesaj', name: x.to, href: x.coupleId && !x.team ? `/admin/ciftler/${x.coupleId}` : '', text: x.label, outbox: x,
+      actions: h`<a class="btn btn--primary btn--sm" href="${x.href}" target="_blank" rel="noopener" data-outbox-send>${icon('whatsapp')}Gönder</a><button type="button" class="btn btn--text btn--sm" data-outbox-skip title="Göndermeden listeden kaldır">Atla</button>` });
+  }
+  for (const { k, names } of selections) {
+    rows.push({ level: 2, tag: 'Seçim', name: k.name, href: `/admin/ciftler/${k.id}#album`, text: `Albüm seçimini tamamladı (${names.length} kare). Albüm tasarımını hazırlayın.`,
+      actions: h`<button type="button" class="btn btn--text btn--sm" data-copy="${names.join(' ')}" title="Seri numaralarını boşlukla ayrılmış olarak kopyalar (Lightroom/Bridge araması için)">Kopyala</button><a class="btn btn--outline btn--sm" href="/admin/ciftler/${k.id}/secim.txt">${icon('download')}Liste</a>` });
+  }
+  for (const q of quotes) {
+    rows.push({ level: 3, tag: 'Teklif', name: q.accepted_name || q.name, href: `/admin/teklif/${q.id}`, text: `Teklifi kabul etti (${tl(require('./quotes').total(q))})`,
+      actions: h`<a class="btn btn--primary btn--sm" href="/admin/randevu/yeni?teklif=${q.id}">Randevuya çevir</a>` });
+  }
+  if (newLeads) rows.push({ level: 2, tag: 'Talep', name: `${newLeads} yeni talep`, href: '/admin/talepler', text: 'Yanıt bekliyor', actions: h`<a class="btn btn--outline btn--sm" href="/admin/talepler">Talepler</a>` });
+  return rows.sort((a, b) => b.level - a.level);
 }
 
-function dashboard(c, { outbox = [], weekEvents = [], monday, selections = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
-  const tomorrowEvents = upcoming.filter((e) => e.event_date === tm);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
-  const later = upcoming.filter((e) => e.event_date > tm);
   const balance = couples.reduce((s, k) => s + payment(k)[2], 0);
   const late = couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').length;
-  const todo = attentionItems(c, couples);
+  const todo = todoList(c, { couples, outbox, selections, quotes, newLeads });
+  const todayN = upcoming.filter((e) => e.event_date === t).length;
+  const weekN = upcoming.filter((e) => e.event_date <= addDays(t, 6)).length;
   const o = c.appointments || {};
   const body = h`
   <div class="container dashboard">
     <header class="dash-head">
       <div>
-        <p class="dash-head__date">${longDay(t)}</p>
-        <h1 class="dash-head__title">Panel</h1>
+        <p class="dash-head__date">${longDay(t)} · ${todayN ? `bugün ${todayN} çekim` : 'bugün çekim yok'}${weekN > todayN ? `, 7 günde ${weekN}` : ''}</p>
+        <h1 class="dash-head__title">Bugün</h1>
       </div>
       <a class="btn btn--primary" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a>
     </header>
     ${flashBlock(f)}
 
-    <dl class="figures">
-      <div><dt>${MONTHS[Number(ym.slice(5)) - 1]} ayında etkinlik</dt><dd>${monthEvents.length}</dd></div>
-      <div><dt>Önümüzdeki 30 gün</dt><dd>${upcoming.length}</dd></div>
-      <div><dt>Bekleyen bakiye</dt><dd>${tl(balance)}</dd></div>
-      <div><dt><a href="/admin/takvim">Geciken teslim</a></dt><dd class="${late ? 'is-alert' : ''}">${late}</dd></div>
-    </dl>
-
-    ${outboxBlock(outbox)}
+    <section class="todo" aria-labelledby="todo-title" data-outbox>
+      <header class="sec-head">
+        <h2 class="sec-title" id="todo-title">Yapılacaklar <span class="sec-count" data-todo-count>${todo.length}</span></h2>
+        <span class="sec-note">Bekleyen işler ve gönderilecek mesajlar</span>
+      </header>
+      ${todo.length ? h`<ul class="todo__list">${todo.map((x) => h`
+        <li class="todo__item${x.level === 3 ? ' is-urgent' : ''}" data-todo-item${x.outbox ? raw(` data-outbox-item data-keys="${x.outbox.keys.join(',')}"`) : ''}>
+          <span class="todo__tag">${x.tag}</span>
+          <span class="todo__main">
+            ${x.href ? h`<a class="todo__name" href="${x.href}">${x.name}</a>` : h`<span class="todo__name">${x.name}</span>`}
+            <span class="todo__text">${x.text}</span>
+          </span>
+          <span class="todo__actions">${x.actions}</span>
+        </li>`)}</ul>` : h`<p class="sec-empty">Bekleyen iş yok.</p>`}
+      <p class="sec-empty" data-todo-empty hidden>Bekleyen iş kalmadı.</p>
+    </section>
 
     <div class="dash-top">
-      ${programBlock(c, weekEvents, upcoming, tomorrowDue)}
-      <section class="todo" aria-labelledby="todo-title">
+      ${programBlock(c, upcoming, tomorrowDue)}
+      <section class="month" aria-labelledby="month-title">
         <header class="sec-head">
-          <h2 class="sec-title" id="todo-title">Bekleyenler</h2>
-          <span class="sec-note">${todo.length ? `${todo.length} çift` : ''}</span>
+          <h2 class="sec-title" id="month-title">Bu ay</h2>
+          <a class="btn btn--text btn--sm" href="/admin/takvim">Takvime git${icon('right')}</a>
         </header>
-        ${todo.length ? h`<ul class="todo__list">${todo.slice(0, 8).map((x) => h`
-          <li class="todo__item${x.level === 3 ? ' is-urgent' : ''}">
-            <a href="/admin/ciftler/${x.k.id}"><span class="todo__name">${x.k.name}</span><span class="todo__text">${x.text}</span></a>
-          </li>`)}</ul>${todo.length > 8 ? h`<p class="sec-empty">ve ${todo.length - 8} çift daha</p>` : ''}` : h`<p class="sec-empty">Bekleyen iş yok.</p>`}
+        <dl class="figures figures--2">
+          <div><dt>${MONTHS[Number(ym.slice(5)) - 1]} ayında çekim</dt><dd>${monthEvents.length}</dd></div>
+          <div><dt>Önümüzdeki 30 gün</dt><dd>${upcoming.length}</dd></div>
+          <div><dt>Bekleyen ödeme</dt><dd>${tl(balance)}</dd></div>
+          <div><dt><a href="/admin/takvim#teslimler">Geciken teslim</a></dt><dd class="${late ? 'is-alert' : ''}">${late}</dd></div>
+        </dl>
       </section>
     </div>
-
-    <div class="dash">
-      ${monthCalendar(monthEvents, ym)}
-      <section class="dash__side" aria-labelledby="up-title">
-        <header class="sec-head"><h2 class="sec-title" id="up-title">Yaklaşan</h2></header>
-        ${later.length ? h`<ul class="uplist">${later.slice(0, 9).map((e) => {
-          const dt = new Date(`${e.event_date}T12:00:00`);
-          return h`<li><a class="up" href="/admin/ciftler/${e.couple_id}">
-            <span class="up__day">${dt.getDate()}</span>
-            <span class="up__main"><span class="up__name">${e.couple_name}</span><span class="up__meta">${e.event_type || 'Etkinlik'}${e.start_time ? `, ${e.start_time}` : ''}</span></span>
-            <span class="up__rel">${dt.toLocaleDateString('tr-TR', { month: 'short' })}</span>
-          </a></li>`;
-        })}</ul>` : h`<p class="sec-empty">Yarından sonraki 30 günde randevu yok.</p>`}
-      </section>
-    </div>
-
-    ${selections.length ? h`<section class="sel" aria-labelledby="sel-title">
-      <header class="sec-head">
-        <h2 class="sec-title" id="sel-title">Tamamlanan albüm seçimleri <span class="sec-count">${selections.length}</span></h2>
-        <a class="btn btn--text btn--sm" href="/admin/secimler.csv">${icon('download')}Hepsini indir (Excel)</a>
-      </header>
-      <ul class="sel__list">${selections.map(({ k, names }) => h`
-        <li class="sel__item">
-          <span class="sel__who"><a class="sel__name" href="/admin/ciftler/${k.id}">${k.name}</a><span class="sel__meta">${k.ref_no || ''}${k.ref_no ? ', ' : ''}${names.length} kare</span></span>
-          <span class="sel__actions">
-            <button type="button" class="btn btn--text btn--sm" data-copy="${names.join(' ')}" title="Seri numaralarını boşlukla ayrılmış olarak kopyalar (Lightroom/Bridge araması için)">Kopyala</button>
-            <a class="btn btn--outline btn--sm" href="/admin/ciftler/${k.id}/secim.txt">${icon('download')}Liste</a>
-          </span>
-        </li>`)}</ul>
-    </section>` : ''}
 
     <section class="couples" aria-labelledby="cards-title">
       <header class="sec-head cards-head">
@@ -387,7 +343,7 @@ function dashboard(c, { outbox = [], weekEvents = [], monday, selections = [], c
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Panel', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=1'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=2'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -527,7 +483,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=1'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=2'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -744,7 +700,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=33"></head>
+  <link rel="stylesheet" href="/css/style.css?v=34"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -833,41 +789,35 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
-    <a class="back-link" href="/admin">${icon('left')}Panel</a>
+    <a class="back-link" href="/admin">${icon('left')}Bugün</a>
     <div class="panel-title-row">
       <div>
         <h1 class="page-title">${couple.name}</h1>
-        <p class="muted">${couple.ref_no ? couple.ref_no + ' · ' : ''}${card.types || ''}</p>
+        <p class="muted">${(() => {
+          const pay = payment(card);
+          const first = evs.map((e) => e.event_date).filter(Boolean).sort()[0];
+          return [couple.ref_no, first ? `${card.types ? card.types.split(', ')[0] + ' ' : ''}${formatDate(card.next_date || first)}` : card.types, card.total ? (pay[2] ? `Kalan ödeme ${tl(pay[2])}` : 'Ödendi') : ''].filter(Boolean).join(' · ');
+        })()}</p>
       </div>
     </div>
     ${flashBlock(f)}
 
-    ${(() => {
-      const pay = payment(card);
-      const ctState = !ct ? 'gönderilmedi' : ct.signed_at ? 'onaylandı' : 'onay bekliyor';
-      const nd = card.next_date;
-      return h`<dl class="cd-facts">
-        <div><dt>Sıradaki çekim</dt><dd>${nd ? h`${shortDate(nd)} <span class="muted">${relDays(daysBetween(today(), nd))}</span>` : 'Yok'}</dd></div>
-        <div><dt>Aşama</dt><dd>${c.stages[couple.stage] || '-'}${couple.delivered_at ? h` <span class="muted">· teslim tutanağı ${couple.delivered_at.slice(8, 10)}.${couple.delivered_at.slice(5, 7)}.${couple.delivered_at.slice(0, 4)}</span>` : couple.video_status ? h` <span class="muted">· Video: ${couple.video_status.toLocaleLowerCase('tr-TR')}</span>` : ''}</dd></div>
-        <div><dt>Kalan ödeme</dt><dd class="${pay[2] ? 'is-due' : ''}">${card.total ? (pay[2] ? tl(pay[2]) : 'Ödendi') : 'Tutar yok'}</dd></div>
-        <div><dt>Sözleşme</dt><dd class="${ct && !ct.signed_at ? 'is-due' : ''}">${ctState}</dd></div>
-        <div><dt>Albüm</dt><dd>${totalCount ? h`${favCount}/${couple.album_limit} seçildi${couple.album_locked ? ' · tamam' : ''}` : 'Fotoğraf yok'}</dd></div>
-      </dl>`;
-    })()}
+    ${journey.adminBlock(c, { couple, card, contract: ct, events: evs, totalCount, favCount })}
 
     <nav class="cd-tabs" data-cd-tabs aria-label="Çift sayfası bölümleri" hidden>
-      ${[['ozet', 'Özet'], ['odeme', 'Ödeme ve sözleşme'], ['foto', `Fotoğraflar${totalCount + edited.length ? ` ${totalCount + edited.length}` : ''}`], ['album', `Albüm tasarımı${albumPages.length ? ` ${albumPages.length}` : ''}`], ['video', `Video${videos.length ? ` ${videos.length}` : ''}`], ['plan', 'Gün planı'], ['ayar', 'Giriş ve dosyalar']]
+      ${[['ozet', 'Özet'], ['odeme', 'Sözleşme ve ödeme'], ['foto', `Fotoğraflar${totalCount + edited.length ? ` ${totalCount + edited.length}` : ''}`], ['album', 'Albüm'], ['video', `Video${videos.length ? ` ${videos.length}` : ''}`], ['teslim', 'Teslim'], ['ayar', 'Ayarlar']]
         .map(([k, l]) => h`<a href="#${k}" data-tab="${k}">${l}</a>`)}
     </nav>
 
     <div class="cd-pane" data-pane="ozet">
     ${appointmentSummary(c, card, evs, payments, csrf)}
 
-    ${statusBar(c.stages, couple.stage, couple.stage_note, 'İş durumu (çiftin gördüğü)', { status: couple.video_status, stages: c.appointments?.videoStages || [] })}
+    <div id="plan">${planView(couple)}</div>
 
     <div>
       <section class="panel-section cd-stage" aria-labelledby="stage-title">
-        <div class="panel-section__head"><h2 class="panel-section__title" id="stage-title">İş aşamasını güncelle</h2></div>
+        <div class="panel-section__head"><h2 class="panel-section__title" id="stage-title">Çifte görünen durum</h2>
+          <p class="muted">Aşama ve video durumu çiftin Durum sayfasında görünür. Son aşamaya geçince çifte teslim mesajı gider.</p></div>
         <form class="form" method="post" action="${base}/asama">
           ${csrfField(csrf)}
           <div class="field">
@@ -897,20 +847,8 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     </div>
 
     <div class="cd-pane" data-pane="odeme">
-      <section class="panel-section" id="teslim" aria-labelledby="dl-title">
-        <div class="panel-section__head appt-card__head">
-          <h2 class="panel-section__title" id="dl-title">Teslim tutanağı</h2>
-          <a class="btn btn--primary btn--sm" href="${base}/teslim">${icon('check')}${deliveries.length ? 'Yeni tutanak' : 'Teslim et'}</a>
-        </div>
-        ${deliveries.length ? h`<ul class="dl-list">${deliveries.map((d) => h`<li><span class="paypill paypill--paid">İmzalandı</span> ${require('./contract').trTime(d.created_at)} · ${d.signer_name} · <a href="${base}/teslim/${d.id}">Tutanağı aç</a></li>`)}</ul>`
-          : h`<p class="muted">Flash bellek, albüm ve baskıları ofiste teslim ederken “Teslim et”e basın; çift ekranda imzalar, iş “Teslim” aşamasına geçer.</p>`}
-      </section>
     ${paymentsSection(c, card, payments, csrf)}
     ${require('./contract').adminSection({ coupleId: couple.id, k: ct, csrf, phone: couple.phone, loginUrl, coupleName: couple.name })}
-    </div>
-
-    <div class="cd-pane" data-pane="plan">
-    ${planView(couple)}
     </div>
 
     <div class="cd-pane" data-pane="foto">
@@ -948,18 +886,6 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
         <p class="muted">Kalbe dokunarak çiftin albüm seçimini düzenleyebilirsiniz.</p>
         ${totalCount ? h`<div class="dl-row"><a class="btn btn--outline btn--sm" href="${base}/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>${favCount ? h`<a class="btn btn--text btn--sm" href="${base}/indir?g=fav" download>${icon('download')}Seçimi indir (${favCount})</a>` : ''}</div>` : ''}
       </div>
-      ${albumBar(couple, favCount, { admin: true, csrf, base })}
-      ${selection.length ? h`<div class="sel-box">
-        <div class="sel-box__head">
-          <span><strong>Seçilen karelerin seri numaraları</strong> <span class="muted">(${selection.length}${couple.album_locked ? ', seçim tamamlandı' : ', çift seçmeye devam ediyor'})</span></span>
-          <span class="sel__actions">
-            <button type="button" class="btn btn--text btn--sm" data-copy="${selection.join(' ')}">Kopyala</button>
-            <a class="btn btn--outline btn--sm" href="${base}/secim.txt">${icon('download')}Listeyi indir</a>
-          </span>
-        </div>
-        <p class="sel-box__names">${selection.join(', ')}</p>
-        ${(() => { const d = selection.filter((x, i) => selection.indexOf(x) !== i); return d.length ? h`<p class="sel-box__warn">Dikkat: aynı adla birden fazla dosya seçilmiş: ${[...new Set(d)].join(', ')}. RAW eşleştirmesinde kontrol edin.</p>` : ''; })()}
-      </div>` : ''}
       ${galleryTabs(base, view, totalCount, favCount)}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
@@ -978,7 +904,26 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
 
     </div>
 
-    <div class="cd-pane" data-pane="album">${albumDesignSection(couple, albumPages, base, csrf)}</div>
+    <div class="cd-pane" data-pane="album">
+    <section class="panel-section" id="secim" aria-labelledby="pick-title">
+      <div class="panel-section__head"><h2 class="panel-section__title" id="pick-title">Albüm seçimi</h2>
+        <p class="muted">Çiftin seçtiği kareler. Seçimi düzenlemek için Fotoğraflar sekmesinde kalbe dokunun.</p></div>
+      ${albumBar(couple, favCount, { admin: true, csrf, base })}
+      ${selection.length ? h`<div class="sel-box">
+        <div class="sel-box__head">
+          <span><strong>Seçilen karelerin seri numaraları</strong> <span class="muted">(${selection.length}${couple.album_locked ? ', seçim tamamlandı' : ', çift seçmeye devam ediyor'})</span></span>
+          <span class="sel__actions">
+            <button type="button" class="btn btn--text btn--sm" data-copy="${selection.join(' ')}">Kopyala</button>
+            <a class="btn btn--outline btn--sm" href="${base}/secim.txt">${icon('download')}Listeyi indir</a>
+          </span>
+        </div>
+        <p class="sel-box__names">${selection.join(', ')}</p>
+        ${(() => { const d = selection.filter((x, i) => selection.indexOf(x) !== i); return d.length ? h`<p class="sel-box__warn">Dikkat: aynı adla birden fazla dosya seçilmiş: ${[...new Set(d)].join(', ')}. RAW eşleştirmesinde kontrol edin.</p>` : ''; })()}
+      </div>` : ''}
+      ${totalCount ? '' : h`<p class="sec-empty">Henüz seçim fotoğrafı yüklenmedi.</p>`}
+    </section>
+    ${albumDesignSection(couple, albumPages, base, csrf)}
+    </div>
 
     <div class="cd-pane" data-pane="video">
     <section class="panel-section" id="video" aria-labelledby="video-title">
@@ -1018,8 +963,19 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
 
     </div>
 
-    <div class="cd-pane" data-pane="ayar">
+    <div class="cd-pane" data-pane="teslim">
+      <section class="panel-section" id="teslim" aria-labelledby="dl-title">
+        <div class="panel-section__head appt-card__head">
+          <h2 class="panel-section__title" id="dl-title">Teslim tutanağı</h2>
+          <a class="btn btn--primary btn--sm" href="${base}/teslim">${icon('check')}${deliveries.length ? 'Yeni tutanak' : 'Teslim et'}</a>
+        </div>
+        ${deliveries.length ? h`<ul class="dl-list">${deliveries.map((d) => h`<li><span class="paypill paypill--paid">İmzalandı</span> ${require('./contract').trTime(d.created_at)} · ${d.signer_name} · <a href="${base}/teslim/${d.id}">Tutanağı aç</a></li>`)}</ul>`
+          : h`<p class="muted">Flash bellek, albüm ve baskıları ofiste teslim ederken “Teslim et”e basın; çift ekranda imzalar, iş “Teslim” aşamasına geçer.</p>`}
+      </section>
       ${gift ? giftSection(couple, gift, base, csrf) : ''}
+    </div>
+
+    <div class="cd-pane" data-pane="ayar">
           <section class="panel-section" aria-labelledby="access-title">
         <div class="panel-section__head"><h2 class="panel-section__title" id="access-title">Giriş bilgileri</h2></div>
         <p class="muted">Giriş adresi: <code>${loginUrl}</code></p>
@@ -1058,7 +1014,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
   return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=5', '/js/admin.js?v=5', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
-function calendar(c, { couples, csrf, demoAdmin }) {
+function calendar(c, { couples, monthEvents = [], ym = today().slice(0, 7), csrf, demoAdmin }) {
   const t = today();
   const rows = couples.map((k) => ({ k, st: jobStatus(k, c.stages) }));
   const count = (key) => rows.filter((r) => r.st[0] === key).length;
@@ -1079,14 +1035,15 @@ function calendar(c, { couples, csrf, demoAdmin }) {
   };
   const body = h`
   <div class="container">
-    <div class="panel-title-row"><h1 class="page-title">İş takvimi</h1></div>
+    <div class="panel-title-row"><h1 class="page-title">Takvim</h1><a class="btn btn--primary btn--sm" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a></div>
+    ${monthCalendar(monthEvents, ym)}
     <div class="stats stats--4">
       <div class="stat"><span class="stat__num">${count('late')}</span><span class="stat__label">Geciken teslim</span></div>
       <div class="stat"><span class="stat__num">${count('soon')}</span><span class="stat__label">Bu hafta teslim</span></div>
       <div class="stat"><span class="stat__num">${count('ok')}</span><span class="stat__label">Devam eden iş</span></div>
       <div class="stat"><span class="stat__num">${shoots.length}</span><span class="stat__label">Yaklaşan çekim</span></div>
     </div>
-    <section class="panel-section">
+    <section class="panel-section" id="teslimler">
       <div class="panel-section__head"><h2 class="panel-section__title">Teslimler</h2>
         <p class="muted">En yakın teslim en üstte. Teslim tarihini çiftin sayfasındaki Bilgiler kartından değiştirebilirsiniz.</p></div>
       ${deliveries.length ? h`<ul class="jobs">${deliveries.map((r) => item(r, 'due'))}</ul>` : h`<div class="empty-box"><p>Bekleyen teslim yok.</p></div>`}
@@ -1100,7 +1057,7 @@ function calendar(c, { couples, csrf, demoAdmin }) {
       <ul class="jobs">${done.map((r) => item(r, 'done'))}</ul>
     </section>` : ''}
   </div>`;
-  return panelLayout(c, { title: 'İş takvimi', csrf, nav: adminNav('calendar', csrf, demoAdmin), home: '/admin', tabs: adminTabs('calendar', demoAdmin), body });
+  return panelLayout(c, { title: 'Takvim', csrf, nav: adminNav('calendar', csrf, demoAdmin), home: '/admin', tabs: adminTabs('calendar', demoAdmin), body });
 }
 
 function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
@@ -1296,25 +1253,39 @@ function messagesPage(c, { wa: w, base, csrf, flash: f, demoAdmin }) {
 }
 
 function account(c, { admin, csrf, flash: f, demoAdmin }) {
-  const links = [
-    { href: '/admin/site', title: 'Site', text: 'Kapak, duyuru bandı, logo, hakkımızda, iletişim ve hizmetler.' },
-    { href: '/admin/paketler', title: 'Paketler', text: 'Paket adları, fiyatları ve içerikleri. Randevu formunda seçince fiyat kendiliğinden gelir.' },
-    { href: '/admin/sozlesme', title: 'Sözleşme ve KVKK', text: 'Sözleşme metni, firma bilgileri ve KVKK aydınlatma metni.' },
-    { href: '/admin/hediye', title: 'Hediye kuponları', text: 'Çiftlerin arkadaşlarına gönderdiği hediye kuponları ve teşekkür hediyeleri.' },
-    { href: '/admin/sehirler', title: 'Google ve şehir sayfaları', text: 'Ankara ve Kastamonu sayfalarının metinleri, Google’da görünen işletme bilgileri.' },
-    { href: '/admin/mesajlar', title: 'Mesajlar', text: 'Çiftlere ve ekibe giden WhatsApp mesajlarının metinleri.' },
-    { href: '/admin/ekip', title: 'Ekip', text: 'Personel, görevleri ve iletişim bilgileri.' },
-    { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitede görünen fotoğraflar ve anasayfa kapağı.' },
-    { href: '/admin/veriler', title: 'Veriler', text: 'Sezon arşivleri ve her gece alınan veritabanı yedekleri.' },
-    ...(demoAdmin ? [] : [{ href: '/admin/gorusler', title: 'Görüşler', text: 'Demo ziyaretçilerinin bıraktığı görüşler.' }]),
+  const gs = (() => { try { return require('../gifts').settings(); } catch { return {}; } })();
+  const groups = [
+    { title: 'İşletme', links: [
+      { href: '/admin/paketler', title: 'Paketler', text: 'Hizmetler, fiyatlar ve içerikleri' },
+      { href: '/admin/ekip', title: 'Ekip', text: 'Personel ve iletişim' },
+      { href: '/admin/sozlesme', title: 'Sözleşme ve KVKK', text: 'Sözleşme metni, firma bilgileri ve KVKK' },
+    ] },
+    { title: 'Müşteriyle iletişim', links: [
+      { href: '/admin/mesajlar', title: 'Mesajlar', text: 'WhatsApp mesaj metinleri' },
+      { href: '/admin/hediye', title: 'Hediye kuponları', text: `Tavsiye programı · ${gs.active ? 'açık' : 'kapalı'}` },
+    ] },
+    { title: 'Web sitesi', links: [
+      { href: '/admin/site', title: 'Site', text: 'Metinler, renkler, kapak, iletişim' },
+      { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitedeki fotoğraflar' },
+      { href: '/admin/sehirler', title: 'Google ve şehir sayfaları', text: 'Ankara, Kastamonu ve işletme bilgileri' },
+    ] },
+    { title: 'Hesap', links: [
+      { href: '#bildirim', title: 'Telefon bildirimleri', text: 'Bu cihaza bildirim' },
+      { href: '/admin/veriler', title: 'Veriler ve yedek', text: 'Sezon arşivleri ve gece yedekleri' },
+      { href: '#sifre', title: 'Şifre', text: `Kullanıcı adı: ${admin.username}` },
+      ...(demoAdmin ? [] : [{ href: '/admin/gorusler', title: 'Görüşler', text: 'Demo ziyaretçilerinin görüşleri' }]),
+    ] },
   ];
   const body = h`
   <div class="container container--form">
     <h1 class="page-title">Ayarlar</h1>
     ${flashBlock(f)}
-    <ul class="set-links">${links.map((l) => h`<li><a href="${l.href}"><span class="set-links__title">${l.title}</span><span class="set-links__text">${l.text}</span>${icon('right')}</a></li>`)}</ul>
+    ${groups.map((g) => h`<section class="set-group">
+      <h2 class="set-group__title">${g.title}</h2>
+      <ul class="set-links">${g.links.map((l) => h`<li><a href="${l.href}"><span class="set-links__title">${l.title}</span><span class="set-links__text">${l.text}</span>${icon('right')}</a></li>`)}</ul>
+    </section>`)}
 
-    <section class="panel-section">
+    <section class="panel-section" id="sifre">
       <div class="panel-section__head"><h2 class="panel-section__title">Şifre</h2></div>
       <p class="muted">Kullanıcı adı: ${admin.username}</p>
       <form class="form" method="post" action="/admin/hesap">
@@ -1326,7 +1297,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
         <button class="btn btn--primary" type="submit">Şifreyi değiştir</button>
       </form>
     </section>
-    <section class="panel-section">
+    <section class="panel-section" id="bildirim">
       <div class="panel-section__head"><h2 class="panel-section__title">Telefon bildirimleri</h2></div>
       <div class="pushbox" data-push data-off-text="Yeni talep geldiğinde, sözleşme onaylandığında ve albüm seçimi bittiğinde bu cihaza bildirim gelsin." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>
     </section>
@@ -1579,7 +1550,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=1'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=2'] });
 }
 
 module.exports = { giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

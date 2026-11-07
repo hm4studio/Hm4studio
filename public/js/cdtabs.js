@@ -1,4 +1,4 @@
-/* HM4 Studio — çift sayfasını sekmelere böler (Özet, Ödeme ve sözleşme, Fotoğraflar, Video, Gün planı, Giriş ve dosyalar).
+/* HM4 Studio — çift sayfasını sekmelere böler (Özet, Sözleşme ve ödeme, Fotoğraflar, Albüm, Video, Teslim, Ayarlar).
    JavaScript kapalıysa tüm bölümler alt alta görünür. */
 (function () {
   'use strict';

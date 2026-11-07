@@ -80,7 +80,7 @@ function adminView(c, { q, csrf, flash: f, siteUrl, today, demoAdmin }) {
   const its = items(q);
   const body = h`
   <div class="container container--form">
-    <a class="back-link" href="/admin/teklifler">${icon('left')}Teklifler</a>
+    <a class="back-link" href="/admin/talepler?sekme=teklif">${icon('left')}Talepler</a>
     <h1 class="page-title">${q.name} · teklif</h1>
     ${f ? h`<div class="flash flash--${f.type || 'success'}" role="status">${f.message}</div>` : ''}
     <section class="panel-section">

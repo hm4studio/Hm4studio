@@ -131,6 +131,7 @@ function register(router) {
       })(),
       editedCount: db.listPhotos(couple.id, 'duzenli').length,
       videoCount: db.videoCount(couple.id),
+      reviewLink: (() => { const l = String(require('../content').getWhatsapp().yorumLinki || '').trim(); return /^https:\/\/\S+$/.test(l) ? l : ''; })(),
       csrf: req.session.csrf,
       flash: takeFlash(req),
     }));

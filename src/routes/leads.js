@@ -119,9 +119,10 @@ function register(router) {
     return form;
   };
 
-  router.get('/admin/talepler', (req, res) => {
+  router.get('/admin/talepler', (req, res, { query }) => {
     if (!requireAdmin(req, res)) return;
-    html(res, views.adminList(getContent(), { leads: db.listLeads(), quotes: db.quotesForLeads(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const all = db.listQuotes();
+    html(res, views.adminList(getContent(), { leads: db.listLeads(), quotes: db.quotesForLeads(), loose: all.filter((q) => !q.lead_id), total: require('../views/quotes').total, tab: query.get('sekme') || 'yeni', csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.post('/admin/talepler/:id/durum', async (req, res, { params }) => {
@@ -132,7 +133,7 @@ function register(router) {
     if (!views.STATUS[form.status]) throw new HttpError(400, 'Geçersiz durum');
     db.setLeadStatus(lead.id, form.status, null);
     setFlash(req, { message: 'Talep güncellendi.', type: 'success' });
-    redirect(res, '/admin/talepler');
+    redirect(res, `/admin/talepler?sekme=${{ yeni: 'yeni', gorusuldu: 'teklif', rezervasyon: 'kabul', kayip: 'olmadi' }[form.status]}`);
   });
 
   // Talepten çift oluştur: ad, tarih ve telefon aktarılır, giriş bilgileri bir kez gösterilir
