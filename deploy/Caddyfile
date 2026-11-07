@@ -11,6 +11,11 @@
 	reverse_proxy site:3000
 }
 
+# Eski/ikincil adresler → asıl adres (kalıcı yönlendirme). alan-adi-gecis.sh doldurur.
+{$SITE_REDIRECTS} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
 # n8n (WhatsApp otomasyonları)
 {$N8N_DOMAIN} {
 	reverse_proxy n8n:5678

@@ -73,6 +73,7 @@ function siteFooter(c) {
         <a href="/giris">Çift Girişi</a>
         ${config.demoMode ? h`<a href="/gorus">Görüş bildir</a>` : ''}
       </nav>
+      ${(c.cities || []).length ? h`<nav class="site-footer__cities" aria-label="Hizmet bölgeleri">${c.cities.map((x) => h`<a href="/${x.slug}">${x.title}</a>`)}</nav>` : ''}
       <div class="site-footer__social">
         <a class="icon-link" href="${links.instagram(c)}" target="_blank" rel="noopener">${icon('instagram')}<span>@${c.contact.instagram}</span></a>
         <a class="icon-link" href="${links.whatsapp(c)}" target="_blank" rel="noopener">${icon('whatsapp')}<span>WhatsApp</span></a>
@@ -85,7 +86,31 @@ function siteFooter(c) {
   </footer>`;
 }
 
-function head({ title, description, csrf, bodyClass = '' }) {
+// Google için işletme bilgisi (schema.org). Köşeli parantezli örnek değerler atlanır.
+const real = (v) => v && !String(v).startsWith('[');
+function businessJsonLd(c) {
+  const b = c.business || {};
+  const site = config.siteUrl;
+  const same = [c.contact?.instagram && `https://www.instagram.com/${c.contact.instagram}/`, real(b.dugunProfil) && b.dugunProfil].filter(Boolean);
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ProfessionalService',
+    '@id': `${site}/#isletme`,
+    name: c.brand.name,
+    description: c.seo.description,
+    url: `${site}/`,
+    image: `${site}/images/icon-512.png`,
+    logo: `${site}/images/icon-512.png`,
+    ...(real(c.contact?.phone) && !/X/.test(c.contact.phone) ? { telephone: c.contact.phone } : {}),
+    ...(real(c.contact?.email) ? { email: c.contact.email } : {}),
+    address: { '@type': 'PostalAddress', addressLocality: b.locality || '', addressRegion: b.region || '', addressCountry: 'TR' },
+    areaServed: (b.areas || []).map((name) => ({ '@type': 'City', name })),
+    ...(same.length ? { sameAs: same } : {}),
+  };
+}
+const jsonLd = (obj) => raw(`<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, '\\u003c')}</script>`);
+
+function head({ title, description, csrf, bodyClass = '', canonical = '', ld = [], image = '' }) {
   return h`<!doctype html>
 <html lang="tr">
 <head>
@@ -95,8 +120,12 @@ function head({ title, description, csrf, bodyClass = '' }) {
 ${description ? h`<meta name="description" content="${description}">` : ''}
 <meta property="og:title" content="${title}">
 ${description ? h`<meta property="og:description" content="${description}">` : ''}
+${canonical ? h`<link rel="canonical" href="${canonical}"><meta property="og:url" content="${canonical}">` : ''}
+<meta property="og:type" content="website"><meta property="og:locale" content="tr_TR">
+${image ? h`<meta property="og:image" content="${image}"><meta name="twitter:card" content="summary_large_image">` : ''}
 <meta name="theme-color" content="#1c1a18">
-${config.demoMode ? raw('<meta name="robots" content="noindex, nofollow">') : ''}
+${!config.indexable || !canonical ? raw('<meta name="robots" content="noindex, nofollow">') : ''}
+${ld.map(jsonLd)}
 ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -108,7 +137,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=29">
+<link rel="stylesheet" href="/css/style.css?v=30">
 <link rel="stylesheet" href="/css/tema.css">
 </head>
 <body class="${bodyClass}">
@@ -116,8 +145,12 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 }
 
 // Herkese açık sayfa iskeleti
-function publicLayout(c, { title, description, active, overlayHeader = false, body }) {
-  return String(h`${head({ title: title ? `${title} — ${c.brand.name}` : c.seo.title, description: description || c.seo.description })}
+// path: sayfanın kalıcı adresi (Google'a "asıl adres bu" denir); yoksa sayfa dizine eklenmez
+const ACTIVE_PATH = { home: '/', portfolio: '/portfolyo', about: '/hakkimizda', contact: '/iletisim' };
+function publicLayout(c, { title, description, active, overlayHeader = false, body, path, ld = [], image = '', fullTitle = '' }) {
+  const p = path || ACTIVE_PATH[active];
+  const canonical = p ? `${config.siteUrl}${p === '/' ? '/' : p}` : '';
+  return String(h`${head({ title: fullTitle || (title ? `${title} — ${c.brand.name}` : c.seo.title), description: description || c.seo.description, canonical, ld: [businessJsonLd(c), ...ld], image: image || `${config.siteUrl}/images/icon-512.png` })}
 ${demoBanner()}
 ${siteBanner(c)}
 ${siteHeader(c, active, overlayHeader)}
@@ -162,11 +195,11 @@ function button(href, label, variant = 'primary', iconName) {
   return h`<a class="btn btn--${variant}" href="${href}">${label}${iconName ? icon(iconName) : ''}</a>`;
 }
 
-function sectionHead({ eyebrow, title, text, align = 'left' }) {
+function sectionHead({ eyebrow, title, text, align = 'left', id = '' }) {
   return h`
   <div class="section-head section-head--${align}">
     ${eyebrow ? h`<p class="eyebrow">${eyebrow}</p>` : ''}
-    <h2 class="section-title">${title}</h2>
+    <h2 class="section-title"${id ? raw(` id="${id}"`) : ''}>${title}</h2>
     ${text ? h`<p class="section-text">${text}</p>` : ''}
   </div>`;
 }
@@ -229,4 +262,5 @@ function flash(message, type = 'info') {
   return h`<div class="flash flash--${type}" role="status">${message}</div>`;
 }
 
-module.exports = { demoBanner, links, publicLayout, panelLayout, button, sectionHead, placeholder, portfolioGrid, statusBar, flash, icon, h, raw };
+module.exports = {
+  businessJsonLd, demoBanner, links, publicLayout, panelLayout, button, sectionHead, placeholder, portfolioGrid, statusBar, flash, icon, h, raw };

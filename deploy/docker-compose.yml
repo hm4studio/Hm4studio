@@ -40,6 +40,7 @@ services:
       - "443:443"
     environment:
       SITE_DOMAIN: ${SITE_DOMAIN}
+      SITE_REDIRECTS: ${SITE_REDIRECTS:-http://yonlendirme.invalid}
       N8N_DOMAIN: ${N8N_DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL}
     volumes:

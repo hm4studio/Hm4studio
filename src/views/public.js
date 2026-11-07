@@ -1,6 +1,7 @@
 'use strict';
 // Herkese açık sayfalar: Anasayfa, Portfolyo, Hakkımızda, İletişim, 404.
 const { h, raw } = require('./html');
+const config = require('../config');
 const {
   links, publicLayout, button, sectionHead, placeholder, portfolioGrid, icon,
 } = require('./components');
@@ -82,7 +83,7 @@ function home(c, { portfolio, heroUrl }) {
 
   ${contactBand(c)}`;
 
-  return publicLayout(c, { active: 'home', overlayHeader: true, body });
+  return publicLayout(c, { active: 'home', overlayHeader: true, body, image: heroUrl ? new URL(heroUrl, config.siteUrl).href : '' });
 }
 
 function contactBand(c) {
@@ -149,7 +150,7 @@ function portfolioPage(c, { portfolio, instagram }) {
 
   ${contactBand(c)}`;
 
-  return publicLayout(c, { title: c.portfolio.title, active: 'portfolio', body });
+  return publicLayout(c, { title: c.portfolio.title, description: c.portfolio.text, active: 'portfolio', body });
 }
 
 function aboutPage(c) {
@@ -182,7 +183,7 @@ function aboutPage(c) {
 
   ${contactBand(c)}`;
 
-  return publicLayout(c, { title: c.about.title, active: 'about', body });
+  return publicLayout(c, { title: c.about.title, description: c.about.lead, active: 'about', body });
 }
 
 function contactPage(c) {
@@ -225,7 +226,7 @@ function contactPage(c) {
     </div>
   </section>`;
 
-  return publicLayout(c, { title: c.contact.title, active: 'contact', body });
+  return publicLayout(c, { title: c.contact.title, description: c.contact.text, active: 'contact', body });
 }
 
 function notFound(c) {
@@ -247,7 +248,68 @@ function kvkkPage(c) {
   <section class="section section--flush-top">
     <div class="container container--narrow ct-text kvkk-text">${require('../kvkk').render(c)}</div>
   </section>`;
-  return publicLayout(c, { title: 'KVKK aydınlatma metni', body });
+  return publicLayout(c, { title: 'KVKK aydınlatma metni', body, path: '/kvkk' });
 }
 
-module.exports = { kvkkPage, home, portfolioPage, aboutPage, contactPage, notFound };
+// "Ankara'da", "Kastamonu'da", "İzmir'de", "Tokat'ta"
+function locative(w) {
+  const t = w.toLocaleLowerCase('tr-TR');
+  const v = [...t].reverse().find((ch) => 'aeıioöuü'.includes(ch)) || 'a';
+  const hard = 'fstkçşhp'.includes(t.slice(-1));
+  return `${w}’${hard ? 't' : 'd'}${'eiöü'.includes(v) ? 'e' : 'a'}`;
+}
+
+// Şehir sayfası: "Ankara Düğün Fotoğrafçısı" gibi aramalar için (metinler Ayarlar › Şehir sayfaları'ndan)
+function cityPage(c, { city, portfolio, heroUrl }) {
+  const faq = (city.faq || []).filter((x) => x.q && x.a);
+  const others = (c.cities || []).filter((x) => x.slug !== city.slug);
+  const body = h`
+  ${pageHero(`${city.city} · ${c.brand.tagline}`, city.title, city.lead)}
+  <section class="section section--flush-top">
+    <div class="container split split--top">
+      <div class="split__media">
+        ${heroUrl ? h`<img src="${heroUrl}" alt="${city.title} — ${c.brand.name}" loading="lazy" decoding="async">` : placeholder(`${city.city} düğün fotoğrafı`)}
+      </div>
+      <div class="split__copy prose">
+        ${(city.paragraphs || []).map((p) => h`<p>${p}</p>`)}
+        ${(city.areas || []).length ? h`<p><strong>Çekim yaptığımız yerler:</strong> ${city.areas.join(', ')} ve çevresi.</p>` : ''}
+        <div class="btn-row"><a class="btn btn--primary" href="/talep">Tarihiniz için uygunluk sorun</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--tint" aria-labelledby="svc-title">
+    <div class="container">
+      ${sectionHead({ eyebrow: 'Hizmetler', title: `${locative(city.city)} neler çekiyoruz`, id: 'svc-title' })}
+      <ul class="services">${c.services.map((x, i) => h`<li class="services__item"><span class="services__num">${String(i + 1).padStart(2, '0')}</span><div><h3>${x.title}</h3><p>${x.text}</p></div></li>`)}</ul>
+    </div>
+  </section>
+
+  ${portfolio.length ? h`<section class="section" aria-labelledby="pf-title">
+    <div class="container">
+      ${sectionHead({ eyebrow: 'Portfolyo', title: 'Çalışmalarımızdan', id: 'pf-title' })}
+      ${portfolioGrid(portfolio.slice(0, 12))}
+      <div class="btn-row"><a class="btn btn--outline" href="/portfolyo">Tüm portfolyo</a></div>
+    </div>
+  </section>` : ''}
+
+  ${faq.length ? h`<section class="section section--tint" aria-labelledby="faq-title">
+    <div class="container container--narrow">
+      ${sectionHead({ eyebrow: 'Sık sorulanlar', title: `${city.city} düğün çekimi hakkında`, id: 'faq-title' })}
+      <div class="faq">${faq.map((x) => h`<details class="faq__item"><summary>${x.q}</summary><p>${x.a}</p></details>`)}</div>
+    </div>
+  </section>` : ''}
+
+  ${others.length ? h`<section class="section section--flush-top"><div class="container"><p class="muted">Diğer hizmet bölgelerimiz: ${others.map((x, i) => h`${i ? ', ' : ''}<a href="/${x.slug}">${x.title}</a>`)}</p></div></section>` : ''}
+
+  ${contactBand(c)}`;
+  const url = `${config.siteUrl}/${city.slug}`;
+  const ld = [
+    { '@context': 'https://schema.org', '@type': 'Service', name: city.title, serviceType: 'Düğün fotoğrafçılığı ve video', url,
+      provider: { '@id': `${config.siteUrl}/#isletme` }, areaServed: { '@type': 'City', name: city.city }, description: city.description },
+    ...(faq.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map((x) => ({ '@type': 'Question', name: x.q, acceptedAnswer: { '@type': 'Answer', text: x.a } })) }] : []),
+  ];
+  return publicLayout(c, { fullTitle: `${city.title} | ${c.brand.name}`, description: city.description, path: `/${city.slug}`, ld, body, image: heroUrl ? new URL(heroUrl, config.siteUrl).href : '' });
+}
+
+module.exports = { cityPage, kvkkPage, home, portfolioPage, aboutPage, contactPage, notFound };

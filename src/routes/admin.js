@@ -454,6 +454,34 @@ function register(router) {
     html(res, views.appointmentDoc(getContent(), { card: db.getCoupleCard(couple.id), events: db.listEvents(couple.id), payments: db.listPayments(couple.id), back: `/admin/ciftler/${couple.id}` }));
   });
 
+  // ── Google ve şehir sayfaları ──
+  router.get('/admin/sehirler', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, views.citiesPage(getContent(), { csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req), siteUrl: config.siteUrl }));
+  });
+  router.post('/admin/sehirler', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const c = getContent();
+    const t = (k, n) => cleanText(String(form[k] || ''), n);
+    const list = (k, n) => String(form[k] || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 30).map((x) => x.slice(0, n));
+    const blocks = (k) => String(form[k] || '').replace(/\r/g, '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+    const o = siteOver();
+    o.business = { ...(c.business || {}), locality: t('locality', 60), region: t('region', 60), areas: list('areas', 40), dugunProfil: /^https:\/\//.test(String(form.dugunProfil || '')) ? String(form.dugunProfil).trim().slice(0, 300) : '' };
+    o.cities = (c.cities || []).map((x, i) => ({
+      ...x,
+      title: t(`c${i}_title`, 70) || x.title,
+      description: t(`c${i}_description`, 200) || x.description,
+      lead: t(`c${i}_lead`, 200),
+      paragraphs: blocks(`c${i}_paragraphs`).map((p) => p.replace(/\s+/g, ' ').slice(0, 1200)).slice(0, 8),
+      areas: list(`c${i}_areas`, 60),
+      faq: blocks(`c${i}_faq`).map((b) => { const [q, ...a] = b.split('\n'); return { q: q.trim().slice(0, 200), a: a.join(' ').replace(/\s+/g, ' ').trim().slice(0, 800) }; }).filter((x) => x.q && x.a).slice(0, 15),
+    }));
+    saveOver(o);
+    setFlash(req, { message: 'Kaydedildi. Google değişiklikleri birkaç gün içinde görür.', type: 'success' });
+    redirect(res, '/admin/sehirler');
+  });
+
   // ── Mesaj metinleri (Ayarlar › Mesajlar) ──
   router.get('/admin/mesajlar', (req, res) => {
     if (!requireAdmin(req, res)) return;

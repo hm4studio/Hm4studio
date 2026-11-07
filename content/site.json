@@ -1,17 +1,14 @@
 {
   "_aciklama": "Sitedeki TÜM metinler ve iletişim bilgileri bu dosyadadır. Değiştirip kaydedin, sunucuyu yeniden başlatın. Köşeli parantezli [ÖRNEK] değerler gerçek bilgilerle değiştirilmelidir.",
-
   "brand": {
     "name": "HM4 Studio",
     "tagline": "Düğün & Nişan Fotoğrafçılığı",
     "logo": ""
   },
-
   "seo": {
-    "title": "HM4 Studio — Düğün ve Nişan Fotoğrafçısı",
-    "description": "HM4 Studio; düğün, nişan, kına ve dış çekimlerde fotoğraf ve video ile gününüzün gerçek hâlini kaydeder."
+    "title": "HM4 Studio — Ankara ve Kastamonu Düğün Fotoğrafçısı",
+    "description": "Ankara ve Kastamonu'da düğün, nişan, kına ve dış çekim için fotoğraf ve video. HM4 Studio ile gününüzün doğal ve zamansız kayıtları."
   },
-
   "hero": {
     "eyebrow": "Düğün & Nişan Fotoğrafçılığı · Film",
     "title": "Gününüz, olduğu gibi.",
@@ -21,26 +18,42 @@
     "primaryButton": "Portfolyoyu Gör",
     "secondaryButton": "İletişime Geç"
   },
-
   "intro": {
     "title": "Poz değil, an.",
     "text": "Bizim için iyi bir düğün fotoğrafı; kimsenin bakmadığı bir anda yakalanan gülüş, annenin gözündeki yaş, el ele tutuşurken titreyen parmaklardır. Sizi yönlendirmek yerine yanınızda oluruz."
   },
-
   "services": [
-    { "title": "Düğün", "text": "Hazırlıktan son dansa kadar günün tamamı; fotoğraf ve film." },
-    { "title": "Nişan & Söz", "text": "Ailelerin buluştuğu o ilk resmî günün samimi kayıtları." },
-    { "title": "Kına Gecesi", "text": "Duygusu en yoğun gecenin ışığını ve ritmini bozmadan çekim." },
-    { "title": "Dış Çekim", "text": "Düğün öncesi veya sonrası, size özel bir mekânda sakin bir çekim." }
+    {
+      "title": "Düğün",
+      "text": "Hazırlıktan son dansa kadar günün tamamı; fotoğraf ve film."
+    },
+    {
+      "title": "Nişan & Söz",
+      "text": "Ailelerin buluştuğu o ilk resmî günün samimi kayıtları."
+    },
+    {
+      "title": "Kına Gecesi",
+      "text": "Duygusu en yoğun gecenin ışığını ve ritmini bozmadan çekim."
+    },
+    {
+      "title": "Dış Çekim",
+      "text": "Düğün öncesi veya sonrası, size özel bir mekânda sakin bir çekim."
+    }
   ],
-
   "portfolio": {
     "title": "Portfolyo",
     "text": "Instagram'da paylaştığımız çalışmalardan bir seçki. Bir fotoğrafa dokunarak büyük hâlini görebilirsiniz.",
-    "categories": ["Doğa", "Şehir", "Siyah-Beyaz", "Düğün", "Nişan", "Kına", "Dış Çekim"],
+    "categories": [
+      "Doğa",
+      "Şehir",
+      "Siyah-Beyaz",
+      "Düğün",
+      "Nişan",
+      "Kına",
+      "Dış Çekim"
+    ],
     "emptyText": "Portfolyo yakında burada olacak. Bu arada Instagram'dan çalışmalarımıza göz atabilirsiniz."
   },
-
   "about": {
     "title": "Hakkımızda",
     "lead": "HM4 Studio, düğün ve nişan hikâyelerini fotoğraf ve videoyla anlatan küçük bir ekip.",
@@ -50,13 +63,24 @@
     ],
     "image": "/images/hakkimizda.jpg",
     "approach": [
-      { "title": "Tanışma", "text": "Beklentilerinizi, mekânı ve günün akışını birlikte konuşuruz." },
-      { "title": "Çekim günü", "text": "Doğal, sakin ve göze batmayan bir çalışma biçimi." },
-      { "title": "Seçim", "text": "Fotoğraflarınızı size özel panelden görür, favorilerinizi işaretlersiniz." },
-      { "title": "Teslim", "text": "Düzenlenmiş fotoğraflarınız ve filminiz özenle hazırlanıp teslim edilir." }
+      {
+        "title": "Tanışma",
+        "text": "Beklentilerinizi, mekânı ve günün akışını birlikte konuşuruz."
+      },
+      {
+        "title": "Çekim günü",
+        "text": "Doğal, sakin ve göze batmayan bir çalışma biçimi."
+      },
+      {
+        "title": "Seçim",
+        "text": "Fotoğraflarınızı size özel panelden görür, favorilerinizi işaretlersiniz."
+      },
+      {
+        "title": "Teslim",
+        "text": "Düzenlenmiş fotoğraflarınız ve filminiz özenle hazırlanıp teslim edilir."
+      }
     ]
   },
-
   "contact": {
     "title": "İletişim",
     "text": "Tarihiniz için uygunluk sormak ya da tanışmak isterseniz bize yazın. Genellikle aynı gün dönüş yapıyoruz.",
@@ -66,21 +90,154 @@
     "whatsappMessage": "Merhaba HM4 Studio, düğün/nişan çekimi için bilgi almak istiyorum.",
     "email": "[ornek@hm4studio.com]",
     "instagram": "hm4studio",
-    "regions": ["[Şehriniz] ve çevre ilçeler", "[Yakın şehirler]", "Türkiye geneli (yol ve konaklama ayrıca)"],
+    "regions": [
+      "Ankara ve tüm ilçeleri",
+      "Kastamonu ve tüm ilçeleri (Tosya merkezli)",
+      "Türkiye geneli (yol ve konaklama ayrıca)"
+    ],
     "hours": "[Hafta içi 10:00 – 19:00]"
   },
-
-  "stages": ["Randevu", "Çekim", "Düzenleme", "Seçim", "Albüm", "Teslim"],
-
+  "stages": [
+    "Randevu",
+    "Çekim",
+    "Düzenleme",
+    "Seçim",
+    "Albüm",
+    "Teslim"
+  ],
   "appointments": {
-    "eventTypes": ["Düğün", "Nişan", "Kına", "Söz", "Dış Çekim", "Diğer"],
-    "sources": ["Instagram", "WhatsApp", "Tavsiye", "Google", "Site formu", "Diğer"],
-    "videoStages": ["Çekim bekleniyor", "Kurguda", "Onayınızda", "Hazır", "Teslim edildi"],
-    "teamRoles": ["Fotoğrafçı", "Videocu", "Drone", "Asistan", "Kurgu", "Diğer"],
+    "eventTypes": [
+      "Düğün",
+      "Nişan",
+      "Kına",
+      "Söz",
+      "Dış Çekim",
+      "Diğer"
+    ],
+    "sources": [
+      "Instagram",
+      "WhatsApp",
+      "Tavsiye",
+      "Google",
+      "Site formu",
+      "Diğer"
+    ],
+    "videoStages": [
+      "Çekim bekleniyor",
+      "Kurguda",
+      "Onayınızda",
+      "Hazır",
+      "Teslim edildi"
+    ],
+    "teamRoles": [
+      "Fotoğrafçı",
+      "Videocu",
+      "Drone",
+      "Asistan",
+      "Kurgu",
+      "Diğer"
+    ],
     "defaultDeliveryDays": 45
   },
-
   "footer": {
     "note": "Düğün, nişan ve kına fotoğrafçılığı · Film"
-  }
+  },
+  "business": {
+    "_aciklama": "Google'da görünen işletme bilgileri. Adres vergi levhasındaki gibi; hizmet bölgeleri şehir sayfalarıyla aynı olmalı. Düğün.com profil bağlantınızı da ekleyin.",
+    "locality": "Tosya",
+    "region": "Kastamonu",
+    "areas": [
+      "Ankara",
+      "Kastamonu"
+    ],
+    "dugunProfil": ""
+  },
+  "cities": [
+    {
+      "slug": "ankara-dugun-fotografcisi",
+      "city": "Ankara",
+      "title": "Ankara Düğün Fotoğrafçısı",
+      "description": "Ankara'da düğün, nişan, kına ve dış çekim için fotoğraf ve video. HM4 Studio ile gününüzün doğal ve zamansız kayıtları. Tarihiniz için uygunluk sorun.",
+      "lead": "Ankara'daki düğün, nişan ve kına gecelerinizde fotoğraf ve videoyla yanınızdayız.",
+      "paragraphs": [
+        "Düğün gününüzü poz verdirerek değil, olduğu gibi kaydediyoruz: hazırlığın telaşı, ailelerin buluştuğu an, ilk dansın heyecanı. Ankara'da salon, kır bahçesi ya da otel düğünlerinde günün akışına uyum sağlayarak çalışıyoruz.",
+        "Çekimden önce sizinle tanışıp günün planını birlikte çıkarıyoruz. Çekimden sonra fotoğraflarınızı size özel çift panelinden görüyor, albüm karelerinizi oradan seçiyorsunuz; sözleşmeden teslime kadar her adımı aynı yerden takip ediyorsunuz."
+      ],
+      "areas": [
+        "Çankaya",
+        "Yenimahalle",
+        "Keçiören",
+        "Etimesgut",
+        "Gölbaşı",
+        "İncek",
+        "Sincan",
+        "Pursaklar"
+      ],
+      "faq": [
+        {
+          "q": "Ankara dışındaki düğünlere de geliyor musunuz?",
+          "a": "Evet. Ankara ve Kastamonu başta olmak üzere Türkiye genelinde çekim yapıyoruz; şehir dışı çekimlerde yol ve konaklama ayrıca planlanır."
+        },
+        {
+          "q": "Ne kadar önceden rezervasyon yapmalıyız?",
+          "a": "Düğün sezonunda (Mayıs–Eylül) hafta sonları erken doluyor. Tarihiniz belli olur olmaz uygunluk sormanızı öneririz."
+        },
+        {
+          "q": "Fotoğrafları nasıl seçiyoruz?",
+          "a": "Çekimden sonra fotoğraflarınız size özel çift paneline yüklenir. Albüm karelerinizi oradan kalp işaretiyle seçersiniz."
+        },
+        {
+          "q": "Teslim ne kadar sürer?",
+          "a": "Teslim süresi fotoğraf seçiminizden itibaren en geç 90 gündür. Düzenlenmiş fotoğraflarınızı panelinizden indirebilirsiniz."
+        },
+        {
+          "q": "Rezervasyon nasıl kesinleşir?",
+          "a": "Tarihiniz kapora ile kesinleşir. Hizmet sözleşmesini panelinizden okuyup çevrim içi onaylarsınız."
+        }
+      ]
+    },
+    {
+      "slug": "kastamonu-dugun-fotografcisi",
+      "city": "Kastamonu",
+      "title": "Kastamonu Düğün Fotoğrafçısı",
+      "description": "Kastamonu ve Tosya'da düğün, nişan, kına ve dış çekim için fotoğraf ve video. HM4 Studio ile gününüzün doğal ve zamansız kayıtları. Tarihiniz için uygunluk sorun.",
+      "lead": "Kastamonu ve Tosya'daki düğün, nişan ve kına gecelerinizde fotoğraf ve videoyla yanınızdayız.",
+      "paragraphs": [
+        "Tosya merkezli çalışıyor, Kastamonu'nun her ilçesindeki düğünlere geliyoruz. Köy düğününden salon düğününe, kına gecesinden dış çekime kadar gününüzün gerçek hâlini sade ve zamansız karelerle kaydediyoruz.",
+        "Çekimden önce sizinle tanışıp günün planını birlikte çıkarıyoruz. Çekimden sonra fotoğraflarınızı size özel çift panelinden görüyor, albüm karelerinizi oradan seçiyorsunuz; sözleşmeden teslime kadar her adımı aynı yerden takip ediyorsunuz."
+      ],
+      "areas": [
+        "Merkez",
+        "Tosya",
+        "Taşköprü",
+        "İnebolu",
+        "Daday",
+        "Araç",
+        "Cide",
+        "Devrekani"
+      ],
+      "faq": [
+        {
+          "q": "Kastamonu'nun ilçelerine de geliyor musunuz?",
+          "a": "Evet. Tosya merkezli çalışıyoruz; Kastamonu merkez ve tüm ilçelerdeki düğün, nişan ve kına çekimlerine geliyoruz."
+        },
+        {
+          "q": "Ne kadar önceden rezervasyon yapmalıyız?",
+          "a": "Düğün sezonunda (Mayıs–Eylül) hafta sonları erken doluyor. Tarihiniz belli olur olmaz uygunluk sormanızı öneririz."
+        },
+        {
+          "q": "Fotoğrafları nasıl seçiyoruz?",
+          "a": "Çekimden sonra fotoğraflarınız size özel çift paneline yüklenir. Albüm karelerinizi oradan kalp işaretiyle seçersiniz."
+        },
+        {
+          "q": "Teslim ne kadar sürer?",
+          "a": "Teslim süresi fotoğraf seçiminizden itibaren en geç 90 gündür. Düzenlenmiş fotoğraflarınızı panelinizden indirebilirsiniz."
+        },
+        {
+          "q": "Rezervasyon nasıl kesinleşir?",
+          "a": "Tarihiniz kapora ile kesinleşir. Hizmet sözleşmesini panelinizden okuyup çevrim içi onaylarsınız."
+        }
+      ]
+    }
+  ]
 }

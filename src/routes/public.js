@@ -6,7 +6,7 @@ const auth = require('../auth');
 const media = require('../media');
 const { getContent } = require('../content');
 const { getInstagramPosts } = require('../instagram');
-const { html, redirect, readForm } = require('../http');
+const { html, redirect, readForm, HttpError } = require('../http');
 const views = require('../views/public');
 const panelViews = require('../views/panel');
 const appViews = require('../views/app');
@@ -27,10 +27,52 @@ function heroUrl(c) {
   return c.hero.image || null;
 }
 
+// Eski Wix sitesinin adresleri (Google'da kayıtlı) → yeni karşılıkları
+const OLD_PATHS = {
+  'biz-kimiz': '/hakkimizda',
+  'bize-ulaşın': '/iletisim', 'bize-ulasin': '/iletisim',
+  albums: '/portfolyo', album: '/portfolyo',
+};
+
 function register(router) {
   router.get('/', (req, res) => {
     const c = getContent();
     html(res, views.home(c, { portfolio: portfolioItems(), heroUrl: heroUrl(c) }));
+  });
+
+  // Şehir sayfaları (/ankara-dugun-fotografcisi …). Adresler content/site.json › cities'ten; metinler panelden düzenlenir.
+  const { baseContent } = require('../content');
+  for (const slug of (baseContent().cities || []).map((x) => x.slug)) {
+    router.get(`/${slug}`, (req, res) => {
+      const c = getContent();
+      const city = (c.cities || []).find((x) => x.slug === slug);
+      if (!city) throw new HttpError(404, 'Sayfa bulunamadı');
+      html(res, views.cityPage(c, { city, portfolio: portfolioItems(), heroUrl: heroUrl(c) }));
+    });
+  }
+
+  // Eski Wix sitesinin adresleri → yeni sayfalar (kalıcı yönlendirme; Google sıralamayı yeni sayfaya aktarır)
+  for (const [from, to] of Object.entries(OLD_PATHS)) {
+    for (const path of new Set([`/${from}`, `/${encodeURIComponent(from)}`])) {
+      router.get(path, (req, res) => { res.writeHead(301, { Location: to, 'Cache-Control': 'public, max-age=86400' }); res.end(); });
+    }
+  }
+
+  // Google için site haritası ve robots.txt
+  router.get('/sitemap.xml', (req, res) => {
+    const c = getContent();
+    const paths = ['/', '/portfolyo', '/hakkimizda', '/iletisim', ...(c.cities || []).map((x) => `/${x.slug}`), '/kvkk'];
+    const today = new Date().toISOString().slice(0, 10);
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${paths.map((p) => `  <url><loc>${config.siteUrl}${p}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`;
+    res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+    res.end(xml);
+  });
+  router.get('/robots.txt', (req, res) => {
+    const body = config.indexable
+      ? `User-agent: *\nDisallow: /admin\nDisallow: /panel\nDisallow: /m/\nDisallow: /g/\nDisallow: /api/\n\nSitemap: ${config.siteUrl}/sitemap.xml\n`
+      : 'User-agent: *\nDisallow: /admin\nDisallow: /panel\nDisallow: /m/\n';
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+    res.end(body);
   });
 
   router.get('/portfolyo', async (req, res) => {

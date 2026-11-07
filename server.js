@@ -70,7 +70,7 @@ function serveStatic(req, res, pathname) {
     return sendFile(req, res, PUBLIC_DIR, rel.slice(1), { cache: 'no-cache' });
   }
   if (rel === '/css/tema.css') return false; // sitenin renk ayarı: router üretir
-  if (rel.startsWith('/css/') || rel.startsWith('/js/') || rel.startsWith('/images/') || rel === '/robots.txt') {
+  if (rel.startsWith('/css/') || rel.startsWith('/js/') || rel.startsWith('/images/') ) {
     return sendFile(req, res, PUBLIC_DIR, rel.slice(1), { cache: config.isProd ? 'public, max-age=604800' : 'no-cache' });
   }
   if (rel.startsWith('/media/site/')) {

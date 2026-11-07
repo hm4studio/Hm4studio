@@ -44,6 +44,8 @@ module.exports = {
   isProd,
   port: Number(env.PORT) || 3000,
   siteUrl: (env.SITE_URL || 'http://localhost:3000').replace(/\/$/, ''),
+  // Google'da yalnızca gerçek alan adı görünsün: geçici sslip/yerel adres ve demo dizine eklenmez
+  indexable: env.DEMO_MODE !== 'true' && !/sslip\.io|localhost|127\.0\.0\.1/.test(env.SITE_URL || 'localhost'),
   sessionSecret,
   dataDir,
   dbFile: path.join(dataDir, 'hm4.db'),

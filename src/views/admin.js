@@ -7,7 +7,7 @@ const { jobStatus, daysBetween, today, addDays } = require('../jobs');
 const { displayPhone, taskText } = require('../whatsapp');
 const { payment, tl, shortDate, eventIndexes } = require('../appointments');
 
-const SETTINGS_KEYS = ['contract', 'account', 'feedback', 'portfolio', 'team', 'packages', 'site', 'data'];
+const SETTINGS_KEYS = ['cities', 'messages', 'contract', 'account', 'feedback', 'portfolio', 'team', 'packages', 'site', 'data'];
 function adminNav(active, csrf, demoAdmin = false) {
   const items = [
     { href: '/admin', label: 'Panel', key: 'couples', icon: 'users' },
@@ -1094,6 +1094,44 @@ const MESSAGE_INFO = [
 ];
 const VAR_TEXT = { ad: 'çiftin / kişinin adı', no: 'randevu no', tarih: 'tarih', link: 'bağlantı', kod: 'erişim kodu', sifre: 'şifre', gun: 'kalan gün', etkinlik: 'etkinlik türü', cift: 'çiftin adı', saat: 'saat', yer: 'mekân', not: 'not' };
 
+// Ayarlar › Google ve şehir sayfaları
+function citiesPage(c, { csrf, flash: f, demoAdmin, siteUrl }) {
+  const b = c.business || {};
+  const faqText = (faq) => (faq || []).map((x) => `${x.q}\n${x.a}`).join('\n\n');
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <h1 class="page-title">Google ve şehir sayfaları</h1>
+    ${flashBlock(f)}
+    <form class="form" method="post" action="/admin/sehirler">
+      ${csrfField(csrf)}
+      <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">İşletme bilgisi</h2></div>
+        <p class="muted">Google’a “işletmemiz nerede, nerelere hizmet veriyor” diye bildirilir. Google İşletme Profilinizdeki bilgilerle aynı olmalı.</p>
+        <div class="appt-row">
+          <div class="field"><label for="b-loc">İlçe (adres)</label><input id="b-loc" name="locality" value="${b.locality || ''}" maxlength="60"></div>
+          <div class="field"><label for="b-reg">İl (adres)</label><input id="b-reg" name="region" value="${b.region || ''}" maxlength="60"></div>
+        </div>
+        <div class="field"><label for="b-areas">Hizmet verilen şehirler <span class="muted">(virgülle)</span></label><input id="b-areas" name="areas" value="${(b.areas || []).join(', ')}" maxlength="200"></div>
+        <div class="field"><label for="b-dg">Düğün.com profil bağlantınız <span class="muted">(isteğe bağlı)</span></label><input id="b-dg" name="dugunProfil" type="url" value="${b.dugunProfil || ''}" placeholder="https://www.dugun.com/…" maxlength="300"></div>
+      </section>
+      ${(c.cities || []).map((x, i) => h`
+      <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">${x.title}</h2><a class="btn btn--text btn--sm" href="/${x.slug}" target="_blank" rel="noopener">Sayfayı aç ${icon('arrow')}</a></div>
+        <p class="muted">${siteUrl}/${x.slug}</p>
+        <div class="field"><label for="c${i}-t">Sayfa başlığı <span class="muted">(Google’da mavi başlık)</span></label><input id="c${i}-t" name="c${i}_title" value="${x.title}" maxlength="70"></div>
+        <div class="field"><label for="c${i}-d">Google açıklaması <span class="muted">(başlığın altındaki 1–2 cümle, en fazla 160 harf)</span></label><textarea id="c${i}-d" name="c${i}_description" rows="2" maxlength="200">${x.description}</textarea></div>
+        <div class="field"><label for="c${i}-l">Giriş cümlesi</label><input id="c${i}-l" name="c${i}_lead" value="${x.lead}" maxlength="200"></div>
+        <div class="field"><label for="c${i}-p">Metin <span class="muted">(paragraflar arasında bir boş satır bırakın)</span></label><textarea id="c${i}-p" name="c${i}_paragraphs" rows="7" maxlength="3000">${(x.paragraphs || []).join('\n\n')}</textarea></div>
+        <div class="field"><label for="c${i}-a">İlçeler ve semtler <span class="muted">(virgülle; mekân adları da yazabilirsiniz)</span></label><input id="c${i}-a" name="c${i}_areas" value="${(x.areas || []).join(', ')}" maxlength="400"></div>
+        <div class="field"><label for="c${i}-f">Sık sorulan sorular <span class="muted">(ilk satır soru, alt satır cevap; sorular arasında bir boş satır)</span></label><textarea id="c${i}-f" name="c${i}_faq" rows="12" maxlength="5000">${faqText(x.faq)}</textarea></div>
+      </section>`)}
+      <button class="btn btn--primary" type="submit">Kaydet</button>
+    </form>
+  </div>`;
+  return panelLayout(c, { title: 'Google ve şehir sayfaları', csrf, nav: adminNav('cities', csrf, demoAdmin), home: '/admin', tabs: adminTabs('cities', demoAdmin), body });
+}
+
 function messagesPage(c, { wa: w, base, csrf, flash: f, demoAdmin }) {
   const body = h`
   <div class="container container--form">
@@ -1118,7 +1156,7 @@ function messagesPage(c, { wa: w, base, csrf, flash: f, demoAdmin }) {
       <p class="muted">Not: İleride WhatsApp otomatik gönderim (Meta) kurulursa, Meta'da onaylatılan şablon metinleri buradakilerle aynı olmalıdır.</p>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Mesajlar', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
+  return panelLayout(c, { title: 'Mesajlar', csrf, nav: adminNav('messages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('messages', demoAdmin), body });
 }
 
 function account(c, { admin, csrf, flash: f, demoAdmin }) {
@@ -1126,6 +1164,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
     { href: '/admin/site', title: 'Site', text: 'Kapak, duyuru bandı, logo, hakkımızda, iletişim ve hizmetler.' },
     { href: '/admin/paketler', title: 'Paketler', text: 'Paket adları, fiyatları ve içerikleri. Randevu formunda seçince fiyat kendiliğinden gelir.' },
     { href: '/admin/sozlesme', title: 'Sözleşme ve KVKK', text: 'Sözleşme metni, firma bilgileri ve KVKK aydınlatma metni.' },
+    { href: '/admin/sehirler', title: 'Google ve şehir sayfaları', text: 'Ankara ve Kastamonu sayfalarının metinleri, Google’da görünen işletme bilgileri.' },
     { href: '/admin/mesajlar', title: 'Mesajlar', text: 'Çiftlere ve ekibe giden WhatsApp mesajlarının metinleri.' },
     { href: '/admin/ekip', title: 'Ekip', text: 'Personel, görevleri ve iletişim bilgileri.' },
     { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitede görünen fotoğraflar ve anasayfa kapağı.' },
@@ -1406,4 +1445,4 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=1'] });
 }
 
-module.exports = { messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = { citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
