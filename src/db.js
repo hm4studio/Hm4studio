@@ -135,6 +135,18 @@ CREATE TABLE IF NOT EXISTS quotes (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS quotes_lead ON quotes(lead_id);
+CREATE TABLE IF NOT EXISTS gift_codes (
+  id INTEGER PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  expires_on TEXT NOT NULL,
+  used_at TEXT,
+  used_lead_id INTEGER REFERENCES leads(id) ON DELETE SET NULL,
+  used_couple_id INTEGER REFERENCES couples(id) ON DELETE SET NULL,
+  reward_given_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS gift_codes_couple ON gift_codes(couple_id);
 `);
 // Randevu kartı alanları
 for (const [col, def] of [
@@ -166,6 +178,7 @@ CREATE INDEX IF NOT EXISTS leads_phone ON leads(phone);
 `);
 addColumn('leads', 'wa_consent', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('leads', 'kvkk_at', 'TEXT');
+addColumn('leads', 'gift_code', 'TEXT'); // hediye kuponuyla gelen talep
 db.exec(`
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY,
@@ -439,6 +452,7 @@ module.exports = {
   deletePortfolioItem: (id) => q('DELETE FROM portfolio WHERE id = ?').run(id),
 
   // ── Talepler (yeni müşteri adayları) ──
+  setLeadGift: (id, code) => q('UPDATE leads SET gift_code = ? WHERE id = ?').run(code, id),
   addLead: (l) => Number(q("INSERT INTO leads(name, phone, event_date, place, service, message, source, wa_consent, kvkk_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? THEN datetime('now') END)")
     .run(l.name || '', l.phone || '', l.eventDate || null, l.place || '', l.service || '', l.message || '', l.source || 'site', l.waConsent ? 1 : 0, l.kvkk ? 1 : 0).lastInsertRowid),
   setLeadConsent: (id, waConsent) => q("UPDATE leads SET wa_consent = ?, kvkk_at = datetime('now') WHERE id = ?").run(waConsent ? 1 : 0, id),
@@ -454,6 +468,17 @@ module.exports = {
   reviewAlbumPage: (id, status, note) => q("UPDATE album_pages SET status = ?, note = ?, updated_at = datetime('now') WHERE id = ?").run(status, note, id),
   deleteAlbumPage: (id) => q('DELETE FROM album_pages WHERE id = ?').run(id),
   setAlbumDesign: (coupleId, state, bumpRound = false) => q(`UPDATE couples SET album_design_state = ?, album_design_at = datetime('now')${bumpRound ? ', album_design_round = album_design_round + 1' : ''} WHERE id = ?`).run(state, coupleId),
+
+  // ── Hediye kuponları ──
+  giftCodesFor: (coupleId) => q('SELECT g.*, u.name AS used_by FROM gift_codes g LEFT JOIN couples u ON u.id = g.used_couple_id WHERE g.couple_id = ? ORDER BY g.id').all(coupleId),
+  giftByCode: (code) => q('SELECT g.*, c.name AS owner FROM gift_codes g JOIN couples c ON c.id = g.couple_id WHERE g.code = ?').get(code),
+  addGiftCode: (coupleId, code, expiresOn) => q('INSERT INTO gift_codes(couple_id, code, expires_on) VALUES(?, ?, ?)').run(coupleId, code, expiresOn),
+  useGiftCode: (id, leadId, coupleId) => q("UPDATE gift_codes SET used_at = datetime('now'), used_lead_id = COALESCE(?, used_lead_id), used_couple_id = ? WHERE id = ? AND used_couple_id IS NULL").run(leadId || null, coupleId, id).changes,
+  markGiftLead: (id, leadId) => q('UPDATE gift_codes SET used_lead_id = ? WHERE id = ? AND used_couple_id IS NULL').run(leadId, id),
+  giveGiftReward: (id) => q("UPDATE gift_codes SET reward_given_at = datetime('now') WHERE id = ?").run(id),
+  giftUsedBy: (coupleId) => q('SELECT g.*, c.name AS owner FROM gift_codes g JOIN couples c ON c.id = g.couple_id WHERE g.used_couple_id = ?').get(coupleId),
+  giftRewardsDue: () => q('SELECT g.*, c.name AS owner, u.name AS used_by FROM gift_codes g JOIN couples c ON c.id = g.couple_id JOIN couples u ON u.id = g.used_couple_id WHERE g.reward_given_at IS NULL').all(),
+  giftStats: () => q('SELECT c.id, c.name, COUNT(g.id) AS total, SUM(g.used_couple_id IS NOT NULL) AS used FROM gift_codes g JOIN couples c ON c.id = g.couple_id GROUP BY c.id ORDER BY used DESC, c.name').all(),
 
   // ── Teklifler ──
   addQuote: (x) => Number(q(`INSERT INTO quotes(token, lead_id, name, phone, event_type, event_date, place, items_json, discount, deposit, note, valid_until)

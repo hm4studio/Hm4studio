@@ -240,5 +240,14 @@
         }
       ]
     }
-  ]
+  ],
+  "gifts": {
+    "_aciklama": "Hediye kuponu programı. Ayarlar › Hediye kuponları sayfasından açılıp kapatılır ve düzenlenir.",
+    "active": false,
+    "perCouple": 3,
+    "validDays": 365,
+    "gift": "Albümünüze 10 sayfa hediye",
+    "reward": "Çerçeveli 50×70 baskı",
+    "rules": "Yalnızca düğün ve nişan paketlerinde geçerlidir. Tek kullanımlıktır, başka kampanyayla birleştirilemez."
+  }
 }

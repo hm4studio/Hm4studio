@@ -58,6 +58,12 @@ function register(router) {
     }
   }
 
+  // Hediye kuponu sayfası (tavsiye eden çiftin paylaştığı bağlantı)
+  router.get('/hediye/:code', (req, res, { params }) => {
+    const gifts = require('../gifts');
+    html(res, views.giftPage(getContent(), { result: gifts.check(params.code), settings: gifts.settings(), portfolio: portfolioItems() }));
+  });
+
   // Google için site haritası ve robots.txt
   router.get('/sitemap.xml', (req, res) => {
     const c = getContent();

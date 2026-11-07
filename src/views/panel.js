@@ -270,7 +270,7 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
 }
 
 // Durum: sıradaki adım, iş durumu, randevular, ödeme; en altta bildirim ayarları ve çıkış
-function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favCount = 0, editedCount = 0, videoCount = 0, csrf, flash: f }) {
+function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favCount = 0, editedCount = 0, videoCount = 0, gifts = null, csrf, flash: f }) {
   const step = nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages: c.stages });
   const pushbox = h`<div class="pushbox" data-push data-push-quiet data-off-text="Fotoğraflarınız ve videonuz hazır olunca telefonunuza haber verelim." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>`;
   const body = h`
@@ -316,6 +316,18 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
         </dl>
       </section>`;
     })() : ''}
+
+    ${gifts ? h`<section class="panel-section gift-share" id="hediye" aria-labelledby="gift-title">
+      <div class="panel-section__head"><h2 class="panel-section__title" id="gift-title">Sevdiklerinize hediyeniz</h2></div>
+      <p>Yakında evlenecek arkadaşlarınıza bizden bir hediye gönderin: <strong>${gifts.settings.gift}</strong>. Her kupon tek kişi içindir.</p>
+      <ul class="gift-list">${gifts.codes.map((g) => h`<li>
+        <span class="gift-list__code">${g.code}</span>
+        ${g.used_couple_id ? h`<span class="muted">Kullanıldı · teşekkür ederiz!</span>`
+          : g.expires_on < gifts.today ? h`<span class="muted">Süresi doldu</span>`
+          : h`<a class="btn btn--primary btn--sm" href="${gifts.wa(g.code)}" target="_blank" rel="noopener">${icon('whatsapp')}Gönder</a>`}
+      </li>`)}</ul>
+      ${gifts.settings.reward ? h`<p class="muted">Kuponunuzla gelen çift rezervasyon yaptığında size de bizden teşekkür hediyesi: ${gifts.settings.reward}.</p>` : ''}
+    </section>` : ''}
 
     <div class="install" data-install hidden>
       <img class="install__icon" src="/images/icon-192.png" alt="" width="48" height="48">

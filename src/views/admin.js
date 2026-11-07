@@ -7,7 +7,7 @@ const { jobStatus, daysBetween, today, addDays } = require('../jobs');
 const { displayPhone, taskText } = require('../whatsapp');
 const { payment, tl, shortDate, eventIndexes } = require('../appointments');
 
-const SETTINGS_KEYS = ['cities', 'messages', 'contract', 'account', 'feedback', 'portfolio', 'team', 'packages', 'site', 'data'];
+const SETTINGS_KEYS = ['gifts', 'cities', 'messages', 'contract', 'account', 'feedback', 'portfolio', 'team', 'packages', 'site', 'data'];
 function adminNav(active, csrf, demoAdmin = false) {
   const items = [
     { href: '/admin', label: 'Panel', key: 'couples', icon: 'users' },
@@ -193,6 +193,11 @@ function attentionItems(c, couples) {
     if (k.album_design_state === 'degisiklik') items.push({ k, level: 2, text: 'Albüm tasarımında değişiklik istendi', tag: 'Albüm' });
     if (k.album_design_state === 'onaylandi' && k.album_design_at && daysBetween(k.album_design_at.slice(0, 10), t) <= 3) items.push({ k, level: 1, text: 'Albüm tasarımı onaylandı, baskıya hazır', tag: 'Albüm' });
     if (k.photo_count > 0 && !k.album_locked && k.stage < last) items.push({ k, level: 1, text: `Albüm seçimi bekleniyor (${k.fav_count}/${k.album_limit})`, tag: 'Albüm' });
+  }
+  // Tavsiye eden çifte borçlu olunan teşekkür hediyeleri
+  for (const g of require('../db').giftRewardsDue()) {
+    const k = couples.find((x) => x.id === g.couple_id);
+    if (k) items.push({ k, level: 1, text: `Teşekkür hediyesi borçlusunuz: ${c.gifts?.reward || 'hediye'} (${g.used_by} kuponla geldi)`, tag: 'Hediye' });
   }
   // Aynı çiftin işleri tek satırda: "Etkinlik yarın, 15.000 ₺ bakiye var · Gün planı doldurulmadı"
   const groups = new Map();
@@ -506,6 +511,11 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
         ${chk('waOptin', 'WhatsApp bildirimleri gönderilsin')}
       </fieldset>
 
+      ${isNew ? h`<fieldset class="appt-group">
+        <legend>Hediye kuponu</legend>
+        <div class="field"><label for="hediye">Kupon kodu <span class="muted">(bir çiftin hediye kuponuyla geldiyse)</span></label><input id="hediye" name="hediye" maxlength="40" placeholder="ör. ELIF-BURAK-7K2" value="${v('hediye')}" autocapitalize="characters"></div>
+      </fieldset>` : ''}
+
       <fieldset class="appt-group">
         <legend>Notlar</legend>
         <div class="field"><label for="notes" class="sr-only">Notlar</label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Yalnızca siz görürsünüz.">${v('notes')}</textarea></div>
@@ -710,6 +720,73 @@ function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
   return panelLayout(c, { title: `Rapor ${year}`, csrf, nav: adminNav('report', csrf, demoAdmin), home: '/admin', tabs: adminTabs('report', demoAdmin), body });
 }
 
+// Hediye kuponları: bu çiftin kuponları, kuponla gelenler, borçlu olunan teşekkür hediyeleri
+function giftSection(couple, { codes, settings: gs, cameWith, today: t }, base, csrf) {
+  return h`<section class="panel-section" id="hediye" aria-labelledby="gift-title">
+    <div class="panel-section__head"><h2 class="panel-section__title" id="gift-title">Hediye kuponları</h2>${gs.active ? '' : h`<span class="state state--done">Program kapalı</span>`}</div>
+    ${cameWith ? h`<p>Bu çift <strong>${cameWith.owner}</strong> çiftinin hediye kuponuyla geldi (${cameWith.code}).</p>` : ''}
+    ${codes.length ? h`<ul class="gift-admin">${codes.map((g) => h`<li>
+      <code>${g.code}</code>
+      ${g.used_couple_id ? h`<span>Kullandı: <a href="/admin/ciftler/${g.used_couple_id}">${g.used_by}</a></span>
+        ${g.reward_given_at ? h`<span class="state state--ok">Teşekkür hediyesi verildi</span>` : h`<form method="post" action="${base}/hediye/${g.id}/verildi" class="inline-form">
+          <input type="hidden" name="csrf" value="${csrf}"><button class="btn btn--outline btn--sm" type="submit">${gs.reward || 'Teşekkür hediyesi'} verildi</button></form>`}`
+      : g.used_lead_id ? h`<span class="muted">Talep geldi, rezervasyon bekleniyor</span>`
+      : g.expires_on < t ? h`<span class="muted">Süresi doldu</span>` : h`<span class="muted">Kullanılmadı · ${g.expires_on.split('-').reverse().join('.')} tarihine kadar</span>`}
+    </li>`)}</ul>
+    <div class="btn-row"><a class="btn btn--outline btn--sm" href="${base}/hediye-kartlari" target="_blank" rel="noopener">${icon('download')}Basılı kartları yazdır</a></div>` : h`
+    <p class="muted">${gs.active ? 'Kuponlar iş “Teslim” aşamasına geçince çiftin panelinde kendiliğinden oluşur.' : 'Program kapalı; Ayarlar › Hediye kuponları’ndan açabilirsiniz.'} İsterseniz şimdi oluşturabilirsiniz.</p>
+    <form method="post" action="${base}/hediye-olustur" class="inline-form"><input type="hidden" name="csrf" value="${csrf}"><button class="btn btn--outline btn--sm" type="submit">${icon('plus')}${gs.perCouple} kupon oluştur</button></form>`}
+  </section>`;
+}
+
+// Basılı hediye kartları (A4'e 3 kart; albüm kutusuna konur)
+function giftCards(c, { couple, codes, settings: gs, qr, url }) {
+  return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/css/style.css?v=32"></head>
+  <body class="gift-print"><main>
+    <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
+    ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
+      <div class="gcard__text">
+        <p class="gcard__brand">${c.brand.name}</p>
+        <h1 class="gcard__title">Size bir hediyemiz var</h1>
+        <p class="gcard__from">${couple.name} sizi bize önerdi.</p>
+        <p class="gcard__gift">${gs.gift}</p>
+        <p class="gcard__code">Kupon: <strong>${g.code}</strong></p>
+        <p class="gcard__rules">${gs.rules} Son kullanma: ${g.expires_on.split('-').reverse().join('.')}.</p>
+      </div>
+      <div class="gcard__qr">${raw(qr(url(g.code)))}<span>Okutun, hediyenizi görün</span></div>
+    </article>`)}
+  </main></body></html>`);
+}
+
+// Ayarlar › Hediye kuponları
+function giftSettingsPage(c, { gs, stats, csrf, flash: f, demoAdmin }) {
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <h1 class="page-title">Hediye kuponları</h1>
+    ${flashBlock(f)}
+    <p class="muted">Teslim alan çift, yakında evlenecek arkadaşlarına sizden bir hediye gönderir. Kuponla gelen çift rezervasyon yapınca tavsiye eden çifte teşekkür hediyesi verilir; panel size hatırlatır.</p>
+    <form class="form" method="post" action="/admin/hediye">
+      ${csrfField(csrf)}
+      <label class="check"><input type="checkbox" name="active" value="1"${gs.active ? raw(' checked') : ''}><span><strong>Program açık</strong> (kapalıyken çiftler kupon görmez, kupon sayfaları çalışmaz)</span></label>
+      <div class="field"><label for="g-gift">Arkadaşa giden hediye</label><input id="g-gift" name="gift" maxlength="120" value="${gs.gift}"></div>
+      <div class="field"><label for="g-reward">Tavsiye eden çifte teşekkür hediyesi</label><input id="g-reward" name="reward" maxlength="120" value="${gs.reward}"></div>
+      <div class="appt-row">
+        <div class="field"><label for="g-n">Çift başına kupon</label><input id="g-n" name="perCouple" type="number" min="1" max="10" value="${gs.perCouple}"></div>
+        <div class="field"><label for="g-d">Geçerlilik (gün)</label><input id="g-d" name="validDays" type="number" min="30" max="1095" value="${gs.validDays}"></div>
+      </div>
+      <div class="field"><label for="g-r">Koşullar</label><textarea id="g-r" name="rules" rows="3" maxlength="400">${gs.rules}</textarea></div>
+      <button class="btn btn--primary" type="submit">Kaydet</button>
+    </form>
+    ${stats.length ? h`<section class="panel-section"><div class="panel-section__head"><h2 class="panel-section__title">Kim kaç kişi getirdi</h2></div>
+      <ul class="plain-stats">${stats.map((x) => h`<li><span><a href="/admin/ciftler/${x.id}#hediye">${x.name}</a></span><strong>${x.used || 0} / ${x.total}</strong></li>`)}</ul></section>` : ''}
+  </div>`;
+  return panelLayout(c, { title: 'Hediye kuponları', csrf, nav: adminNav('gifts', csrf, demoAdmin), home: '/admin', tabs: adminTabs('gifts', demoAdmin), body });
+}
+
 // Albüm tasarım onayı: sayfaları yükle, çifte gönder, çiftin notlarını gör
 const ALBUM_STATE = { '': 'Henüz gönderilmedi', hazir: 'Çiftin incelemesinde', degisiklik: 'Çift değişiklik istedi', onaylandi: 'Çift onayladı' };
 const PAGE_STATE = { bekliyor: ['İncelenmedi', 'upcoming'], onay: ['Beğendi', 'ok'], degisiklik: ['Değişiklik istiyor', 'soon'] };
@@ -752,7 +829,7 @@ function albumDesignSection(couple, pages, base, csrf) {
   </section>`;
 }
 
-function coupleDetail(c, { couple, card, contract: ct = null, selection = [], videos = [], edited = [], albumPages = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
+function coupleDetail(c, { couple, card, contract: ct = null, selection = [], videos = [], edited = [], albumPages = [], gift = null, events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
@@ -934,6 +1011,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     </div>
 
     <div class="cd-pane" data-pane="ayar">
+      ${gift ? giftSection(couple, gift, base, csrf) : ''}
           <section class="panel-section" aria-labelledby="access-title">
         <div class="panel-section__head"><h2 class="panel-section__title" id="access-title">Giriş bilgileri</h2></div>
         <p class="muted">Giriş adresi: <code>${loginUrl}</code></p>
@@ -1214,6 +1292,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
     { href: '/admin/site', title: 'Site', text: 'Kapak, duyuru bandı, logo, hakkımızda, iletişim ve hizmetler.' },
     { href: '/admin/paketler', title: 'Paketler', text: 'Paket adları, fiyatları ve içerikleri. Randevu formunda seçince fiyat kendiliğinden gelir.' },
     { href: '/admin/sozlesme', title: 'Sözleşme ve KVKK', text: 'Sözleşme metni, firma bilgileri ve KVKK aydınlatma metni.' },
+    { href: '/admin/hediye', title: 'Hediye kuponları', text: 'Çiftlerin arkadaşlarına gönderdiği hediye kuponları ve teşekkür hediyeleri.' },
     { href: '/admin/sehirler', title: 'Google ve şehir sayfaları', text: 'Ankara ve Kastamonu sayfalarının metinleri, Google’da görünen işletme bilgileri.' },
     { href: '/admin/mesajlar', title: 'Mesajlar', text: 'Çiftlere ve ekibe giden WhatsApp mesajlarının metinleri.' },
     { href: '/admin/ekip', title: 'Ekip', text: 'Personel, görevleri ve iletişim bilgileri.' },
@@ -1495,4 +1574,4 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=1'] });
 }
 
-module.exports = { citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+module.exports = { giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

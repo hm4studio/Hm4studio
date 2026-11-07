@@ -14,7 +14,7 @@ const STATUS = {
   kayip: 'Olmadı',
 };
 
-function form(c, { values = {}, error, thanks, services }) {
+function form(c, { values = {}, error, thanks, services, gift = null }) {
   const sel = (a, b) => (a === b ? raw(' selected') : '');
   const body = h`
   <section class="page-hero">
@@ -33,7 +33,9 @@ function form(c, { values = {}, error, thanks, services }) {
         <div class="btn-row"><a class="btn btn--primary" href="/portfolyo">Portfolyoya göz atın</a></div>
       </div>` : h`
       ${flash(error, 'error')}
+      ${gift ? h`<div class="gift-note">${icon('star')}<span><strong>${gift.owner}</strong> size bir hediye gönderdi: ${gift.text}. Kuponunuz <strong>${gift.code}</strong> bu forma eklendi.</span></div>` : ''}
       <form class="card form" method="post" action="/talep">
+        ${values.hediye ? h`<input type="hidden" name="hediye" value="${values.hediye}">` : ''}
         <div class="hp" aria-hidden="true"><label for="website">Bu alanı boş bırakın</label><input id="website" name="website" type="text" tabindex="-1" autocomplete="off"></div>
         <input type="hidden" name="kaynak" value="${values.kaynak || 'site'}">
         <div class="plan-grid">
@@ -79,7 +81,7 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin, quotes = [] }) {
         <div class="fb__head">
           <span class="state state--${l.status === 'yeni' ? 'soon' : l.status === 'rezervasyon' ? 'ok' : l.status === 'kayip' ? 'done' : 'upcoming'}">${STATUS[l.status] || l.status}</span>
           <strong>${l.name || 'İsimsiz'}</strong>
-          <span class="fb__meta">${[wa.displayPhone(l.phone), l.event_date ? formatDate(l.event_date) : '', l.place, l.service, { whatsapp: 'WhatsApp', dugun: 'Düğün.com' }[l.source] || 'Site', l.source === 'site' && l.kvkk_at && !l.wa_consent ? 'WhatsApp izni yok, telefonla arayın' : ''].filter(Boolean).join(' · ')}</span>
+          <span class="fb__meta">${[wa.displayPhone(l.phone), l.event_date ? formatDate(l.event_date) : '', l.place, l.service, { whatsapp: 'WhatsApp', dugun: 'Düğün.com' }[l.source] || 'Site', l.gift_code ? `Hediye kuponu: ${l.gift_code}` : '', l.source === 'site' && l.kvkk_at && !l.wa_consent ? 'WhatsApp izni yok, telefonla arayın' : ''].filter(Boolean).join(' · ')}</span>
           <time class="fb__time">${new Date(`${l.created_at.replace(' ', 'T')}Z`).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</time>
         </div>
         ${l.message ? h`<p class="fb__msg">${l.message}</p>` : ''}

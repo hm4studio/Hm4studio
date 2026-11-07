@@ -1813,3 +1813,26 @@ body:has(.site-banner) .site-header--overlay.is-solid { position: fixed; top: 0;
 .alb-finish { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--rule, #e8e8e5); }
 .alb-finish .muted { width: 100%; margin: 0; }
 @media (max-width: 699px) { .alb-finish form, .alb-finish .btn { width: 100%; } .alb-finish .btn { justify-content: center; } }
+/* Hediye kuponları */
+.gift-note { display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; margin-bottom: 16px; background: #f6efe6; border: 1px solid #e7d6c2; }
+.gift-note svg { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.gift-card__code { display: grid; gap: 4px; margin: 0 0 12px; }
+.gift-card__code strong { font-family: var(--serif); font-size: 2rem; letter-spacing: .06em; }
+.gift-list, .gift-admin { list-style: none; margin: 12px 0; padding: 0; border-top: 1px solid var(--rule, #e8e8e5); }
+.gift-list li, .gift-admin li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 10px 0; border-bottom: 1px solid var(--rule, #e8e8e5); }
+.gift-list__code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; letter-spacing: .04em; }
+.gift-admin code { font-weight: 600; }
+/* Basılı hediye kartları: A4'e 3 kart (her biri 180×85 mm) */
+.gift-print { background: #fff; margin: 0; }
+.gift-print main { max-width: 190mm; margin: 0 auto; padding: 10mm 0; }
+.gift-print__hint { font: 14px/1.4 Inter, sans-serif; color: #666; margin: 0 0 8mm; }
+.gcard { display: flex; justify-content: space-between; gap: 8mm; width: 180mm; height: 85mm; box-sizing: border-box; padding: 9mm 10mm; margin: 0 auto 6mm; border: 1px dashed #bbb; break-inside: avoid; font-family: Inter, sans-serif; color: #1a1a1a; }
+.gcard__brand { margin: 0; text-transform: uppercase; letter-spacing: .32em; font-family: 'Cormorant Garamond', serif; font-size: 13pt; }
+.gcard__title { margin: 3mm 0 1mm; font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 22pt; line-height: 1.1; }
+.gcard__from { margin: 0 0 2mm; font-size: 9.5pt; color: #555; }
+.gcard__gift { margin: 0 0 3mm; font-size: 12pt; font-weight: 500; }
+.gcard__code { margin: 0 0 2mm; font-size: 10pt; } .gcard__code strong { letter-spacing: .06em; }
+.gcard__rules { margin: 0; font-size: 7.5pt; color: #777; max-width: 105mm; }
+.gcard__qr { display: grid; justify-items: center; align-content: center; gap: 2mm; font-size: 7.5pt; color: #666; text-align: center; }
+.gcard__qr svg { width: 34mm; height: 34mm; }
+@media print { .no-print { display: none; } .gift-print main { padding: 0; } @page { size: A4; margin: 12mm; } }

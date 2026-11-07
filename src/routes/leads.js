@@ -31,9 +31,11 @@ function register(router) {
   router.get('/talep', (req, res, { query }) => {
     const c = getContent();
     const tel = wa.normalizePhone(query.get('tel'));
+    const gift = query.get('hediye') ? require('../gifts').check(query.get('hediye')) : null;
     html(res, views.form(c, {
       thanks: query.get('tamam') === '1',
-      values: tel ? { phone: wa.displayPhone(tel), kaynak: 'whatsapp' } : {},
+      gift: gift?.ok ? { code: gift.g.code, owner: gift.g.owner, text: require('../gifts').settings().gift } : null,
+      values: { ...(tel ? { phone: wa.displayPhone(tel), kaynak: 'whatsapp' } : {}), ...(gift?.ok ? { hediye: gift.g.code } : {}) },
       services: c.services.map((s) => s.title),
     }));
   });
@@ -80,6 +82,10 @@ function register(router) {
       waConsent: form.waConsent === '1',
       kvkk: true,
     };
+    // Hediye kuponuyla gelen talep: kupon geçerliyse talebe bağlanır ve mesajın başına yazılır
+    const gifts = require('../gifts');
+    const gift = form.hediye ? gifts.check(form.hediye) : null;
+    if (gift?.ok) lead.message = [`Hediye kuponu: ${gift.g.code} (${gift.g.owner} tavsiyesi, ${gifts.settings().gift})`, lead.message].filter(Boolean).join('\n');
     const open = db.openLeadByPhone(phone);
     let id;
     if (open) {
@@ -89,6 +95,7 @@ function register(router) {
     } else {
       id = db.addLead(lead);
     }
+    if (gift?.ok) { db.setLeadGift(id, gift.g.code); db.markGiftLead(gift.g.id, id); }
     // n8n'e haber ver; WhatsApp'tan gelen kişiye "bilgileriniz alındı" mesajı (24 saat içinde serbest metin)
     const payload = { id, ...lead, phoneDisplay: wa.displayPhone(phone), updated: Boolean(open) };
     if (config.n8nWebhookUrl) {

@@ -128,7 +128,9 @@ function register(router) {
         ev0_venue: lead.place, source: { whatsapp: 'WhatsApp', dugun: 'Düğün.com' }[lead.source] || 'Site formu',
         ev0_type: (getContent().appointments?.eventTypes || []).find((t) => lead.service && lead.service.includes(t)) || '',
         notes: lead.message,
+        hediye: lead.gift_code || '',
       });
+      if (lead.gift_code) values.source = 'Tavsiye';
     }
     // Kabul edilen (ya da hazırlanan) tekliften: paketler, tutar ve kapora forma gelir
     const quote = query.get('teklif') ? db.getQuote(Number(query.get('teklif')) || 0) : null;
@@ -148,7 +150,9 @@ function register(router) {
         ev0_price: qi.total(quote) || '', ev0_detail: items.map((x) => x.detail).filter(Boolean).join('\n'),
         deposit: quote.deposit || '', notes: [values.notes, quote.note].filter(Boolean).join('\n'),
         source: ql?.source === 'dugun' ? 'Düğün.com' : values.source || '',
+        hediye: ql?.gift_code || '',
       });
+      if (ql?.gift_code) values.source = 'Tavsiye';
     }
     html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, teklifId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }));
   });
@@ -210,11 +214,18 @@ function register(router) {
     const lead = form.talep ? db.getLead(Number(form.talep) || 0) : null;
     if (lead && !lead.couple_id) db.setLeadStatus(lead.id, 'rezervasyon', id);
     if (form.teklif) { const qt = db.getQuote(Number(form.teklif) || 0); if (qt && !qt.couple_id) db.setQuoteCouple(qt.id, id); }
+    // Hediye kuponu: geçerliyse kullanıldı sayılır; tavsiye eden çifte teşekkür hediyesi hatırlatması başlar
+    let giftNote = '';
+    if (form.hediye) {
+      const gc = require('../gifts').check(form.hediye);
+      if (gc.ok) { db.useGiftCode(gc.g.id, lead?.id, id); giftNote = ` Hediye kuponu ${gc.g.code} kullanıldı (${gc.g.owner} tavsiyesi).`; }
+      else giftNote = ` Hediye kuponu uygulanmadı: ${gc.reason}`;
+    }
     const warn = conflictText(id, list);
     const link = auth.loginLink(id, hash);
     const sent = events.appointmentCreated(id, { link, code, password });
     setFlash(req, {
-      message: `${a.name} için randevu oluşturuldu.${sent ? ' Randevu ve giriş bilgileri çifte WhatsApp\'tan gönderildi.' : ''}${assigned ? ` ${assigned} ekip görevi verildi${wa.autoSend() ? ' ve WhatsApp mesajı gönderildi' : ' (mesajı Panel › Gönderilecek mesajlar listesinden gönderebilirsiniz)'}.` : ''}${warn ? ' ' + warn : ''}`,
+      message: `${a.name} için randevu oluşturuldu.${giftNote}${sent ? ' Randevu ve giriş bilgileri çifte WhatsApp\'tan gönderildi.' : ''}${assigned ? ` ${assigned} ekip görevi verildi${wa.autoSend() ? ' ve WhatsApp mesajı gönderildi' : ' (mesajı Panel › Gönderilecek mesajlar listesinden gönderebilirsiniz)'}.` : ''}${warn ? ' ' + warn : ''}`,
       type: warn ? 'error' : 'success',
       credentials: { url: `${config.siteUrl}/uygulama`, link, sent, text: wa.templateText('randevu', events.appointmentVars(db.getCouple(id), { link, code, password })), code, password, phone: a.phone, name: a.name },
     });
@@ -841,8 +852,51 @@ function register(router) {
       payments: db.listPayments(couple.id),
       contract: db.activeContract(couple.id),
       albumPages: db.listAlbumPages(couple.id),
+      gift: (() => { const gifts = require('../gifts'); return { codes: db.giftCodesFor(couple.id), settings: gifts.settings(), cameWith: db.giftUsedBy(couple.id), today: today() }; })(),
       demoAdmin: demo.isDemoAdmin(req),
     }));
+  });
+
+  // ── Hediye kuponları ──
+  router.post('/admin/ciftler/:id/hediye-olustur', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    require('../gifts').ensureCodes(couple);
+    redirect(res, `/admin/ciftler/${couple.id}#hediye`);
+  });
+  router.post('/admin/ciftler/:id/hediye/:gid/verildi', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const g = db.giftCodesFor(couple.id).find((x) => x.id === toId(params.gid));
+    if (g) db.giveGiftReward(g.id);
+    redirect(res, `/admin/ciftler/${couple.id}#hediye`);
+  });
+  router.get('/admin/ciftler/:id/hediye-kartlari', (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    const couple = getCoupleOr404(params.id);
+    const gifts = require('../gifts');
+    html(res, views.giftCards(getContent(), { couple, codes: db.giftCodesFor(couple.id), settings: gifts.settings(), qr: (t) => require('../qr').svg(t, { size: 132 }), url: gifts.giftUrl }));
+  });
+  router.get('/admin/hediye', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, views.giftSettingsPage(getContent(), { gs: require('../gifts').settings(), stats: db.giftStats(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/hediye', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const o = siteOver();
+    const num = (v, a, b, d) => Math.min(Math.max(Number(v) || d, a), b);
+    o.gifts = {
+      ...(getContent().gifts || {}),
+      active: form.active === '1',
+      gift: cleanText(form.gift, 120), reward: cleanText(form.reward, 120), rules: cleanText(form.rules, 400),
+      perCouple: num(form.perCouple, 1, 10, 3), validDays: num(form.validDays, 30, 1095, 365),
+    };
+    saveOver(o);
+    setFlash(req, { message: o.gifts.active ? 'Kaydedildi. Program açık: teslim alan çiftler kuponlarını panelde görür.' : 'Kaydedildi. Program kapalı.', type: 'success' });
+    redirect(res, '/admin/hediye');
   });
 
   // ── Albüm tasarımı: sayfa yükle (aynı adlı sayfa varsa yerine geçer), sil, çifte gönder ──

@@ -71,6 +71,9 @@ function register(router) {
       lead: lead.id, name: lead.name, phone: lead.phone ? wa.displayPhone(lead.phone) : '', eventDate: lead.event_date || '', place: lead.place || '',
       eventType: types.find((t) => lead.service && lead.service.includes(t)) || '',
     } : {};
+    // Hediye kuponuyla gelen talep: teklif notuna hediye yazılır
+    const gc = lead?.gift_code ? require('../gifts').check(lead.gift_code) : null;
+    if (gc?.g) values.note = `${gc.g.owner} çiftinin hediyesi: ${require('../gifts').settings().gift} (kupon ${gc.g.code}).`;
     page(req, res, { values, action: '/admin/teklif', title: 'Yeni teklif', back: lead ? '/admin/talepler' : '/admin/teklifler' });
   });
 

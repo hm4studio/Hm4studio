@@ -312,4 +312,38 @@ function cityPage(c, { city, portfolio, heroUrl }) {
   return publicLayout(c, { fullTitle: `${city.title} | ${c.brand.name}`, description: city.description, path: `/${city.slug}`, ld, body, image: heroUrl ? new URL(heroUrl, config.siteUrl).href : '' });
 }
 
-module.exports = { cityPage, kvkkPage, home, portfolioPage, aboutPage, contactPage, notFound };
+// Hediye kuponu sayfası: "Elif & Burak size HM4 Studio'dan bir hediye gönderdi"
+function giftPage(c, { result, settings: gs, portfolio }) {
+  const g = result.g;
+  const ok = result.ok && gs.active;
+  const body = h`
+  <section class="page-hero gift-hero">
+    <div class="container container--narrow">
+      <p class="eyebrow">${c.brand.name} · Hediye</p>
+      ${ok ? h`<h1 class="page-title">${g.owner} size bir hediye gönderdi</h1>
+      <p class="page-lead">${gs.gift}</p>` : h`<h1 class="page-title">Bu hediye kuponu kullanılamıyor</h1>
+      <p class="page-lead">${gs.active ? result.reason : 'Hediye kuponu programımız şu an aktif değil.'} Yine de tarihiniz için bize yazabilirsiniz.</p>`}
+    </div>
+  </section>
+  <section class="section section--flush-top">
+    <div class="container container--narrow">
+      ${ok ? h`<div class="card gift-card">
+        <p class="gift-card__code"><span class="muted">Kupon kodunuz</span><strong>${g.code}</strong></p>
+        <p class="muted">${gs.rules} Son kullanma: ${new Date(`${g.expires_on}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
+        <div class="btn-row">
+          <a class="btn btn--primary" href="/talep?hediye=${g.code}">Tarihiniz için uygunluk sorun</a>
+          <a class="btn btn--outline" href="${links.whatsapp(c)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp’tan yazın</a>
+        </div>
+        <p class="muted">Kuponunuz uygunluk formuna kendiliğinden eklenir. WhatsApp’tan yazarsanız kodu mesajınızda belirtin.</p>
+      </div>` : h`<div class="btn-row"><a class="btn btn--primary" href="/talep">Uygunluk sorun</a></div>`}
+    </div>
+  </section>
+  ${portfolio.length ? h`<section class="section" aria-labelledby="gp-title"><div class="container">
+    ${sectionHead({ eyebrow: 'Portfolyo', title: 'Çalışmalarımızdan', id: 'gp-title' })}
+    ${portfolioGrid(portfolio.slice(0, 8))}
+    <div class="btn-row"><a class="btn btn--outline" href="/portfolyo">Tüm portfolyo</a></div>
+  </div></section>` : ''}`;
+  return publicLayout(c, { title: 'Hediye', body });
+}
+
+module.exports = { giftPage, cityPage, kvkkPage, home, portfolioPage, aboutPage, contactPage, notFound };

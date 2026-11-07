@@ -120,6 +120,14 @@ function register(router) {
       events: db.listEvents(couple.id),
       totalCount: sel.length,
       favCount: sel.filter((p) => p.is_fav).length,
+      gifts: (() => {
+        // Hediye kuponları: program açıksa ve iş "Teslim" aşamasına geldiyse
+        const gifts = require('../gifts');
+        const gs = gifts.settings();
+        if (!gs.active || couple.stage < (c.stages || []).length - 1) return null;
+        const wa = require('../whatsapp');
+        return { settings: gs, codes: gifts.ensureCodes(couple), today: today(), wa: (code) => `https://wa.me/?text=${encodeURIComponent(gifts.shareText(couple, code))}` };
+      })(),
       editedCount: db.listPhotos(couple.id, 'duzenli').length,
       videoCount: db.videoCount(couple.id),
       csrf: req.session.csrf,
