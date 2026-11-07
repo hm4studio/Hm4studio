@@ -28,10 +28,25 @@ const NAV = [
   { href: '/iletisim', label: 'İletişim', key: 'contact' },
 ];
 
+// Klasik HM4 STUDIO logosu: sabit çizim (yazı tipine bağlı değil), rengi bulunduğu yerin yazı rengini alır.
+// Marka adı değiştirilmişse yazı olarak gösterilir.
+let WM = null;
+function wordmark(c) {
+  if (String(c.brand.name || '').trim().toUpperCase() !== 'HM4 STUDIO') return h`<span class="brand__name" lang="en">${c.brand.name}</span>`;
+  if (WM === null) {
+    try {
+      const svg = require('node:fs').readFileSync(require('node:path').join(__dirname, '../../public/images/logo/hm4-yatay-lacivert.svg'), 'utf8');
+      WM = { vb: /viewBox="([^"]+)"/.exec(svg)[1], d: /<path d="([^"]+)"/.exec(svg)[1] };
+    } catch { WM = false; }
+  }
+  if (!WM) return h`<span class="brand__name" lang="en">${c.brand.name}</span>`;
+  return h`<svg class="brand__mark" viewBox="${WM.vb}" role="img" aria-label="${c.brand.name}"><path d="${WM.d}" fill="currentColor"/></svg>`;
+}
+
 function brandMark(c) {
   return c.brand.logo
     ? h`<img class="brand__logo" src="${c.brand.logo}" alt="${c.brand.name}" width="140" height="40">`
-    : h`<span class="brand__name" lang="en">${c.brand.name}</span>`;
+    : wordmark(c);
 }
 
 // Duyuru bandı (Ayarlar › Site): kampanya, yeni sezon tarihleri vb.
@@ -136,7 +151,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=40">
+<link rel="stylesheet" href="/css/style.css?v=42">
 <link rel="stylesheet" href="/css/tema.css">
 </head>
 <body class="${bodyClass}">
@@ -262,4 +277,4 @@ function flash(message, type = 'info') {
 }
 
 module.exports = {
-  businessJsonLd, demoBanner, links, publicLayout, panelLayout, button, sectionHead, placeholder, portfolioGrid, statusBar, flash, icon, h, raw };
+  businessJsonLd, demoBanner, wordmark, links, publicLayout, panelLayout, button, sectionHead, placeholder, portfolioGrid, statusBar, flash, icon, h, raw };

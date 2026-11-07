@@ -4,12 +4,12 @@
    - Sayfalar her zaman sunucudan istenir; internet yoksa sade bir "çevrimdışı" sayfası gösterilir.
    - Çiftlerin özel fotoğrafları (/m/...) ve panel sayfaları ASLA önbelleğe alınmaz:
      paylaşılan bir cihazda başkası göremesin. */
-const VERSION = 'hm4-v41';
+const VERSION = 'hm4-v43';
 const STATIC_CACHE = `${VERSION}-static`;
 const MEDIA_CACHE = `${VERSION}-media`;
 const PRECACHE = [
   '/offline.html',
-  '/css/style.css?v=40',
+  '/css/style.css?v=42',
   '/js/site.js?v=8',
   '/js/pwa.js?v=2',
   '/images/icon-192.png',

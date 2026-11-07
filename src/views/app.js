@@ -4,6 +4,7 @@
 // sistem kimin girdiğini kendisi anlar. Sitenin menüsü ve diğer sayfaları burada gösterilmez.
 const { h, raw } = require('./html');
 const config = require('../config');
+const { wordmark } = require('./components');
 
 function appLogin(c, { error, values = {}, heroUrl }) {
   return String(h`<!doctype html>
@@ -30,7 +31,7 @@ function appLogin(c, { error, values = {}, heroUrl }) {
   <div class="app-login__media" aria-hidden="true">
     ${heroUrl ? h`<img src="${heroUrl}" alt="">` : ''}
     <div class="app-login__shade"></div>
-    <div class="app-login__brand"><span class="brand__name" lang="en">${c.brand.name}</span><span class="app-login__tag">${c.brand.tagline}</span></div>
+    <div class="app-login__brand">${wordmark(c)}<span class="app-login__tag">${c.brand.tagline}</span></div>
   </div>
 
   <section class="app-login__sheet" aria-labelledby="app-title">

@@ -2188,3 +2188,12 @@ a.todo__name:hover { text-decoration: underline; text-underline-offset: 3px; }
 .doc-logo { display: block; width: 110px; height: auto; margin: 0 auto 14px; }
 .doc-logo--h { width: 190px; margin: 0 0 6px; }
 .dl-head { text-align: center; }
+/* Logo ve başlıklarda "4" diğer harflerle aynı hizada (Cormorant'ın düz rakamları) */
+html { font-variant-numeric: lining-nums; }
+/* Logo çizimi (site, panel, uygulama girişi) */
+.brand__mark { display: block; height: 15px; width: auto; }
+.site-header .brand__mark { height: 16px; }
+@media (min-width: 900px) { .site-header .brand__mark { height: 20px; } }
+.panel-header .brand__mark { height: 13px; }
+.site-footer .brand__mark { height: 16px; }
+.app-login__brand .brand__mark { height: 20px; margin: 0 auto 10px; }
