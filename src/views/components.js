@@ -73,7 +73,6 @@ function siteFooter(c) {
         <a href="/giris">Çift Girişi</a>
         ${config.demoMode ? h`<a href="/gorus">Görüş bildir</a>` : ''}
       </nav>
-      ${(c.cities || []).length ? h`<nav class="site-footer__cities" aria-label="Hizmet bölgeleri">${c.cities.map((x) => h`<a href="/${x.slug}">${x.title}</a>`)}</nav>` : ''}
       <div class="site-footer__social">
         <a class="icon-link" href="${links.instagram(c)}" target="_blank" rel="noopener">${icon('instagram')}<span>@${c.contact.instagram}</span></a>
         <a class="icon-link" href="${links.whatsapp(c)}" target="_blank" rel="noopener">${icon('whatsapp')}<span>WhatsApp</span></a>
