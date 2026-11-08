@@ -16,7 +16,9 @@ function appLogin(c, { error, values = {}, heroUrl }) {
 <meta name="theme-color" content="#1c1a18">
 <meta name="robots" content="noindex">
 <link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/images/favicon-96.png" type="image/png" sizes="96x96">
 <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">

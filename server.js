@@ -72,6 +72,7 @@ function serveStatic(req, res, pathname) {
   if (rel === '/sw.js' || rel === '/manifest.webmanifest' || rel === '/offline.html') {
     return sendFile(req, res, PUBLIC_DIR, rel.slice(1), { cache: 'no-cache' });
   }
+  if (rel === '/favicon.ico') return sendFile(req, res, PUBLIC_DIR, 'favicon.ico', { cache: 'public, max-age=604800' }); // Google ve tarayıcılar kökte arar
   if (rel === '/css/tema.css') return false; // sitenin renk ayarı: router üretir
   if (rel.startsWith('/css/') || rel.startsWith('/js/') || rel.startsWith('/images/') ) {
     return sendFile(req, res, PUBLIC_DIR, rel.slice(1), { cache: config.isProd ? 'public, max-age=604800' : 'no-cache' });

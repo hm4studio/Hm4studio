@@ -141,7 +141,10 @@ ${image ? h`<meta property="og:image" content="${image}"><meta name="twitter:car
 ${!config.indexable || !canonical ? raw('<meta name="robots" content="noindex, nofollow">') : ''}
 ${ld.map(jsonLd)}
 ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
+<link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/images/favicon-96.png" type="image/png" sizes="96x96">
+<link rel="icon" href="/images/favicon-192.png" type="image/png" sizes="192x192">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
