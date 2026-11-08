@@ -9,8 +9,16 @@ function requireAdmin(req, res) {
   return false;
 }
 
+// Panele giriş takibi (yönetici çift gibi bakınca sayılmaz); veritabanına en fazla 5 dakikada bir yazılır
+const seen = new Map();
+function markSeen(id) {
+  const now = Date.now();
+  if (!id || now - (seen.get(id) || 0) < 5 * 60 * 1000) return;
+  seen.set(id, now);
+  try { require('../db').touchCouple(id); } catch (err) { console.error('Giriş kaydı:', err.message); }
+}
 function requireCouple(req, res) {
-  if (req.session?.kind === 'couple') return true;
+  if (req.session?.kind === 'couple') { markSeen(req.session.userId); return true; }
   redirect(res, '/giris');
   return false;
 }

@@ -192,6 +192,7 @@ for (const [col, def] of [
   ['source', "TEXT NOT NULL DEFAULT ''"], ['notes', "TEXT NOT NULL DEFAULT ''"],
   ['photo_ready', 'INTEGER NOT NULL DEFAULT 0'], ['video_ready', 'INTEGER NOT NULL DEFAULT 0'], ['album_ready', 'INTEGER NOT NULL DEFAULT 0'],
   ['album_info_sent_at', 'TEXT'],
+  ['first_seen_at', 'TEXT'], ['last_seen_at', 'TEXT'], ['visit_count', 'INTEGER NOT NULL DEFAULT 0'],
 ]) addColumn('couples', col, def);
 
 db.exec(`
@@ -554,6 +555,10 @@ module.exports = {
     .run(x.name, x.phone || null, x.eventType || null, x.estText || null, x.estDate || null, x.price || 0, x.deposit || 0, x.note || null, id),
   setPrebookingReminder: (id, rid) => q('UPDATE prebookings SET reminder_id = ? WHERE id = ?').run(rid || null, id),
   setPrebookingCouple: (id, coupleId) => q('UPDATE prebookings SET couple_id = ? WHERE id = ?').run(coupleId, id),
+  // Çiftin panele girişi: 30 dakikadan uzun aradan sonraki her açılış yeni ziyaret sayılır
+  touchCouple: (id) => q(`UPDATE couples SET first_seen_at = COALESCE(first_seen_at, datetime('now')),
+    visit_count = visit_count + CASE WHEN last_seen_at IS NULL OR last_seen_at < datetime('now', '-30 minutes') THEN 1 ELSE 0 END,
+    last_seen_at = datetime('now') WHERE id = ?`).run(id),
   getPrebooking: (id) => q('SELECT * FROM prebookings WHERE id = ?').get(id),
   openPrebookings: () => q("SELECT * FROM prebookings WHERE couple_id IS NULL ORDER BY COALESCE(est_date, '9999'), id").all(),
   deletePrebooking: (id) => q('DELETE FROM prebookings WHERE id = ?').run(id),

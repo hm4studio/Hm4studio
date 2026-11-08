@@ -156,6 +156,23 @@ function programBlock(c, upcoming, tomorrowDue, reminders = []) {
 }
 
 // Takip listesi: dikkat isteyen işler (en acil üstte)
+
+// Çiftin panele girişi: "bugün 14:20", "dün", "5 gün önce" (kayıtlar UTC)
+function seenText(utc) {
+  if (!utc) return '';
+  const d = new Date(`${utc.replace(' ', 'T')}Z`);
+  const local = new Date(d.getTime() + 3 * 3600 * 1000).toISOString();
+  const day = local.slice(0, 10);
+  const n = daysBetween(day, today());
+  if (n <= 0) return `bugün ${local.slice(11, 16)}`;
+  if (n === 1) return `dün ${local.slice(11, 16)}`;
+  if (n < 30) return `${n} gün önce`;
+  return formatDate(day);
+}
+function panelSeen(k) {
+  return k.last_seen_at ? `Panele son giriş ${seenText(k.last_seen_at)}${k.visit_count > 1 ? ` · ${k.visit_count} kez girdi` : ''}` : 'Panele henüz girmedi';
+}
+
 function attentionItems(c, couples) {
   const t = today();
   const last = c.stages.length - 1;
@@ -173,6 +190,7 @@ function attentionItems(c, couples) {
     if (k.album_design_state === 'degisiklik') items.push({ k, level: 2, text: 'Albüm tasarımında değişiklik istendi', tag: 'Albüm' });
     if (k.album_design_state === 'onaylandi' && k.album_design_at && daysBetween(k.album_design_at.slice(0, 10), t) <= 3) items.push({ k, level: 1, text: 'Albüm tasarımı onaylandı, baskıya hazır', tag: 'Albüm' });
     if (k.photo_count > 0 && !k.album_locked && k.stage < last) items.push({ k, level: 1, text: `Albüm seçimi bekleniyor (${k.fav_count}/${k.album_limit})`, tag: 'Albüm' });
+    if (!k.last_seen_at && k.stage < last && k.created_at && daysBetween(k.created_at.slice(0, 10), t) >= 3) items.push({ k, level: 1, text: 'Panele hiç girmedi; giriş bilgilerini yeniden gönderin', tag: 'Panel' });
     const until = journey.keepUntil(c, k);
     if (until && until < t && !k.archived_at && k.photo_count > 0) items.push({ k, level: 1, text: 'İndirme süresi doldu; dosyaları sunucudan silebilirsiniz', tag: 'Dosyalar' });
   }
@@ -216,7 +234,7 @@ function coupleCard(c, k) {
       </span>
       <span class="crow__pay${urgent ? ' is-urgent' : ''}">${pay[0] === 'paid' ? h`<span class="crow__sub">Ödendi</span>` : pay[0] === 'none' ? h`<span class="crow__sub">Tutar yok</span>` : h`<span>${tl(pay[2])}</span><span class="crow__sub">kalan</span>`}</span>
       <span class="crow__ready" aria-label="Hazır olanlar">
-        <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span><span class="${k.contract_status === 'imzali' ? 'is-on' : ''}" title="${k.contract_status === 'imzali' ? 'Sözleşme onaylandı' : k.contract_status ? 'Sözleşme onay bekliyor' : 'Sözleşme gönderilmedi'}">S</span>
+        <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span><span class="${k.contract_status === 'imzali' ? 'is-on' : ''}" title="${k.contract_status === 'imzali' ? 'Sözleşme onaylandı' : k.contract_status ? 'Sözleşme onay bekliyor' : 'Sözleşme gönderilmedi'}">S</span><span class="${k.last_seen_at ? 'is-on' : ''}" title="${panelSeen(k)}">P</span>
       </span>
     </a>
   </li>`;
@@ -245,8 +263,8 @@ function stageBoard(c, couples) {
 }
 
 // Yapılacaklar: bekleyen işler, gönderilecek mesajlar, tamamlanan seçimler, kabul edilen teklifler ve yeni talepler tek listede
-const TAG_ICON = { Hatırlatma: ['bell', 'cek'], Teslim: ['gift', 'tes'], Ödeme: ['lira', 'pay'], Plan: ['calendar', 'cek'], Sözleşme: ['sign', 'soz'], Albüm: ['book', 'alb'], Hediye: ['gift', 'alb'], Dosyalar: ['folder', 'vid'], Mesaj: ['whatsapp', 'tes'], Ekip: ['users', 'soz'], Seçim: ['heart', 'sec'], Teklif: ['sign', 'pay'], Talep: ['inbox', 'sec'] };
-const TAG_TAB = { Teslim: 'teslim', Ödeme: 'odeme', Plan: 'plan', Sözleşme: 'odeme', Albüm: 'album', Hediye: 'hediye', Dosyalar: 'ayar' };
+const TAG_ICON = { Hatırlatma: ['bell', 'cek'], Teslim: ['gift', 'tes'], Ödeme: ['lira', 'pay'], Plan: ['calendar', 'cek'], Sözleşme: ['sign', 'soz'], Albüm: ['book', 'alb'], Hediye: ['gift', 'alb'], Dosyalar: ['folder', 'vid'], Mesaj: ['whatsapp', 'tes'], Ekip: ['users', 'soz'], Seçim: ['heart', 'sec'], Teklif: ['sign', 'pay'], Talep: ['inbox', 'sec'], Panel: ['users', 'soz'] };
+const TAG_TAB = { Teslim: 'teslim', Ödeme: 'odeme', Plan: 'plan', Sözleşme: 'odeme', Albüm: 'album', Hediye: 'hediye', Dosyalar: 'ayar', Panel: 'ayar' };
 function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders = [], csrf = '' }) {
   const rows = [];
   const t = today();
@@ -822,7 +840,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
         <p class="muted">${(() => {
           const pay = payment(card);
           const first = evs.map((e) => e.event_date).filter(Boolean).sort()[0];
-          return [couple.ref_no, first ? `${card.types ? card.types.split(', ')[0] + ' ' : ''}${formatDate(card.next_date || first)}` : card.types, card.total ? (pay[2] ? `Kalan ödeme ${tl(pay[2])}` : 'Ödendi') : ''].filter(Boolean).join(' · ');
+          return [couple.ref_no, first ? `${card.types ? card.types.split(', ')[0] + ' ' : ''}${formatDate(card.next_date || first)}` : card.types, card.total ? (pay[2] ? `Kalan ödeme ${tl(pay[2])}` : 'Ödendi') : '', panelSeen(couple)].filter(Boolean).join(' · ');
         })()}</p>
       </div>
     </div>
@@ -1006,6 +1024,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
         <div class="panel-section__head"><h2 class="panel-section__title" id="access-title">Giriş bilgileri</h2></div>
         <p class="muted">Giriş adresi: <code>${loginUrl}</code></p>
         <p class="muted">Erişim kodu: <code>${couple.access_code}</code></p>
+        <p class="muted">${couple.first_seen_at ? `İlk giriş ${seenText(couple.first_seen_at)}, son giriş ${seenText(couple.last_seen_at)}, toplam ${couple.visit_count} kez.` : 'Çift panele henüz hiç girmedi. Giriş bilgilerini WhatsApp’tan yeniden gönderebilir ya da şifreyi yenileyebilirsiniz.'}</p>
         <form method="post" action="${base}/sifre" data-confirm="Yeni şifre oluşturulsun mu? Eski şifre çalışmayı bırakır.">
           ${csrfField(csrf)}
           <button class="btn btn--outline" type="submit">Şifre yenile</button>
