@@ -185,12 +185,6 @@ function register(router) {
     return out.length ? `Dikkat, aynı gün başka çekim var: ${[...new Set(out)].join(' · ')}` : '';
   }
 
-  function defaultDue(a, list, c) {
-    if (a.dueDate) return a.dueDate;
-    const last = list.map((e) => e.eventDate).filter(Boolean).sort().pop();
-    return last ? addDays(last, Number(c.appointments?.defaultDeliveryDays) || 45) : null;
-  }
-
   router.post('/admin/ciftler', async (req, res) => {
     const form = await formGuard(req, res);
     if (!form) return;
@@ -206,7 +200,7 @@ function register(router) {
     const password = auth.memorablePassword();
     const hash = auth.hashPassword(password);
     const id = db.createCouple({ name: a.name, accessCode: code, hash, eventDate: null });
-    a.dueDate = defaultDue(a, list, c);
+    a.dueDate = null; // teslim tarihi çekimden sonra sayılır (son çekim + varsayılan süre)
     db.updateCard(id, a);
     db.setDiscount(id, a.discount);
     const assigned = saveEvents(id, list);
@@ -253,7 +247,7 @@ function register(router) {
     if (errors.length) {
       return html(res, views.appointmentPage(c, { values: form, action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, errors, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }), 400);
     }
-    a.dueDate = a.dueDate || couple.due_date || defaultDue(a, list, c);
+    a.dueDate = a.dueDate || null; // boşsa son çekimden itibaren otomatik hesaplanır
     db.updateCard(couple.id, a);
     db.setDiscount(couple.id, a.discount);
     const assigned = saveEvents(couple.id, list);

@@ -166,7 +166,7 @@ function attentionItems(c, couples) {
     let plan = {};
     try { plan = JSON.parse(k.plan_json || '{}') || {}; } catch { /* boş */ }
     if (st[0] === 'late') items.push({ k, level: 3, text: `Teslim ${daysBetween(k.due_date, t)} gün gecikti`, tag: 'Teslim' });
-    else if (k.due_date && k.stage < last && k.due_date >= t && daysBetween(t, k.due_date) <= 7) items.push({ k, level: 2, text: `Teslime ${daysBetween(t, k.due_date)} gün kaldı`, tag: 'Teslim' });
+    else if (st[0] !== 'upcoming' && k.due_date && k.stage < last && k.due_date >= t && daysBetween(t, k.due_date) <= 7) items.push({ k, level: 2, text: `Teslime ${daysBetween(t, k.due_date)} gün kaldı`, tag: 'Teslim' });
     if (k.next_date && pay[2] > 0 && daysBetween(t, k.next_date) <= 14) items.push({ k, level: daysBetween(t, k.next_date) <= 3 ? 3 : 2, text: `Etkinlik ${relDays(daysBetween(t, k.next_date))}, ${tl(pay[2])} bakiye var`, tag: 'Ödeme' });
     if (k.next_date && !plan.saved && daysBetween(t, k.next_date) <= 10) items.push({ k, level: 1, text: 'Gün planı doldurulmadı', ctx: `etkinlik ${relDays(daysBetween(t, k.next_date))}`, tag: 'Plan' });
     if (k.contract_status === 'bekliyor') items.push({ k, level: k.next_date && daysBetween(t, k.next_date) <= 14 ? 2 : 1, text: 'Sözleşme onayı bekleniyor', tag: 'Sözleşme' });
@@ -478,9 +478,10 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       <fieldset class="appt-group">
         <legend>Teslim</legend>
         <div class="appt-row">
-          <div class="field"><label for="dueDate">Teslim tarihi <span class="muted">(boşsa son etkinlikten ${o.defaultDeliveryDays || 45} gün sonra)</span></label><input id="dueDate" name="dueDate" type="date" value="${v('dueDate')}"></div>
+          ${isNew ? '' : h`<div class="field"><label for="dueDate">Teslim tarihi <span class="muted">(boş bırakın: son çekimden ${o.defaultDeliveryDays || 45} gün sonra)</span></label><input id="dueDate" name="dueDate" type="date" value="${v('dueDate')}"></div>`}
           <div class="field"><label for="albumLimit">Albüm kare sayısı</label><input id="albumLimit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${v('albumLimit') || 35}"></div>
         </div>
+        ${isNew ? h`<p class="muted appt-help">Teslim tarihi çekimden sonra kendiliğinden belirlenir: son çekimden ${o.defaultDeliveryDays || 45} gün sonra. Gerekirse çekimden sonra kişi kartından değiştirebilirsiniz.</p>` : ''}
         ${isNew ? '' : h`<div class="appt-checks">${chk('photoReady', 'Fotoğraflar hazır')}${chk('videoReady', 'Video hazır')}${chk('albumReady', 'Albüm hazır')}</div>`}
         ${chk('waOptin', 'WhatsApp bildirimleri gönderilsin')}
       </fieldset>

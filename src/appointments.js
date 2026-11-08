@@ -109,7 +109,7 @@ function formValues(k, events = [], teamOf = () => []) {
   if (!k) return {};
   const v = {
     fullName: k.full_name || k.name, partnerName: k.partner_name, phone: k.phone ? wa.displayPhone(k.phone) : '',
-    source: k.source, dueDate: k.due_date || '', photoReady: k.photo_ready, videoReady: k.video_ready,
+    source: k.source, dueDate: k.due_manual || '', photoReady: k.photo_ready, videoReady: k.video_ready,
     albumReady: k.album_ready, albumLimit: k.album_limit, waOptin: k.wa_optin, notes: k.notes,
     discount: k.discount ? String(k.discount) : '',
   };

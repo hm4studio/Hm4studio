@@ -309,6 +309,19 @@ const q = (sql) => db.prepare(sql);
   }
 })();
 
+// Teslim tarihi çekimden sonra sayılır: elle girilmemişse (ya da eski kayıtta çekimden önceye düşüyorsa)
+// son çekim tarihi + varsayılan teslim süresi. due_manual = elle girilen değer (formda yalnızca o gösterilir).
+function withDue(r) {
+  if (!r) return r;
+  let days = 45;
+  try { days = Number(require('./content').getContent().appointments?.defaultDeliveryDays) || 45; } catch { /* varsayılan */ }
+  const plus = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  r.due_manual = r.due_date || null;
+  const invalid = r.due_date && r.event_date && r.due_date <= r.event_date;
+  if (!r.due_date || invalid) { r.due_date = r.event_date ? plus(r.event_date, days) : null; r.due_auto = Boolean(r.due_date); }
+  return r;
+}
+
 // Boyutu bilinmeyen fotoğrafların önizleme boyutu dosyadan okunup kaydedilir (eski yüklemeler için bir kez)
 function withDims(rows) {
   const missing = rows.filter((p) => !p.w);
@@ -355,10 +368,10 @@ module.exports = {
   setAdminPassword: (id, hash) => q('UPDATE admins SET password_hash = ? WHERE id = ?').run(hash, id),
 
   // ── Çiftler ──
-  listCouples: () => q(`${CARD_SQL} ORDER BY c.created_at DESC, c.id DESC`).all(),
-  getCoupleCard: (id) => q(`${CARD_SQL} WHERE c.id = ?`).get(id),
-  getCouple: (id) => q('SELECT * FROM couples WHERE id = ?').get(id),
-  getCoupleByCode: (code) => q('SELECT * FROM couples WHERE access_code = ?').get(code),
+  listCouples: () => q(`${CARD_SQL} ORDER BY c.created_at DESC, c.id DESC`).all().map(withDue),
+  getCoupleCard: (id) => withDue(q(`${CARD_SQL} WHERE c.id = ?`).get(id)),
+  getCouple: (id) => withDue(q('SELECT * FROM couples WHERE id = ?').get(id)),
+  getCoupleByCode: (code) => withDue(q('SELECT * FROM couples WHERE access_code = ?').get(code)),
   createCouple: ({ name, accessCode, hash, eventDate }) =>
     Number(q('INSERT INTO couples(name, access_code, password_hash, event_date) VALUES(?, ?, ?, ?)')
       .run(name, accessCode, hash, eventDate || null).lastInsertRowid),
