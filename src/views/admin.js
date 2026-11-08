@@ -297,7 +297,7 @@ function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders 
   return rows.sort((a, b) => b.level - a.level);
 }
 
-function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
@@ -320,6 +320,13 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       </div>
     </header>
     ${flashBlock(f)}
+    ${signed.length ? h`<section class="signed" aria-label="Sözleşme onayları">${signed.map((k) => h`
+      <div class="signed__item">
+        <span class="signed__icon" aria-hidden="true">${icon('check')}</span>
+        <p class="signed__text"><a href="/admin/ciftler/${k.couple_id}#odeme"><strong>${k.name}</strong></a> sözleşmeyi onayladı
+          <span class="signed__when">${seenText(k.signed_at)}${k.signer_name && k.signer_name !== k.name ? ` · imzalayan: ${k.signer_name}` : ''}</span></p>
+        <form method="post" action="/admin/sozlesme/${k.id}/gordum" class="inline-form">${csrfField(csrf)}<button class="btn btn--outline btn--sm" type="submit">Tamam</button></form>
+      </div>`)}</section>` : ''}
 
     <div class="kpis">
       <a class="kpi kpi--cek" href="/admin/takvim"><span class="dic">${icon('camera')}</span><span><b>${monthEvents.length}</b><span>${MONTHS[Number(ym.slice(5)) - 1]} ayında çekim</span></span></a>
@@ -745,7 +752,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=53"></head>
+  <link rel="stylesheet" href="/css/style.css?v=54"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">

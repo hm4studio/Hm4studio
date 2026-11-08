@@ -315,6 +315,12 @@ CREATE TABLE IF NOT EXISTS notifications (
   sent_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+// Stüdyonun "gördüm" dediği sözleşme onayları (Bugün sayfasındaki bildirim). Eskiler görülmüş sayılır.
+if (!db.prepare('PRAGMA table_info(contracts)').all().some((c) => c.name === 'admin_seen_at')) {
+  db.exec('ALTER TABLE contracts ADD COLUMN admin_seen_at TEXT');
+  db.exec('UPDATE contracts SET admin_seen_at = signed_at WHERE signed_at IS NOT NULL');
+}
+
 
 const q = (sql) => db.prepare(sql);
 
@@ -528,6 +534,9 @@ module.exports = {
     q("UPDATE photos SET gallery_id = ? WHERE couple_id = ? AND kind = 'secim' AND gallery_id IS NULL").run(id, coupleId);
     return id;
   },
+  unseenSignedContracts: () => q(`SELECT k.id, k.couple_id, k.signed_at, k.signer_name, c.name FROM contracts k JOIN couples c ON c.id = k.couple_id
+    WHERE k.signed_at IS NOT NULL AND k.admin_seen_at IS NULL AND k.cancelled_at IS NULL ORDER BY k.signed_at DESC`).all(),
+  markContractSeen: (id) => q("UPDATE contracts SET admin_seen_at = datetime('now') WHERE id = ?").run(id),
   setCoverPhoto: (coupleId, photoId) => q('UPDATE couples SET cover_photo_id = ? WHERE id = ?').run(photoId || null, coupleId),
   addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey, w = null, h = null, galleryId = null }) =>
     Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind, upload_key, w, h, gallery_id) VALUES(?, ?, ?, ?, date('now'), ?, ?, ?, ?, ?)")

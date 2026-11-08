@@ -103,7 +103,7 @@ function register(router) {
     const outbox = wa.autoSend() ? [] : require('../outbox').list();
     const quotes = db.listQuotes().filter((q) => q.status === 'kabul' && !q.couple_id);
     const newLeads = db.listLeads().filter((l) => l.status === 'yeni').length;
-    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, reminders: db.openReminders(), prebookings: db.openPrebookings(), couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, reminders: db.openReminders(), prebookings: db.openPrebookings(), signed: db.unseenSignedContracts(), couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   // Elle gönderilen WhatsApp mesajı "gönderildi" (veya "atla") olarak işaretlenir; listeden düşer
@@ -1159,6 +1159,14 @@ function register(router) {
     const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt, kind, uploadKey, w: dim.w || null, h: dim.h || null, galleryId });
     events.photosUploaded(couple.id, kind);
     json(res, { ok: true, id });
+  });
+
+  // Bugün sayfasındaki "X sözleşmeyi onayladı" bildirimi: Tamam deyince kalkar
+  router.post('/admin/sozlesme/:id/gordum', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    db.markContractSeen(toId(params.id));
+    redirect(res, '/admin');
   });
 
   // ── Galeriler: bir çiftin birden çok çekimi ayrı galerilerde (ör. "Sokak çekimi", "Plato") ──

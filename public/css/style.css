@@ -2336,3 +2336,14 @@ html { overflow-x: clip; }
 .galedit { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; margin: 0 0 14px; }
 .galedit__name { display: flex; gap: 8px; align-items: center; flex: 1 1 260px; }
 .galedit__name input { flex: 1; }
+
+/* Bugün: sözleşme onayı bildirimleri */
+.signed { display: grid; gap: 8px; margin: 0 0 28px; }
+.signed__item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; background: var(--c-tes-bg, #ecf0ed); border-radius: 10px; animation: signed-in .5s var(--soft, ease) both; }
+.signed__icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--c-tes, #4f6f5c); color: #fff; }
+.signed__icon .icon { width: 17px; height: 17px; }
+.signed__text { margin: 0; font-size: .95rem; line-height: 1.35; }
+.signed__text a { color: inherit; text-decoration: none; }
+.signed__text a:hover strong { text-decoration: underline; }
+.signed__when { display: block; font-size: .8rem; color: var(--pencil, #6f7480); }
+@keyframes signed-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
