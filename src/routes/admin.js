@@ -58,6 +58,7 @@ async function formGuard(req, res) {
   return form;
 }
 
+const pfUploads = new Map(); // portfolyo yüklemesi: aynı dosya ikinci kez eklenmesin
 function register(router) {
   // ── Giriş ──
   router.get('/admin/giris', (req, res) => {
@@ -1174,6 +1175,40 @@ function register(router) {
   });
 
   // ── Portfolyo ──
+  // Portfolyo etiketleri (Ayarlar): ekle, yeniden adlandır, sırala, sil — fotoğraflardaki etiketler de güncellenir
+  router.get('/admin/portfolyo-etiketleri', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const counts = {};
+    for (const p of portfolioItems()) for (const t of p.tags) counts[t] = (counts[t] || 0) + 1;
+    html(res, views.portfolioTagsPage(getContent(), { counts, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/portfolyo-etiketleri', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const rows = Object.keys(form).filter((k) => /^name_\d+$/.test(k)).map((k) => {
+      const i = k.slice(5);
+      return { name: cleanText(form[k], 40), old: cleanText(form[`old_${i}`], 40) };
+    });
+    const list = [];
+    const rename = new Map();
+    for (const r of rows) {
+      if (!r.name || list.some((x) => x.toLocaleLowerCase('tr-TR') === r.name.toLocaleLowerCase('tr-TR'))) continue;
+      list.push(r.name);
+      if (r.old && r.old !== r.name) rename.set(r.old, r.name);
+    }
+    if (list.length > 40) list.length = 40;
+    const keep = new Set(list);
+    for (const p of portfolioItems()) {
+      const next = [...new Set(p.tags.map((t) => rename.get(t) || t).filter((t) => keep.has(t)))];
+      if (JSON.stringify(next) !== JSON.stringify(p.tags)) db.setPortfolioTags(p.id, next);
+    }
+    const o = siteOver();
+    o.portfolio = { ...(o.portfolio || {}), categories: list };
+    saveOver(o);
+    setFlash(req, { message: 'Portfolyo etiketleri kaydedildi.', type: 'success' });
+    redirect(res, '/admin/portfolyo-etiketleri');
+  });
+
   router.get('/admin/portfolyo', (req, res) => {
     if (!requireAdmin(req, res)) return;
     html(res, views.portfolioAdmin(getContent(), {
@@ -1193,15 +1228,16 @@ function register(router) {
     media.markUploadActivity();
     // Tekrar denemede aynı dosya ikinci kez eklenmesin (ilk deneme kaydedilmiş ama cevap yolda kaybolmuş olabilir)
     const uploadKey = /^[a-f0-9]{32}$/.test(String(req.headers['x-upload-key'] || '')) ? String(req.headers['x-upload-key']) : null;
-    const seen = uploadKey && db.photoByUploadKey(couple.id, uploadKey);
-    if (seen) { req.resume(); return json(res, { ok: true, id: seen.id, again: true }); }
+    const seenId = uploadKey && pfUploads.get(uploadKey);
+    if (seenId) { req.resume(); return json(res, { ok: true, id: seenId, again: true }); }
     const body = await readBody(req, config.maxUploadBytes);
     const parts = media.splitParts(req, body);
     const fileKey = newKey();
     const cats = getContent().portfolio.categories;
     const category = decodeURIComponent(String(req.headers['x-category'] || ''));
     media.savePortfolioPhoto(fileKey, parts);
-    const id = db.addPortfolioItem({ fileKey, category: cats.includes(category) ? category : '', alt: '' });
+    const id = db.addPortfolioItem({ fileKey, tags: cats.includes(category) ? [category] : [], alt: '' });
+    if (uploadKey) { pfUploads.set(uploadKey, id); if (pfUploads.size > 500) pfUploads.delete(pfUploads.keys().next().value); }
     json(res, { ok: true, id });
   });
 
@@ -1211,7 +1247,7 @@ function register(router) {
     const item = db.getPortfolioItem(toId(params.id));
     if (!item) throw new HttpError(404, 'Bulunamadı');
     const cats = getContent().portfolio.categories;
-    db.updatePortfolioItem(item.id, { category: cats.includes(form.category) ? form.category : '', alt: cleanText(form.alt, 160) });
+    db.updatePortfolioItem(item.id, { tags: cats.filter((t) => (form.tags || []).includes(t)), alt: cleanText(form.alt, 160) });
     setFlash(req, { message: 'Kaydedildi.', type: 'success' });
     redirect(res, '/admin/portfolyo');
   });

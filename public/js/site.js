@@ -82,21 +82,64 @@
     if (form && !window.confirm(form.dataset.confirm)) e.preventDefault();
   });
 
-  // ── Portfolyo kategori süzgeci ──
-  const filters = document.querySelector('[data-filters]');
-  if (filters) {
-    filters.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-filter]');
-      if (!btn) return;
-      const cat = btn.dataset.filter;
-      filters.querySelectorAll('[data-filter]').forEach((b) => {
-        const on = b === btn;
-        b.classList.toggle('is-active', on);
-        b.setAttribute('aria-pressed', String(on));
+  // ── Portfolyo etiketleri: sayfa yenilenmeden süzer, adres çubuğu etiket bağlantısını gösterir ──
+  const tagNav = document.querySelector('[data-pf-tags]');
+  if (tagNav) {
+    const grid = document.querySelector('[data-pf-grid]');
+    const title = document.querySelector('.page-hero .page-title');
+    const lead = document.querySelector('.page-hero .page-lead');
+    const ask = document.querySelector('[data-pf-ask]');
+    const brand = tagNav.dataset.base;
+    const allTitle = 'Portfolyo';
+    const allLead = tagNav.dataset.lead;
+    const esc = (t) => t.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+    const keepActiveInView = (a) => {
+      const track = tagNav.querySelector('.pf-tags__track');
+      const x = a.offsetLeft - (track.clientWidth - a.clientWidth) / 2;
+      track.scrollTo({ left: Math.max(0, x), behavior: 'smooth' });
+    };
+    const show = (a, push) => {
+      const tag = a.dataset.tag;
+      tagNav.querySelectorAll('.pf-tag').forEach((x) => {
+        const on = x === a;
+        x.classList.toggle('is-active', on);
+        if (on) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
       });
-      document.querySelectorAll('.gallery__item').forEach((li) => {
-        li.hidden = Boolean(cat) && li.dataset.category !== cat;
-      });
+      grid?.classList.add('is-switching');
+      setTimeout(() => {
+        let n = 0;
+        document.querySelectorAll('.gallery__item').forEach((li) => {
+          const hit = !tag || (li.dataset.tags || '').split('|').includes(tag);
+          li.hidden = !hit;
+          if (hit) n += 1;
+        });
+        if (title) title.innerHTML = tag ? `${esc(tag)}<span class="pf-hero-sub"> · Portfolyo</span>` : allTitle;
+        if (lead) lead.textContent = tag ? `${n} fotoğraf. Diğer mekan ve tarzlara aşağıdan göz atabilirsiniz.` : (allLead || lead.textContent);
+        if (ask) {
+          ask.hidden = !tag;
+          ask.querySelector('[data-pf-ask-text]').textContent = tag ? `${tag} gibi bir çekim mi düşünüyorsunuz?` : '';
+          const link = ask.querySelector('[data-pf-ask-link]');
+          link.href = `https://wa.me/${link.dataset.wa}?text=${encodeURIComponent(`Merhaba, ${tag} çekimleriniz hakkında bilgi almak istiyorum.`)}`;
+        }
+        document.title = tag ? `${tag} fotoğrafları — ${brand}` : `Portfolyo — ${brand}`;
+        grid?.classList.remove('is-switching');
+      }, 180);
+      if (push) history.pushState({ pfTag: tag }, '', a.getAttribute('href'));
+      keepActiveInView(a);
+    };
+    // İlk açılışta seçili etiket görünür alana kaydırılır
+    const cur = tagNav.querySelector('.pf-tag.is-active');
+    if (cur) requestAnimationFrame(() => keepActiveInView(cur));
+    tagNav.addEventListener('click', (e) => {
+      const a = e.target.closest('.pf-tag');
+      if (!a || e.metaKey || e.ctrlKey) return;
+      e.preventDefault();
+      if (!a.classList.contains('is-active')) show(a, true);
+    });
+    window.addEventListener('popstate', () => {
+      const path = location.pathname.replace(/\/$/, '') || '/portfolyo';
+      const a = [...tagNav.querySelectorAll('.pf-tag')].find((x) => x.getAttribute('href') === path);
+      if (a) show(a, false);
     });
   }
 

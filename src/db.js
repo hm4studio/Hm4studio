@@ -86,6 +86,9 @@ addColumn('couples', 'phone', 'TEXT');
 addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
+// Portfolyo etiketleri (birden çok: "Sinop", "Gün batımı"...). Eski tek kategori ilk etikete taşınır.
+addColumn('portfolio', 'tags', "TEXT NOT NULL DEFAULT ''");
+db.exec("UPDATE portfolio SET tags = json_array(category) WHERE tags = '' AND category <> ''");
 addColumn('photos', 'kind', "TEXT NOT NULL DEFAULT 'secim'"); // secim: albüm seçimi için · duzenli: düzenlenmiş (renkli) teslim
 addColumn('couples', 'discount', 'INTEGER NOT NULL DEFAULT 0'); // randevuda uygulanan indirim (₺); toplam = etkinlik fiyatları − indirim
 addColumn('photos', 'w', 'INTEGER'); // küçük önizlemenin boyutu: galeride fotoğraflar kırpılmadan, kendi oranında dizilir
@@ -511,9 +514,10 @@ module.exports = {
   // ── Portfolyo ──
   listPortfolio: () => q('SELECT * FROM portfolio ORDER BY id DESC').all(),
   getPortfolioItem: (id) => q('SELECT * FROM portfolio WHERE id = ?').get(id),
-  addPortfolioItem: ({ fileKey, category, alt }) =>
-    Number(q('INSERT INTO portfolio(file_key, category, alt) VALUES(?, ?, ?)').run(fileKey, category, alt).lastInsertRowid),
-  updatePortfolioItem: (id, { category, alt }) => q('UPDATE portfolio SET category = ?, alt = ? WHERE id = ?').run(category, alt, id),
+  addPortfolioItem: ({ fileKey, tags = [], alt }) =>
+    Number(q('INSERT INTO portfolio(file_key, category, tags, alt) VALUES(?, ?, ?, ?)').run(fileKey, tags[0] || '', JSON.stringify(tags), alt).lastInsertRowid),
+  updatePortfolioItem: (id, { tags = [], alt }) => q('UPDATE portfolio SET category = ?, tags = ?, alt = ? WHERE id = ?').run(tags[0] || '', JSON.stringify(tags), alt, id),
+  setPortfolioTags: (id, tags) => q('UPDATE portfolio SET category = ?, tags = ? WHERE id = ?').run(tags[0] || '', JSON.stringify(tags), id),
   deletePortfolioItem: (id) => q('DELETE FROM portfolio WHERE id = ?').run(id),
 
   // ── Talepler (yeni müşteri adayları) ──

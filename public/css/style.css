@@ -2219,3 +2219,46 @@ html { font-variant-numeric: lining-nums; }
 .pre-note { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 10px; background: var(--c-cek-bg, #f3eeea); color: var(--graphite, #1a1a1a); font-size: .9rem; margin: 0 0 20px; }
 .pre-note .icon { width: 18px; height: 18px; flex: none; color: var(--c-cek, #9a6a52); }
 .pre-note a { color: inherit; text-underline-offset: 3px; }
+
+/* Portfolyo etiketleri: ince, harf aralıklı yazı sekmeleri; mobilde yana kayar, kenarlar yumuşak solar */
+.pf-tags { position: relative; margin: 0 0 clamp(28px, 4vw, 44px); border-bottom: 1px solid var(--line); }
+.pf-tags__track { display: flex; gap: clamp(22px, 3vw, 38px); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; padding: 0 2px; }
+.pf-tags__track::-webkit-scrollbar { display: none; }
+@media (max-width: 899px) { .pf-tags__track { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 36px), transparent); padding-right: 36px; } }
+@media (min-width: 900px) { .pf-tags__track { justify-content: center; flex-wrap: wrap; row-gap: 4px; } }
+.pf-tag { position: relative; flex: none; scroll-snap-align: center; padding: 14px 0 15px; font-family: var(--sans); font-size: .72rem; font-weight: 400; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); text-decoration: none; white-space: nowrap; transition: color .35s var(--ease); }
+.pf-tag sup { margin-left: 5px; font-size: .62rem; letter-spacing: .04em; color: var(--muted); opacity: .7; vertical-align: .55em; }
+.pf-tag::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--ink); transform: scaleX(0); transform-origin: center; transition: transform .45s var(--ease); }
+.pf-tag:hover { color: var(--ink); }
+.pf-tag.is-active { color: var(--ink); }
+.pf-tag.is-active::after { transform: scaleX(1); }
+.pf-tag:focus-visible { outline: 1px solid var(--ink); outline-offset: 4px; }
+.pf-hero-sub { font-size: .55em; font-style: italic; color: var(--muted); letter-spacing: 0; }
+.pf-grid { transition: opacity .18s ease; }
+.pf-grid.is-switching { opacity: 0; }
+.pf-ask { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 6px 14px; margin: clamp(36px, 5vw, 56px) 0 0; text-align: center; font-family: var(--serif); font-size: 1.35rem; font-style: italic; color: var(--ink-2); }
+.pf-ask[hidden] { display: none; }
+.pf-ask a { display: inline-flex; align-items: center; gap: 8px; font-family: var(--sans); font-style: normal; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--ink); padding-bottom: 3px; }
+.pf-ask a .icon { width: 14px; height: 14px; transition: transform .3s var(--ease); }
+.pf-ask a:hover .icon { transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) { .pf-grid, .pf-tag::after { transition: none; } }
+
+/* Portfolyo yönetimi: etiket seçimi, bağlantılar, etiket ayarı */
+.tagpick { display: flex; flex-wrap: wrap; gap: 6px; border: 0; margin: 0 0 8px; padding: 0; }
+.tagpick__c { position: relative; cursor: pointer; }
+.tagpick__c input { position: absolute; opacity: 0; pointer-events: none; }
+.tagpick__c span { display: inline-block; padding: 4px 10px; border: 1px solid var(--rule-2, #d6d5d0); border-radius: 999px; font-size: .75rem; color: var(--pencil, #6f7480); transition: all .2s; }
+.tagpick__c input:checked + span { background: var(--graphite, #1f2a3a); border-color: var(--graphite, #1f2a3a); color: #fff; }
+.tagpick__c input:focus-visible + span { outline: 2px solid var(--graphite, #1f2a3a); outline-offset: 2px; }
+.taglinks { list-style: none; margin: 0; padding: 0; }
+.taglinks__row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--rule, #e6e5e1); }
+.taglinks__name { font-weight: 500; }
+.taglinks__acts { display: flex; gap: 4px; flex: none; }
+.tagrows { list-style: none; margin: 0 0 12px; padding: 0; }
+.tagrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 0; }
+.tagrow[hidden] { display: none; }
+.tagrow__n { font-size: .8rem; white-space: nowrap; }
+.tagrow__acts { display: flex; }
+.page-hero + .section.section--flush-top { padding-top: 0; }
+@media (max-width: 899px) { .pf-tags__track { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 36px), transparent); } }
+.tagrow__n { min-width: 4.5em; }

@@ -12,9 +12,11 @@ const panelViews = require('../views/panel');
 const appViews = require('../views/app');
 const { checkCsrf, slugify } = require('./guards');
 
+const parseTags = (p) => { try { const t = JSON.parse(p.tags || '[]'); return Array.isArray(t) ? t : []; } catch { return p.category ? [p.category] : []; } };
 function portfolioItems() {
   return db.listPortfolio().map((p) => ({
     ...p,
+    tags: parseTags(p),
     thumb: media.portfolioUrl(p.file_key, 'thumb'),
     display: media.portfolioUrl(p.file_key, 'display'),
   }));
@@ -67,7 +69,9 @@ function register(router) {
   // Google için site haritası ve robots.txt
   router.get('/sitemap.xml', (req, res) => {
     const c = getContent();
-    const paths = ['/', '/portfolyo', '/hakkimizda', '/iletisim', ...(c.cities || []).map((x) => `/${x.slug}`), '/kvkk'];
+    const usedTags = new Set(portfolioItems().flatMap((p) => p.tags));
+    const tagPaths = (c.portfolio.categories || []).filter((t) => usedTags.has(t)).map((t) => `/portfolyo/${slugify(t)}`);
+    const paths = ['/', '/portfolyo', ...tagPaths, '/hakkimizda', '/iletisim', ...(c.cities || []).map((x) => `/${x.slug}`), '/kvkk'];
     const today = new Date().toISOString().slice(0, 10);
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${paths.map((p) => `  <url><loc>${config.siteUrl}${p}</loc><lastmod>${today}</lastmod></url>`).join('\n')}\n</urlset>\n`;
     res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
@@ -84,6 +88,13 @@ function register(router) {
   router.get('/portfolyo', async (req, res) => {
     const c = getContent();
     html(res, views.portfolioPage(c, { portfolio: portfolioItems(), instagram: await getInstagramPosts(12) }));
+  });
+  // Etiket sayfası: /portfolyo/sinop → yalnızca o etiketin fotoğrafları (çiftlere gönderilecek bağlantı)
+  router.get('/portfolyo/:etiket', async (req, res, { params }) => {
+    const c = getContent();
+    const tag = (c.portfolio.categories || []).find((t) => slugify(t) === params.etiket);
+    if (!tag) return redirect(res, '/portfolyo');
+    html(res, views.portfolioPage(c, { portfolio: portfolioItems(), instagram: await getInstagramPosts(12), active: tag }));
   });
 
   // Sitenin renk ayarı (Ayarlar › Site)
@@ -169,4 +180,5 @@ function register(router) {
   });
 }
 
-module.exports = { register, portfolioItems, heroUrl };
+module.exports = {
+  parseTags, register, portfolioItems, heroUrl };

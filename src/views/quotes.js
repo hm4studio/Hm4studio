@@ -120,7 +120,7 @@ function adminView(c, { q, csrf, flash: f, siteUrl, today, demoAdmin }) {
       </form>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Teklif', csrf, nav: adminNav('leads', csrf, demoAdmin), home: '/admin', tabs: adminTabs('leads', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
+  return panelLayout(c, { title: 'Teklif', csrf, nav: adminNav('leads', csrf, demoAdmin), home: '/admin', tabs: adminTabs('leads', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
 }
 
 // ── Admin: liste ──

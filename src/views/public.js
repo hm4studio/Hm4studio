@@ -154,20 +154,30 @@ function pageHero(eyebrow, title, text) {
   </section>`;
 }
 
-function portfolioPage(c, { portfolio, instagram }) {
-  const used = new Set(portfolio.map((p) => p.category).filter(Boolean));
-  const cats = c.portfolio.categories.filter((k) => used.has(k));
+function portfolioPage(c, { portfolio, instagram, active = '' }) {
+  const { slugify } = require('../routes/guards');
+  const count = {};
+  for (const p of portfolio) for (const t of p.tags || []) count[t] = (count[t] || 0) + 1;
+  const tags = (c.portfolio.categories || []).filter((t) => count[t]);
+  const shown = active ? portfolio.filter((p) => (p.tags || []).includes(active)) : portfolio;
+  const ask = (t) => `https://wa.me/${String(c.contact.whatsapp).replace(/\D/g, '')}?text=${encodeURIComponent(`Merhaba, ${t} çekimleriniz hakkında bilgi almak istiyorum.`)}`;
   const body = h`
-  ${pageHero(c.brand.tagline, c.portfolio.title, c.portfolio.text)}
+  ${pageHero(c.brand.tagline, active ? h`${active}<span class="pf-hero-sub"> · Portfolyo</span>` : c.portfolio.title, active ? `${count[active]} fotoğraf. Diğer mekan ve tarzlara aşağıdan göz atabilirsiniz.` : c.portfolio.text)}
   <section class="section section--flush-top">
     <div class="container">
-      ${cats.length > 1 ? h`
-      <div class="filters" role="group" aria-label="Kategoriye göre süz" data-filters>
-        <button type="button" class="chip is-active" data-filter="" aria-pressed="true">Tümü</button>
-        ${cats.map((k) => h`<button type="button" class="chip" data-filter="${k}" aria-pressed="false">${k}</button>`)}
-      </div>` : ''}
+      ${tags.length > 1 ? h`
+      <nav class="pf-tags" aria-label="Mekan ve tarza göre" data-pf-tags data-base="${c.brand.name}" data-lead="${c.portfolio.text}">
+        <div class="pf-tags__track">
+          <a class="pf-tag${active ? '' : ' is-active'}" href="/portfolyo" data-tag=""${active ? '' : raw(' aria-current="page"')}>Tümü<sup>${portfolio.length}</sup></a>
+          ${tags.map((t) => h`<a class="pf-tag${t === active ? ' is-active' : ''}" href="/portfolyo/${slugify(t)}" data-tag="${t}"${t === active ? raw(' aria-current="page"') : ''}>${t}<sup>${count[t]}</sup></a>`)}
+        </div>
+      </nav>` : ''}
       ${portfolio.length
-        ? portfolioGrid(portfolio)
+        ? h`<div class="pf-grid" data-pf-grid>${portfolioGrid(portfolio, { only: active })}</div>
+          <p class="pf-ask" data-pf-ask${active ? '' : raw(' hidden')}>
+            <span data-pf-ask-text>${active ? `${active} gibi bir çekim mi düşünüyorsunuz?` : ''}</span>
+            <a href="${active ? ask(active) : '#'}" target="_blank" rel="noopener" data-pf-ask-link data-wa="${String(c.contact.whatsapp).replace(/\D/g, '')}">Bize yazın ${icon('arrow')}</a>
+          </p>`
         : h`<div class="empty">
              <p>${c.portfolio.emptyText}</p>
              <div class="gallery gallery--placeholder">${[1, 2, 3, 4, 5, 6, 7, 8].map(() => placeholder('Örnek fotoğraf alanı'))}</div>
@@ -191,6 +201,9 @@ function portfolioPage(c, { portfolio, instagram }) {
 
   ${contactBand(c)}`;
 
+  if (active) {
+    return publicLayout(c, { title: `${active} fotoğrafları`, description: `${c.brand.name} ${active} çekimlerinden ${shown.length} fotoğraf. ${c.portfolio.text}`.slice(0, 160), active: 'portfolio', path: `/portfolyo/${slugify(active)}`, body, image: shown[0]?.display ? `${config.siteUrl}${shown[0].display}` : '' });
+  }
   return publicLayout(c, { title: c.portfolio.title, description: c.portfolio.text, active: 'portfolio', body, seoKey: 'portfolio' });
 }
 

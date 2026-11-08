@@ -7,9 +7,18 @@
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-copy]');
     if (!btn) return;
-    const old = btn.textContent;
+    const old = btn.innerHTML;
     try { await navigator.clipboard.writeText(btn.dataset.copy); btn.textContent = 'Kopyalandı'; } catch { btn.textContent = 'Kopyalanamadı'; }
-    setTimeout(() => { btn.textContent = old; }, 1600);
+    setTimeout(() => { btn.innerHTML = old; }, 1600);
+  });
+  // Portfolyo etiketleri: yukarı taşı / sil (sıra, formdaki sıradır)
+  document.addEventListener('click', (e) => {
+    const up = e.target.closest('[data-tag-up]');
+    const del = e.target.closest('[data-tag-del]');
+    const row = (up || del)?.closest('[data-tagrow]');
+    if (!row) return;
+    if (up && row.previousElementSibling) row.parentNode.insertBefore(row, row.previousElementSibling);
+    if (del) { row.querySelector('input:not([type=hidden])').value = ''; row.hidden = true; }
   });
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const THUMB = { edge: 900, quality: 0.8 };      // ızgara görünümü

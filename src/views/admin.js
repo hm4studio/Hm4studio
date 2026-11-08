@@ -745,7 +745,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=46"></head>
+  <link rel="stylesheet" href="/css/style.css?v=48"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1057,7 +1057,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=5', '/js/admin.js?v=5', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=5', '/js/admin.js?v=6', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
 function calendar(c, { couples, monthEvents = [], ym = today().slice(0, 7), csrf, demoAdmin }) {
@@ -1107,7 +1107,11 @@ function calendar(c, { couples, monthEvents = [], ym = today().slice(0, 7), csrf
 }
 
 function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
-  const catOptions = (selected) => h`<option value="">Kategori yok</option>${c.portfolio.categories.map((k) => h`<option value="${k}"${k === selected ? raw(' selected') : ''}>${k}</option>`)}`;
+  const catOptions = (selected) => h`<option value="">Etiket yok</option>${c.portfolio.categories.map((k) => h`<option value="${k}"${k === selected ? raw(' selected') : ''}>${k}</option>`)}`;
+  const { slugify } = require('../routes/guards');
+  const count = {};
+  for (const p of items) for (const t of p.tags || []) count[t] = (count[t] || 0) + 1;
+  const tagLinks = c.portfolio.categories.filter((t) => count[t]);
   const body = h`
   <div class="container">
     <div class="panel-title-row">
@@ -1116,6 +1120,24 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
     </div>
     ${flashBlock(f)}
 
+    <section class="panel-section" aria-labelledby="pf-links">
+      <div class="panel-section__head">
+        <h2 class="panel-section__title" id="pf-links">Etiket bağlantıları</h2>
+        <p class="muted">Çift “Sinop’tan örnek var mı?” dediğinde ilgili bağlantıyı gönderin; yalnızca o etiketin fotoğrafları açılır. <a href="/admin/portfolyo-etiketleri">Etiketleri düzenle</a></p>
+      </div>
+      ${tagLinks.length ? h`<ul class="taglinks">${tagLinks.map((t) => {
+        const url = `${config.siteUrl}/portfolyo/${slugify(t)}`;
+        const text = `${t} çekimlerimizden örnekler: ${url}`;
+        return h`<li class="taglinks__row">
+          <span class="taglinks__name">${t} <span class="muted">· ${count[t]}</span></span>
+          <span class="taglinks__acts">
+            <button type="button" class="btn btn--text btn--sm" data-copy="${url}">${icon('copy')}Kopyala</button>
+            <a class="btn btn--text btn--sm" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">${icon('whatsapp')}Gönder</a>
+          </span>
+        </li>`;
+      })}</ul>` : h`<p class="muted">Fotoğraflara etiket verdiğinizde bağlantıları burada çıkar.</p>`}
+    </section>
+
     <section class="panel-section" aria-labelledby="pf-upload">
       <div class="panel-section__head">
         <h2 class="panel-section__title" id="pf-upload">Portfolyoya fotoğraf ekle</h2>
@@ -1123,7 +1145,7 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       </div>
       <form class="uploader" data-uploader data-endpoint="/admin/portfolyo">
         <div class="field field--inline">
-          <label for="pf-cat">Kategori</label>
+          <label for="pf-cat">Etiket</label>
           <select id="pf-cat" data-category>${catOptions('')}</select>
         </div>
         <label class="uploader__drop">
@@ -1149,8 +1171,9 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
           ${p.id === heroId ? h`<span class="badge badge--done pf-admin__badge">Kapak</span>` : ''}
           <form class="form form--compact" method="post" action="/admin/portfolyo/${p.id}">
             ${csrfField(csrf)}
-            <label class="sr-only" for="cat-${p.id}">Kategori</label>
-            <select id="cat-${p.id}" name="category">${catOptions(p.category)}</select>
+            <fieldset class="tagpick"><legend class="sr-only">Etiketler</legend>
+              ${c.portfolio.categories.map((t) => h`<label class="tagpick__c"><input type="checkbox" name="tags[]" value="${t}"${(p.tags || []).includes(t) ? raw(' checked') : ''}><span>${t}</span></label>`)}
+            </fieldset>
             <label class="sr-only" for="alt-${p.id}">Açıklama</label>
             <input id="alt-${p.id}" name="alt" type="text" maxlength="160" placeholder="Kısa açıklama (erişilebilirlik)" value="${p.alt}">
             <button class="btn btn--outline btn--sm" type="submit">Kaydet</button>
@@ -1163,7 +1186,7 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       </ul>` : h`<div class="empty-box">${icon('image')}<p>Henüz portfolyo fotoğrafı yok.</p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
+  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
 }
 
 // Ekip: personel ekle, düzenle, sil; her kişinin görevleri
@@ -1304,7 +1327,7 @@ function reminderForm(c, { id, values: v = {}, action, title, errors = [], csrf,
       <form method="post" action="/admin/hatirlatma/${id}/sil" class="inline-form" data-confirm="Bu hatırlatma silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
     </div>` : ''}
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
 }
 
 
@@ -1381,7 +1404,7 @@ function prebookForm(c, { id, values: v = {}, action, title, errors = [], csrf, 
       <form method="post" action="/admin/on-randevu/${id}/sil" class="inline-form" data-confirm="Bu ön randevu silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
     </div>` : ''}
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
 }
 
 // Sayfa başlıkları: her sayfanın Google'da görünen başlığı ve açıklaması, canlı önizlemeyle
@@ -1398,6 +1421,36 @@ function seoPages(c) {
   ].map((p) => ({ ...p, host, cur: p.key === 'home' ? { title: c.seo?.title || '', description: c.seo?.description || '' } : (c.pageSeo?.[p.key] || {}) }));
 }
 // Müşteri kaynakları: randevu formundaki seçenekler ve kaç çiftin hangi kaynaktan geldiği
+
+function portfolioTagsPage(c, { counts = {}, csrf, flash: f, demoAdmin }) {
+  const list = c.portfolio.categories || [];
+  const { slugify } = require('../routes/guards');
+  const row = (t, i) => h`<li class="tagrow" data-tagrow>
+      <input type="hidden" name="old_${i}" value="${t}">
+      <label class="sr-only" for="tg-${i}">Etiket adı</label>
+      <input id="tg-${i}" name="name_${i}" maxlength="40" value="${t}" placeholder="Yeni etiket, ör. Sinop">
+      <span class="tagrow__n muted">${t ? `${counts[t] || 0} foto` : ''}</span>
+      <span class="tagrow__acts">
+        <button type="button" class="btn btn--text btn--sm" data-tag-up aria-label="Yukarı taşı">${icon('up')}</button>
+        <button type="button" class="btn btn--text btn--sm" data-tag-del aria-label="Sil">${icon('trash')}</button>
+      </span>
+    </li>`;
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <h1 class="page-title">Portfolyo etiketleri</h1>
+    ${flashBlock(f)}
+    <p class="muted">Sitedeki portfolyoda üstte görünen mekan ve tarz başlıkları (ör. Ankara sokak, Göksu Restoran, Sinop, Gün batımı). Her etiketin kendi bağlantısı olur: <code>${config.siteUrl}/portfolyo/${slugify(list[0] || 'sinop')}</code></p>
+    <form class="form" method="post" action="/admin/portfolyo-etiketleri" data-tagform>
+      ${csrfField(csrf)}
+      <ul class="tagrows" data-tagrows>${list.map((t, i) => row(t, i))}${[0, 1, 2].map((k) => row('', list.length + k))}</ul>
+      <p class="muted">Adı değiştirirseniz fotoğraflardaki etiket de değişir. Silerseniz fotoğraflar silinmez, yalnızca o etiketten çıkar. Fotoğrafı olmayan etiketler sitede görünmez.</p>
+      <button class="btn btn--primary" type="submit">${icon('check')}Kaydet</button>
+    </form>
+  </div>`;
+  return panelLayout(c, { title: 'Portfolyo etiketleri', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
+}
+
 function sourcesPage(c, { counts = {}, csrf, flash: f, demoAdmin }) {
   const list = c.appointments?.sources || [];
   const extra = Object.keys(counts).filter((s) => !list.includes(s));
@@ -1447,7 +1500,7 @@ function seoTitlesPage(c, { csrf, flash: f, demoAdmin }) {
       <button class="btn btn--primary" type="submit">Kaydet</button>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Sayfa başlıkları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
+  return panelLayout(c, { title: 'Sayfa başlıkları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
 }
 
 function deliverySettingsPage(c, { csrf, flash: f, demoAdmin }) {
@@ -1537,7 +1590,8 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
     ] },
     { title: 'Web sitesi', links: [
       { href: '/admin/site', title: 'Site', text: 'Metinler, renkler, kapak, iletişim' },
-      { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitedeki fotoğraflar' },
+      { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitedeki fotoğraflar ve etiket bağlantıları' },
+      { href: '/admin/portfolyo-etiketleri', title: 'Portfolyo etiketleri', text: 'Mekan ve tarz başlıkları: Sinop, Göksu, Gün batımı…' },
       { href: '/admin/sayfa-basliklari', title: 'Sayfa başlıkları', text: 'Her sayfanın Google’da görünen başlığı ve açıklaması' },
       { href: '/admin/sehirler', title: 'Google ve şehir sayfaları', text: 'Şehir sayfaları ve işletme bilgileri' },
     ] },
@@ -1776,7 +1830,7 @@ function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
       <div class="appt-actions"><button class="btn btn--primary" type="submit">Siteyi güncelle</button></div>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
+  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
 }
 
 // Paketler: ad, fiyat, içerik; randevu formunda seçilince fiyat ve içerik dolar
@@ -1826,6 +1880,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
 }
 
 module.exports = {
+  portfolioTagsPage,
   prebookList, prebookForm,
   sourcesPage,
   seoTitlesPage,
