@@ -169,6 +169,7 @@ function seenText(utc) {
   if (n < 30) return `${n} gün önce`;
   return formatDate(day);
 }
+const SEEN_SINCE = '2026-11-08'; // giriş takibi bu gün başladı; eski çiftler de 3 gün süre alır
 function panelSeen(k) {
   return k.last_seen_at ? `Panele son giriş ${seenText(k.last_seen_at)}${k.visit_count > 1 ? ` · ${k.visit_count} kez girdi` : ''}` : 'Panele henüz girmedi';
 }
@@ -190,7 +191,7 @@ function attentionItems(c, couples) {
     if (k.album_design_state === 'degisiklik') items.push({ k, level: 2, text: 'Albüm tasarımında değişiklik istendi', tag: 'Albüm' });
     if (k.album_design_state === 'onaylandi' && k.album_design_at && daysBetween(k.album_design_at.slice(0, 10), t) <= 3) items.push({ k, level: 1, text: 'Albüm tasarımı onaylandı, baskıya hazır', tag: 'Albüm' });
     if (k.photo_count > 0 && !k.album_locked && k.stage < last) items.push({ k, level: 1, text: `Albüm seçimi bekleniyor (${k.fav_count}/${k.album_limit})`, tag: 'Albüm' });
-    if (!k.last_seen_at && k.stage < last && k.created_at && daysBetween(k.created_at.slice(0, 10), t) >= 3) items.push({ k, level: 1, text: 'Panele hiç girmedi; giriş bilgilerini yeniden gönderin', tag: 'Panel' });
+    if (!k.last_seen_at && k.stage < last && k.created_at && daysBetween([k.created_at.slice(0, 10), SEEN_SINCE].sort().pop(), t) >= 3) items.push({ k, level: 1, text: 'Panele hiç girmedi; giriş bilgilerini yeniden gönderin', tag: 'Panel' });
     const until = journey.keepUntil(c, k);
     if (until && until < t && !k.archived_at && k.photo_count > 0) items.push({ k, level: 1, text: 'İndirme süresi doldu; dosyaları sunucudan silebilirsiniz', tag: 'Dosyalar' });
   }
