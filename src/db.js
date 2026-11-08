@@ -87,6 +87,7 @@ addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
 addColumn('photos', 'kind', "TEXT NOT NULL DEFAULT 'secim'"); // secim: albüm seçimi için · duzenli: düzenlenmiş (renkli) teslim
+addColumn('couples', 'discount', 'INTEGER NOT NULL DEFAULT 0'); // randevuda uygulanan indirim (₺); toplam = etkinlik fiyatları − indirim
 addColumn('photos', 'w', 'INTEGER'); // küçük önizlemenin boyutu: galeride fotoğraflar kırpılmadan, kendi oranında dizilir
 addColumn('photos', 'h', 'INTEGER');
 addColumn('photos', 'upload_key', 'TEXT'); // tarayıcının her dosyaya verdiği anahtar: tekrar denemede aynı fotoğraf iki kez eklenmez
@@ -328,7 +329,8 @@ const CARD_SQL = `
     (SELECT COUNT(*) FROM photos p WHERE p.couple_id = c.id) AS photo_count,
     (SELECT COUNT(*) FROM favorites f WHERE f.couple_id = c.id) AS fav_count,
     (SELECT COUNT(*) FROM events e WHERE e.couple_id = c.id) AS event_count,
-    (SELECT COALESCE(SUM(price), 0) FROM events e WHERE e.couple_id = c.id) AS total,
+    (SELECT COALESCE(SUM(price), 0) FROM events e WHERE e.couple_id = c.id) AS gross,
+    MAX((SELECT COALESCE(SUM(price), 0) FROM events e WHERE e.couple_id = c.id) - COALESCE(c.discount, 0), 0) AS total,
     (SELECT COALESCE(SUM(amount), 0) FROM payments y WHERE y.couple_id = c.id) AS paid,
     (SELECT group_concat(event_type, ', ') FROM (SELECT event_type FROM events e WHERE e.couple_id = c.id AND event_type <> '' ORDER BY event_date)) AS types,
     (SELECT MIN(event_date) FROM events e WHERE e.couple_id = c.id AND event_date >= date('now', '+3 hours')) AS next_date,
@@ -391,6 +393,7 @@ module.exports = {
     .run(a.name, a.fullName, a.partnerName, a.phone || null, a.source, a.dueDate || null,
       a.photoReady ? 1 : 0, a.videoReady ? 1 : 0, a.albumReady ? 1 : 0, a.albumLimit, a.waOptin ? 1 : 0, a.notes, id),
   // Çiftin ana tarihi = son etkinlik (teslim ve hatırlatmalar buna göre)
+  setDiscount: (id, amount) => q('UPDATE couples SET discount = ? WHERE id = ?').run(Math.max(Math.round(Number(amount) || 0), 0), id),
   syncCoupleDate: (id) => q('UPDATE couples SET event_date = (SELECT MAX(event_date) FROM events WHERE couple_id = ?) WHERE id = ?').run(id, id),
 
   // ── Etkinlikler (bir çiftin birden çok tarihi) ──

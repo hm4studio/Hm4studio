@@ -96,7 +96,7 @@ function doc(c, { d, back }) {
     <p>Doğrulama kodu, tutanak metninin ve imzanın parmak izidir; sonradan yapılacak her değişiklik bu kodu değiştirir.</p>
   </section>
 </main>
-<script src="/js/dashboard.js?v=9" defer></script>
+<script src="/js/dashboard.js?v=10" defer></script>
 </body></html>`);
 }
 

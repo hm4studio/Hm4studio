@@ -68,6 +68,7 @@ function readForm(form, content) {
     albumLimit: Math.min(Math.max(Number.parseInt(form.albumLimit, 10) || 35, 1), 1000),
     waOptin: form.waOptin === '1',
     notes: cleanArea(form.notes, 3000),
+    discountRaw: String(form.discount ?? '').trim().slice(0, 20),
     deposit: money(form.deposit),
     depositDate: cleanDate(form.depositDate),
   };
@@ -79,8 +80,14 @@ function readForm(form, content) {
   if (a.phoneRaw && !a.phone) errors.push('Telefon numarası geçersiz (örn. 0532 123 45 67).');
   if (!events.length) errors.push('En az bir etkinlik ekleyin (tür veya tarih).');
   events.forEach((e, n) => { if (!e.eventDate) errors.push(`${n + 1}. etkinliğin tarihini seçin.`); });
-  const total = events.reduce((s, e) => s + e.price, 0);
-  if (a.deposit > total && total > 0) errors.push('Kapora toplam tutardan büyük olamaz.');
+  const gross = events.reduce((s, e) => s + e.price, 0);
+  // İndirim: tutar (₺) ya da yüzde ("%10" / "10%")
+  const pct = /%/.test(a.discountRaw);
+  const n = Number(a.discountRaw.replace(/[^\d,.]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+  a.discount = Math.round(pct ? (gross * Math.min(n, 100)) / 100 : n);
+  if (a.discount > gross) errors.push('İndirim toplam tutardan büyük olamaz.');
+  const total = Math.max(gross - a.discount, 0);
+  if (a.deposit > total && total > 0) errors.push('Kapora indirimli toplamdan büyük olamaz.');
   return { a, events, errors };
 }
 
@@ -104,6 +111,7 @@ function formValues(k, events = [], teamOf = () => []) {
     fullName: k.full_name || k.name, partnerName: k.partner_name, phone: k.phone ? wa.displayPhone(k.phone) : '',
     source: k.source, dueDate: k.due_date || '', photoReady: k.photo_ready, videoReady: k.video_ready,
     albumReady: k.album_ready, albumLimit: k.album_limit, waOptin: k.wa_optin, notes: k.notes,
+    discount: k.discount ? String(k.discount) : '',
   };
   events.forEach((e, i) => Object.assign(v, {
     [`ev${i}_id`]: e.id, [`ev${i}_type`]: e.event_type, [`ev${i}_date`]: e.event_date || '', [`ev${i}_time`]: e.start_time,

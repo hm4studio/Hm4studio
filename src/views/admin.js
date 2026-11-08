@@ -358,7 +358,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=10', '/js/outbox.js?v=2'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -465,6 +465,9 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
 
       <fieldset class="appt-group">
         <legend>Ödeme</legend>
+        <div class="appt-row">
+          <div class="field"><label for="discount">İndirim <span class="muted">(₺ ya da %, isteğe bağlı)</span></label><input id="discount" name="discount" type="text" inputmode="decimal" placeholder="Örn. 2.000 ya da %10" value="${v('discount')}" data-discount></div>
+        </div>
         <div class="appt-sum" data-sum aria-live="polite"></div>
         ${isNew ? h`<div class="appt-row">
           <div class="field"><label for="deposit">Kapora (₺)</label><input id="deposit" name="deposit" type="text" inputmode="numeric" placeholder="0" value="${v('deposit')}" data-money data-deposit></div>
@@ -498,7 +501,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=10', '/js/outbox.js?v=2'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -609,6 +612,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
       <td>${e.package}${e.package_detail ? h`<div class="doc__detail">${e.package_detail}</div>` : ''}</td>
       <td class="num">${e.price ? tl(e.price) : ''}</td></tr>`)}</tbody>
     <tfoot>
+      ${k.discount ? h`<tr><td colspan="4">Hizmetler toplamı</td><td class="num">${tl(k.gross)}</td></tr><tr><td colspan="4">İndirim</td><td class="num">− ${tl(k.discount)}</td></tr>` : ''}
       <tr><td colspan="4">Toplam</td><td class="num">${tl(k.total)}</td></tr>
       ${payments.map((p) => h`<tr class="doc__paid"><td colspan="4">Ödeme · ${shortDate(p.paid_on)}${p.note ? ` · ${p.note}` : ''}</td><td class="num">− ${tl(p.amount)}</td></tr>`)}
       <tr class="doc__rest"><td colspan="4">Kalan bakiye</td><td class="num">${tl(pay[2])}</td></tr>
@@ -625,10 +629,13 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 
 // Aylık rapor: etkinlik sayısı, ciro (etkinlik ayına göre), tahsilat (ödeme ayına göre), müşteri kaynakları
 function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
+  // Ciro indirim düşülerek: çiftin indirimi etkinliklerine fiyatları oranında dağıtılır
+  const kOf = new Map(couples.map((k) => [k.id, k]));
+  const net = (e) => { const k = kOf.get(e.couple_id); return k && k.discount && k.gross ? Math.round(e.price * (k.total / k.gross)) : e.price; };
   const months = MONTHS.map((name, i) => {
     const key = `${year}-${String(i + 1).padStart(2, '0')}`;
     const evs = events.filter((e) => e.event_date && e.event_date.startsWith(key));
-    return { name, key, count: evs.length, revenue: evs.reduce((s, e) => s + e.price, 0), collected: payments.filter((p) => p.paid_on.startsWith(key)).reduce((s, p) => s + p.amount, 0) };
+    return { name, key, count: evs.length, revenue: evs.reduce((s, e) => s + net(e), 0), collected: payments.filter((p) => p.paid_on.startsWith(key)).reduce((s, p) => s + p.amount, 0) };
   });
   const maxRev = Math.max(1, ...months.map((m) => Math.max(m.revenue, m.collected)));
   const yearCouples = couples.filter((k) => events.some((e) => e.couple_id === k.id && e.event_date && e.event_date.startsWith(String(year))));
@@ -636,7 +643,7 @@ function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
   for (const k of yearCouples) {
     const s = k.source || 'Belirtilmedi';
     const cur = sources.get(s) || { count: 0, revenue: 0 };
-    cur.count++; cur.revenue += events.filter((e) => e.couple_id === k.id && e.event_date && e.event_date.startsWith(String(year))).reduce((x, e) => x + e.price, 0);
+    cur.count++; cur.revenue += events.filter((e) => e.couple_id === k.id && e.event_date && e.event_date.startsWith(String(year))).reduce((x, e) => x + net(e), 0);
     sources.set(s, cur);
   }
   const srcList = [...sources.entries()].sort((a, b) => b[1].count - a[1].count);
@@ -1687,7 +1694,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=9', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=10', '/js/outbox.js?v=2'] });
 }
 
 module.exports = {

@@ -136,6 +136,8 @@ function snapshotData(c, card, events, payments) {
     randevuNo: card.ref_no || '',
     sehir: cities.join(', ') || '…',
     events: events.map((e) => ({ tur: e.event_type, tarih: shortDate(e.event_date), saat: e.start_time, yer: [e.venue, e.city].filter(Boolean).join(', '), paket: e.package, detay: e.package_detail, tutar: e.price })),
+    araToplam: card.gross || card.total || 0,
+    indirim: card.discount || 0,
     toplam: card.total || 0,
     kapora: paid,
     kalan: Math.max((card.total || 0) - paid, 0),
@@ -161,6 +163,7 @@ function render(data, signer = {}) {
       ${data.events.map((e) => h`<tr><td>${e.tur || 'Çekim'}</td><td>${e.tarih}${e.saat ? h`<br>${e.saat}` : ''}</td><td>${e.yer}</td><td>${e.paket}${e.detay ? h`<div class="ct-detail">${e.detay}</div>` : ''}</td><td class="num">${e.tutar ? tl(e.tutar) : ''}</td></tr>`)}
     </tbody></table>`,
     ODEME: () => h`<table class="ct-table ct-pay"><tbody>
+      ${data.indirim ? h`<tr><td>Hizmetler toplamı</td><td class="num">${tl(data.araToplam)}</td></tr><tr><td>İndirim</td><td class="num">− ${tl(data.indirim)}</td></tr>` : ''}
       <tr><td>Toplam hizmet bedeli</td><td class="num">${tl(data.toplam)}</td></tr>
       <tr><td>Alınan kapora</td><td class="num">${tl(data.kapora)}</td></tr>
       <tr><td>Kalan ödeme</td><td class="num">${tl(data.kalan)}</td></tr>

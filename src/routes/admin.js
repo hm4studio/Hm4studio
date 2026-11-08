@@ -148,7 +148,7 @@ function register(router) {
         ev0_type: quote.event_type || values.ev0_type || '', ev0_date: quote.event_date || values.ev0_date, ev0_venue: quote.place || values.ev0_venue || '',
         ev0_pkgs: items.filter((x) => pkgNames.has(x.name)).map((x) => x.name),
         ev0_package: items.filter((x) => !pkgNames.has(x.name)).map((x) => x.name).join(' + '),
-        ev0_price: qi.total(quote) || '', ev0_detail: items.map((x) => x.detail).filter(Boolean).join('\n'),
+        ev0_price: (qi.total(quote) + (quote.discount || 0)) || '', discount: quote.discount ? String(quote.discount) : '', ev0_detail: items.map((x) => x.detail).filter(Boolean).join('\n'),
         deposit: quote.deposit || '', notes: [values.notes, quote.note].filter(Boolean).join('\n'),
         source: ql?.source === 'dugun' ? 'Düğün.com' : values.source || '',
         hediye: ql?.gift_code || '',
@@ -208,6 +208,7 @@ function register(router) {
     const id = db.createCouple({ name: a.name, accessCode: code, hash, eventDate: null });
     a.dueDate = defaultDue(a, list, c);
     db.updateCard(id, a);
+    db.setDiscount(id, a.discount);
     const assigned = saveEvents(id, list);
     if (a.deposit > 0) db.addPayment(id, { amount: a.deposit, paidOn: a.depositDate || today(), note: 'Kapora' });
     const first = list.map((e) => e.eventDate).filter(Boolean).sort()[0];
@@ -247,13 +248,14 @@ function register(router) {
     const c = getContent();
     const { a, events: list, errors } = appt.readForm(form, c);
     const paidSoFar = db.listPayments(couple.id).reduce((s, p) => s + p.amount, 0);
-    const total = list.reduce((s, e) => s + e.price, 0);
-    if (total > 0 && paidSoFar > total) errors.push(`Alınan ödemeler (${appt.tl(paidSoFar)}) toplam tutarı aşıyor.`);
+    const total = Math.max(list.reduce((s, e) => s + e.price, 0) - (a.discount || 0), 0);
+    if (total > 0 && paidSoFar > total) errors.push(`Alınan ödemeler (${appt.tl(paidSoFar)}) indirimli toplamı (${appt.tl(total)}) aşıyor.`);
     if (errors.length) {
       return html(res, views.appointmentPage(c, { values: form, action: `/admin/ciftler/${couple.id}/bilgi`, title: `${couple.name} · düzenle`, submitLabel: 'Kaydet', csrf: req.session.csrf, errors, back: `/admin/ciftler/${couple.id}`, demoAdmin: demo.isDemoAdmin(req), team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }), 400);
     }
     a.dueDate = a.dueDate || couple.due_date || defaultDue(a, list, c);
     db.updateCard(couple.id, a);
+    db.setDiscount(couple.id, a.discount);
     const assigned = saveEvents(couple.id, list);
     if (!couple.ref_no) db.setRefNo(couple.id, db.nextRefNo(today().slice(0, 4)));
     const warn = conflictText(couple.id, list);

@@ -116,14 +116,27 @@
     });
   }
 
-  function updateSum() {
-    const total = [...evList.querySelectorAll('[data-ev-price]')].reduce((s, el) => s + num(el.value), 0);
-    const d = dep ? num(dep.value) : 0;
-    if (!total) { sum.textContent = 'Etkinliklere tutar girdikçe toplam burada hesaplanır.'; sum.className = 'appt-sum muted'; return; }
-    if (d > total) { sum.textContent = `Toplam ${tl(total)} · kapora toplamdan büyük olamaz.`; sum.className = 'appt-sum is-error'; return; }
-    sum.className = 'appt-sum';
-    sum.textContent = dep ? `Toplam ${tl(total)} · Kapora ${tl(d)} · Kalan ${tl(total - d)}` : `Toplam ${tl(total)}`;
+  const disc = form.querySelector('[data-discount]');
+  // İndirim: "2.000" (₺) ya da "%10"
+  function discountOf(gross) {
+    const raw = disc ? disc.value.trim() : '';
+    if (!raw) return 0;
+    const n = Number(raw.replace(/[^\d,.]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+    return Math.round(/%/.test(raw) ? (gross * Math.min(n, 100)) / 100 : n);
   }
+  function updateSum() {
+    const gross = [...evList.querySelectorAll('[data-ev-price]')].reduce((s, el) => s + num(el.value), 0);
+    const off = discountOf(gross);
+    const total = Math.max(gross - off, 0);
+    const d = dep ? num(dep.value) : 0;
+    if (!gross) { sum.textContent = 'Etkinliklere tutar girdikçe toplam burada hesaplanır.'; sum.className = 'appt-sum muted'; return; }
+    const head = off ? `Ara toplam ${tl(gross)} · İndirim −${tl(off)} · Toplam ${tl(total)}` : `Toplam ${tl(total)}`;
+    if (off > gross) { sum.textContent = `${head} · indirim toplamdan büyük olamaz.`; sum.className = 'appt-sum is-error'; return; }
+    if (d > total) { sum.textContent = `${head} · kapora toplamdan büyük olamaz.`; sum.className = 'appt-sum is-error'; return; }
+    sum.className = 'appt-sum';
+    sum.textContent = dep ? `${head} · Kapora ${tl(d)} · Kalan ${tl(total - d)}` : head;
+  }
+  disc?.addEventListener('input', updateSum);
 
   // Aynı gün başka çekim var mı?
   async function checkDate(input) {
