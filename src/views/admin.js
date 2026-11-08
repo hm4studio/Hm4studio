@@ -1296,6 +1296,31 @@ function seoPages(c) {
     ...(c.cities || []).map((x) => ({ key: `city:${x.slug}`, name: `Şehir: ${x.title}`, path: `/${x.slug}`, defT: `${x.title} | ${b}`, defD: x.description || '' })),
   ].map((p) => ({ ...p, host, cur: p.key === 'home' ? { title: c.seo?.title || '', description: c.seo?.description || '' } : (c.pageSeo?.[p.key] || {}) }));
 }
+// Müşteri kaynakları: randevu formundaki seçenekler ve kaç çiftin hangi kaynaktan geldiği
+function sourcesPage(c, { counts = {}, csrf, flash: f, demoAdmin }) {
+  const list = c.appointments?.sources || [];
+  const extra = Object.keys(counts).filter((s) => !list.includes(s));
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <h1 class="page-title">Müşteri kaynakları</h1>
+    ${flashBlock(f)}
+    <p class="muted">Randevu eklerken “Müşteri kaynağı” listesinde çıkan seçenekler. Raporda hangi kanaldan kaç çift geldiğini bu seçimlerle görürsünüz.</p>
+    <form class="form" method="post" action="/admin/kaynaklar">
+      ${csrfField(csrf)}
+      <div class="field"><label for="src-list">Kaynaklar <span class="muted">(her satıra bir tane, sırası listedeki sıradır)</span></label>
+        <textarea id="src-list" name="sources" rows="${Math.max(list.length + 2, 6)}" maxlength="700">${list.join('\n')}</textarea></div>
+      <button class="btn btn--primary" type="submit">Kaydet</button>
+    </form>
+    <section class="panel-section">
+      <div class="panel-section__head"><h2 class="panel-section__title">Şu ana kadar</h2></div>
+      <ul class="plain-stats">${[...list, ...extra].map((s) => h`<li><span>${s}${extra.includes(s) ? h` <span class="muted">(listede yok)</span>` : ''}</span><strong>${counts[s] || 0} çift</strong></li>`)}</ul>
+      <p class="muted">Bir kaynağı listeden çıkarırsanız eski çiftlerdeki kayıt silinmez; yalnızca yeni randevularda seçilemez.</p>
+    </section>
+  </div>`;
+  return panelLayout(c, { title: 'Müşteri kaynakları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body });
+}
+
 function seoTitlesPage(c, { csrf, flash: f, demoAdmin }) {
   const pages = seoPages(c);
   const body = h`
@@ -1401,6 +1426,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
     { title: 'İşletme', links: [
       { href: '/admin/paketler', title: 'Paketler', text: 'Hizmetler, fiyatlar ve içerikleri' },
       { href: '/admin/ekip', title: 'Ekip', text: 'Personel ve iletişim' },
+      { href: '/admin/kaynaklar', title: 'Müşteri kaynakları', text: 'Instagram, Düğün.com, tavsiye… randevu formundaki seçenekler' },
       { href: '/admin/sozlesme', title: 'Sözleşme ve KVKK', text: 'Sözleşme metni, firma bilgileri ve KVKK' },
       { href: '/admin/teslim-ayarlari', title: 'Teslim', text: 'Tutanaktaki ürünler, tutanak metni, dosya saklama süresi' },
     ] },
@@ -1637,7 +1663,7 @@ function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
           ${field('eventTypes', 'Etkinlik türleri', (c.appointments?.eventTypes || []).join('\n'), { area: true, rows: 7, max: 500 })}
         </div>
         <div class="appt-row">
-          ${field('sources', 'Müşteri kaynakları', (c.appointments?.sources || []).join('\n'), { area: true, rows: 6, max: 500 })}
+          <p class="appt-help">Müşteri kaynakları: <a href="/admin/kaynaklar">Ayarlar › Müşteri kaynakları</a></p>
           ${field('teamRoles', 'Ekip görevleri', (c.appointments?.teamRoles || []).join('\n'), { area: true, rows: 6, max: 500 })}
         </div>
         <div class="appt-row">
@@ -1699,6 +1725,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
 }
 
 module.exports = {
+  sourcesPage,
   seoTitlesPage,
   seoPages,
   reminderForm,

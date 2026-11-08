@@ -369,7 +369,7 @@ function register(router) {
     o.stages = stages;
     o.appointments = {
       ...(o.appointments || {}),
-      eventTypes, sources: lines('sources', 15, 30), teamRoles: lines('teamRoles', 15, 30),
+      eventTypes, teamRoles: lines('teamRoles', 15, 30),
       videoStages: lines('videoStages', 8, 30).length ? lines('videoStages', 8, 30) : (getContent().appointments?.videoStages || []),
       defaultDeliveryDays: Math.min(Math.max(Number.parseInt(form.deliveryDays, 10) || 45, 1), 365),
       dailyCapacity: Math.min(Math.max(Number.parseInt(form.dailyCapacity, 10) || 2, 1), 20),
@@ -488,6 +488,25 @@ function register(router) {
     if (!requireAdmin(req, res)) return;
     html(res, views.citiesPage(getContent(), { csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req), siteUrl: config.siteUrl }));
   });
+  // Müşteri kaynakları (randevu formundaki "Müşteri kaynağı" seçenekleri)
+  router.get('/admin/kaynaklar', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const counts = {};
+    for (const k of db.listCouples()) { const s = k.source || 'Belirtilmedi'; counts[s] = (counts[s] || 0) + 1; }
+    html(res, views.sourcesPage(getContent(), { counts, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/kaynaklar', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const list = [...new Set(String(form.sources || '').split(/\r?\n/).map((x) => cleanText(x, 30)).filter(Boolean))].slice(0, 20);
+    if (!list.length) { setFlash(req, { message: 'En az bir kaynak yazın.', type: 'error' }); return redirect(res, '/admin/kaynaklar'); }
+    const o = siteOver();
+    o.appointments = { ...(o.appointments || {}), sources: list };
+    saveOver(o);
+    setFlash(req, { message: 'Müşteri kaynakları kaydedildi.', type: 'success' });
+    redirect(res, '/admin/kaynaklar');
+  });
+
   // Sayfa başlıkları (Google'da görünen başlık ve açıklama)
   router.get('/admin/sayfa-basliklari', (req, res) => {
     if (!requireAdmin(req, res)) return;
