@@ -141,22 +141,31 @@ function register(router) {
   router.get('/panel/fotograflar', (req, res, { query }) => {
     if (!requireCouple(req, res)) return;
     const couple = me(req);
-    const all = db.listPhotos(couple.id, 'secim');
+    let all = db.listPhotos(couple.id, 'secim');
+    if (all.some((p) => !p.gallery_id)) { db.defaultGallery(couple.id); all = db.listPhotos(couple.id, 'secim'); }
     const edited = db.listPhotos(couple.id, 'duzenli');
     const favs = all.filter((p) => p.is_fav);
+    // Galeriler (boş olanlar çifte görünmez). Birden çoksa önce galeri kartları açılır.
+    const galleries = db.listGalleries(couple.id).filter((x) => x.photo_count > 0).map((x) => {
+      const own = all.filter((p) => p.gallery_id === x.id);
+      const land = own.find((p) => p.id === couple.cover_photo_id) || own.find((p) => p.w && p.h && p.w > p.h * 1.15);
+      return { ...x, cover_id: land ? land.id : null, fav_count: own.filter((p) => p.is_fav).length };
+    });
+    const gal = galleries.find((x) => x.id === Number(query.get('gal'))) || null;
     const g = query.get('g');
     // Düzenlenmiş fotoğraflar varsa sayfa onlarla açılır
-    const view = g === 'fav' ? 'fav' : g === 'secim' ? 'all' : g === 'duzenli' || (!g && edited.length) ? 'edited' : 'all';
-    const photos = view === 'edited' ? edited : view === 'fav' ? favs : all;
+    let view = gal ? 'all' : g === 'fav' ? 'fav' : g === 'secim' ? 'all' : g === 'duzenli' || (!g && edited.length) ? 'edited' : 'all';
+    if (view === 'all' && !gal && galleries.length > 1) view = 'galleries';
+    const photos = view === 'edited' ? edited : view === 'fav' ? favs : view === 'galleries' ? [] : gal ? all.filter((p) => p.gallery_id === gal.id) : all;
     // Kapak: sayfa ilk açıldığında (sekme seçilmemişken) tam ekran; mümkünse yatay bir kare
     let cover = null;
-    if (!g) {
+    if (!g && !gal) {
       const pool = (edited.length ? edited : all).slice(0, 24);
       const chosen = couple.cover_photo_id ? [...edited, ...all].find((p) => p.id === couple.cover_photo_id) : null;
       cover = chosen || pool.find((p) => p.w && p.h && p.w > p.h * 1.15) || pool[0] || null;
     }
     const events = db.listEvents(couple.id);
-    html(res, views.couplePhotos(getContent(), { couple, photos, totalCount: all.length, editedCount: edited.length, favCount: favs.length, view, cover, events, csrf: req.session.csrf, flash: takeFlash(req) }));
+    html(res, views.couplePhotos(getContent(), { couple, photos, totalCount: all.length, editedCount: edited.length, favCount: favs.length, view, cover, events, galleries, gal, csrf: req.session.csrf, flash: takeFlash(req) }));
   });
 
   // Videolar
@@ -287,10 +296,12 @@ function register(router) {
     if (!couple) throw new HttpError(404, 'Bulunamadı');
     const g = query.get('g');
     const onlyFav = g === 'fav';
-    const photos = onlyFav ? db.listFavoritePhotos(couple.id) : db.listPhotos(couple.id, g === 'duzenli' ? 'duzenli' : 'secim');
+    const galx = db.getGallery(Number(query.get('gal')) || 0);
+    const gal = galx && galx.couple_id === couple.id ? galx : null;
+    const photos = onlyFav ? db.listFavoritePhotos(couple.id) : gal ? db.listPhotos(couple.id, 'secim').filter((p) => p.gallery_id === gal.id) : db.listPhotos(couple.id, g === 'duzenli' ? 'duzenli' : 'secim');
     const entries = require('../media').couplePhotoEntries(couple.id, photos);
     if (!entries.length) throw new HttpError(404, 'İndirilecek fotoğraf yok');
-    const name = `${couple.name}${onlyFav ? ' - Albüm seçimi' : g === 'duzenli' ? ' - Düzenlenmiş fotoğraflar' : ' - Fotoğraflar'}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
+    const name = `${couple.name}${onlyFav ? ' - Albüm seçimi' : gal ? ` - ${gal.name}` : g === 'duzenli' ? ' - Düzenlenmiş fotoğraflar' : ' - Fotoğraflar'}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
     res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="fotograflar.zip"; filename*=UTF-8''${encodeURIComponent(name)}`, 'Cache-Control': 'no-store' });
     await require('../zip').streamZip(res, entries).catch(() => res.destroy());
   });

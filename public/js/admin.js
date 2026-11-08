@@ -72,7 +72,7 @@
     }
   }
 
-  async function uploadOne(file, { endpoint, keepOriginal, category }) {
+  async function uploadOne(file, { endpoint, keepOriginal, category, gallery }) {
     const bitmap = await decode(file);
     const thumb = await resize(bitmap, THUMB);
     const display = await resize(bitmap, DISPLAY);
@@ -88,6 +88,7 @@
       'X-Upload-Key': file.uploadKey || '',
     };
     if (category !== undefined) headers['X-Category'] = encodeURIComponent(category);
+    if (gallery) headers['X-Gallery'] = gallery;
     let res;
     try {
       res = await fetch(endpoint, { method: 'POST', headers, body: new Blob(parts.map(([, b]) => b)), credentials: 'same-origin' });
@@ -96,6 +97,12 @@
     if (!res.ok || !data.ok) throw new UploadError(data.error || `Sunucu hatası (${res.status})`, [0, 408, 429, 500, 502, 503, 504].includes(res.status));
   }
 
+  // Düzenlenmiş fotoğraflar galeriye bağlanmaz: o seçilince galeri alanı gizlenir
+  document.querySelectorAll('[data-kind-select]').forEach((sel) => {
+    const field = sel.closest('form')?.querySelector('[data-gallery-field]');
+    const sync = () => { if (field) field.hidden = sel.value === 'duzenli'; };
+    sel.addEventListener('change', sync); sync();
+  });
   document.querySelectorAll('[data-uploader]').forEach((form) => {
     const input = form.querySelector('[data-files]');
     const list = form.querySelector('[data-list]');
@@ -124,7 +131,8 @@
         return li;
       });
       input.disabled = true;
-      const opts = { endpoint: form.dataset.endpoint, keepOriginal: keep ? keep.checked : false, category: cat ? cat.value : undefined };
+      const galSel = form.querySelector('[data-gallery-select]');
+      const opts = { endpoint: form.dataset.endpoint, keepOriginal: keep ? keep.checked : false, category: cat ? cat.value : undefined, gallery: galSel && (!cat || cat.value !== 'duzenli') ? galSel.value : '' };
       let ok = 0;
       const summary = document.createElement('li');
       summary.className = 'uploader__summary';

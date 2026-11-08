@@ -86,6 +86,15 @@ addColumn('couples', 'phone', 'TEXT');
 addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
+// Çiftin birden çok galerisi (ör. "Sokak çekimi", "Plato"); albüm seçimi (favoriler) hepsinde ortaktır
+db.exec(`CREATE TABLE IF NOT EXISTS galleries (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+); CREATE INDEX IF NOT EXISTS galleries_couple ON galleries(couple_id);`);
+addColumn('photos', 'gallery_id', 'INTEGER');
 // Portfolyo etiketleri (birden çok: "Sinop", "Gün batımı"...). Eski tek kategori ilk etikete taşınır.
 addColumn('portfolio', 'tags', "TEXT NOT NULL DEFAULT ''");
 db.exec("UPDATE portfolio SET tags = json_array(category) WHERE tags = '' AND category <> ''");
@@ -500,10 +509,29 @@ module.exports = {
     SELECT p.*, 1 AS is_fav FROM favorites f JOIN photos p ON p.id = f.photo_id
     WHERE f.couple_id = ? ORDER BY p.id`).all(coupleId)),
   getPhoto: (id) => q('SELECT * FROM photos WHERE id = ?').get(id),
+  // ── Galeriler ──
+  listGalleries: (coupleId) => q(`SELECT g.*, (SELECT COUNT(*) FROM photos p WHERE p.gallery_id = g.id AND p.kind = 'secim') AS photo_count,
+      (SELECT MIN(p.id) FROM photos p WHERE p.gallery_id = g.id AND p.kind = 'secim') AS first_photo_id
+    FROM galleries g WHERE g.couple_id = ? ORDER BY g.sort, g.id`).all(coupleId),
+  getGallery: (id) => q('SELECT * FROM galleries WHERE id = ?').get(id),
+  addGallery: (coupleId, name) => {
+    const n = q('SELECT COUNT(*) AS n FROM galleries WHERE couple_id = ?').get(coupleId).n;
+    return Number(q('INSERT INTO galleries(couple_id, name, sort) VALUES(?, ?, ?)').run(coupleId, name || `Galeri ${n + 1}`, n + 1).lastInsertRowid);
+  },
+  renameGallery: (id, name) => q('UPDATE galleries SET name = ? WHERE id = ?').run(name, id),
+  deleteGallery: (id) => q('DELETE FROM galleries WHERE id = ?').run(id),
+  galleryPhotos: (galleryId) => q('SELECT * FROM photos WHERE gallery_id = ?').all(galleryId),
+  // İlk galeri: yoksa "Galeri 1" açılır ve galerisiz eski seçim fotoğrafları ona bağlanır
+  defaultGallery: (coupleId) => {
+    let g = q('SELECT id FROM galleries WHERE couple_id = ? ORDER BY sort, id LIMIT 1').get(coupleId);
+    const id = g ? g.id : Number(q("INSERT INTO galleries(couple_id, name, sort) VALUES(?, 'Galeri 1', 1)").run(coupleId).lastInsertRowid);
+    q("UPDATE photos SET gallery_id = ? WHERE couple_id = ? AND kind = 'secim' AND gallery_id IS NULL").run(id, coupleId);
+    return id;
+  },
   setCoverPhoto: (coupleId, photoId) => q('UPDATE couples SET cover_photo_id = ? WHERE id = ?').run(photoId || null, coupleId),
-  addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey, w = null, h = null }) =>
-    Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind, upload_key, w, h) VALUES(?, ?, ?, ?, date('now'), ?, ?, ?, ?)")
-      .run(coupleId, fileKey, originalName, originalExt || null, kind === 'duzenli' ? 'duzenli' : 'secim', uploadKey || null, w, h).lastInsertRowid),
+  addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey, w = null, h = null, galleryId = null }) =>
+    Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind, upload_key, w, h, gallery_id) VALUES(?, ?, ?, ?, date('now'), ?, ?, ?, ?, ?)")
+      .run(coupleId, fileKey, originalName, originalExt || null, kind === 'duzenli' ? 'duzenli' : 'secim', uploadKey || null, w, h, kind === 'duzenli' ? null : galleryId).lastInsertRowid),
   photoByUploadKey: (coupleId, uploadKey) => q('SELECT id FROM photos WHERE couple_id = ? AND upload_key = ?').get(coupleId, uploadKey),
   deletePhoto: (id) => q('DELETE FROM photos WHERE id = ?').run(id),
 

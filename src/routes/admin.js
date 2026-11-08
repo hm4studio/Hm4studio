@@ -903,13 +903,17 @@ function register(router) {
   router.get('/admin/ciftler/:id', (req, res, { params, query }) => {
     if (!requireAdmin(req, res)) return;
     const couple = getCoupleOr404(params.id);
-    const all = db.listPhotos(couple.id, 'secim');
+    let all = db.listPhotos(couple.id, 'secim');
+    if (all.some((p) => !p.gallery_id)) { db.defaultGallery(couple.id); all = db.listPhotos(couple.id, 'secim'); }
+    const galleries = db.listGalleries(couple.id);
+    const gal = galleries.find((g) => g.id === Number(query.get('gal'))) || null;
     const edited = db.listPhotos(couple.id, 'duzenli');
     const favs = all.filter((p) => p.is_fav);
     const view = query.get('g') === 'fav' ? 'fav' : 'all';
     html(res, views.coupleDetail(getContent(), {
       couple,
-      photos: view === 'fav' ? favs : all,
+      galleries, gal,
+      photos: view === 'fav' ? favs : gal ? all.filter((p) => p.gallery_id === gal.id) : all,
       totalCount: all.length,
       favCount: favs.length,
       view,
@@ -1147,9 +1151,50 @@ function register(router) {
     media.saveCouplePhoto(couple.id, fileKey, parts);
     const kind = decodeURIComponent(String(req.headers['x-category'] || '')) === 'duzenli' ? 'duzenli' : 'secim';
     const dim = media.jpegSize(parts.thumb) || {};
-    const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt, kind, uploadKey, w: dim.w || null, h: dim.h || null });
+    let galleryId = null;
+    if (kind === 'secim') {
+      const gal = db.getGallery(Number(req.headers['x-gallery']) || 0);
+      galleryId = gal && gal.couple_id === couple.id ? gal.id : db.defaultGallery(couple.id);
+    }
+    const id = db.addPhoto({ coupleId: couple.id, fileKey, originalName, originalExt: parts.originalExt, kind, uploadKey, w: dim.w || null, h: dim.h || null, galleryId });
     events.photosUploaded(couple.id, kind);
     json(res, { ok: true, id });
+  });
+
+  // ── Galeriler: bir çiftin birden çok çekimi ayrı galerilerde (ör. "Sokak çekimi", "Plato") ──
+  const galleryOr404 = (couple, gid) => {
+    const g = db.getGallery(toId(gid));
+    if (!g || g.couple_id !== couple.id) throw new HttpError(404, 'Galeri bulunamadı');
+    return g;
+  };
+  router.post('/admin/ciftler/:id/galeri', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    db.defaultGallery(couple.id);
+    const gid = db.addGallery(couple.id, cleanText(form.name, 60));
+    setFlash(req, { message: 'Yeni galeri açıldı. Adını yazıp fotoğraflarını yükleyebilirsiniz.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}?gal=${gid}#foto`);
+  });
+  router.post('/admin/ciftler/:id/galeri/:gid', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const g = galleryOr404(couple, params.gid);
+    const name = cleanText(form.name, 60);
+    if (name) db.renameGallery(g.id, name);
+    setFlash(req, { message: 'Galeri adı kaydedildi.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}?gal=${g.id}#foto`);
+  });
+  router.post('/admin/ciftler/:id/galeri/:gid/sil', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const g = galleryOr404(couple, params.gid);
+    for (const p of db.galleryPhotos(g.id)) { db.deletePhoto(p.id); media.removeCouplePhoto(couple.id, p.file_key); }
+    db.deleteGallery(g.id);
+    setFlash(req, { message: `“${g.name}” galerisi silindi.`, type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}#foto`);
   });
 
   // Çiftin Fotoğraflar sayfasındaki tam ekran kapak (aynı fotoğrafa tekrar basınca kaldırılır)

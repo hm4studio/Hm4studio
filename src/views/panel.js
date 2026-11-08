@@ -398,7 +398,8 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
 }
 
 // Fotoğraflar: galeri, albüm seçimi, indirme
-function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount, view, cover = null, events = [], csrf, flash: f }) {
+function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount, view, cover = null, events = [], galleries = [], gal = null, csrf, flash: f }) {
+  const multi = galleries.length > 1;
   const isEdited = view === 'edited';
   const first = events.map((e) => e.event_date).filter(Boolean).sort()[0];
   const place = [couple.venue, couple.city].filter(Boolean)[0] || (events.find((e) => e.venue || e.city) || {}).venue || '';
@@ -430,12 +431,21 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
     ${coverBlock}
     <section class="panel-section cpage cpage--gal" id="fotograflar" aria-labelledby="gallery-title">
       <div class="panel-section__head" id="galeri">
-        <h${cover ? '2' : '1'} class="panel-section__title" id="gallery-title">${editedCount ? 'Seçim fotoğrafları' : 'Fotoğraflarınız'}</h${cover ? '2' : '1'}>
-        ${totalCount ? h`<p class="muted">${couple.album_locked ? 'Seçtiğiniz kareleri “Albüm seçimi” sekmesinde görebilirsiniz.' : `Albümünüz için ${couple.album_limit || 35} kare seçin: beğendiğiniz fotoğrafın üzerindeki kalbe dokunun.`}</p>` : ''}
+        ${gal && multi ? h`<a class="galback" href="/panel/fotograflar?g=secim#galeri">${icon('left')}Galeriler</a>` : ''}
+        <h${cover ? '2' : '1'} class="panel-section__title" id="gallery-title">${gal && multi ? gal.name : view === 'galleries' ? 'Galerileriniz' : editedCount ? 'Seçim fotoğrafları' : 'Fotoğraflarınız'}</h${cover ? '2' : '1'}>
+        ${totalCount ? h`<p class="muted">${couple.album_locked ? 'Seçtiğiniz kareleri “Albüm seçimi” sekmesinde görebilirsiniz.' : `Albümünüz için ${couple.album_limit || 35} kare seçin: beğendiğiniz fotoğrafın üzerindeki kalbe dokunun.${multi ? ' Tüm galerilerden seçtikleriniz tek albüm listesinde toplanır.' : ''}`}</p>` : ''}
       </div>
       ${sets}
-      ${totalCount ? galleryTabs('/panel/fotograflar', view, totalCount, favCount) : ''}
-      ${photos.length ? h`
+      ${totalCount ? (multi ? h`<div class="tabs" role="tablist" aria-label="Galeri görünümü">
+        <a class="tab${view !== 'fav' ? ' is-active' : ''}" href="/panel/fotograflar?g=secim#galeri"${view !== 'fav' ? raw(' aria-current="page"') : ''}>Galeriler <span class="tab__count">${galleries.length}</span></a>
+        <a class="tab${view === 'fav' ? ' is-active' : ''}" href="/panel/fotograflar?g=fav#galeri"${view === 'fav' ? raw(' aria-current="page"') : ''}>${icon('heart')}Albüm seçimi <span class="tab__count" data-fav-count>${favCount}</span></a>
+      </div>` : galleryTabs('/panel/fotograflar', view, totalCount, favCount)) : ''}
+      ${view === 'galleries' ? h`<ul class="galcards">${galleries.map((g) => h`
+        <li><a class="galcard" href="/panel/fotograflar?gal=${g.id}#galeri">
+          <span class="galcard__img">${g.first_photo_id ? h`<img src="/m/${g.cover_id || g.first_photo_id}/display" alt="" loading="lazy" decoding="async">` : ''}</span>
+          <span class="galcard__name">${g.name}</span>
+          <span class="galcard__n">${g.photo_count} fotoğraf${g.fav_count ? ` · ${g.fav_count} seçili` : ''}</span>
+        </a></li>`)}</ul>` : photos.length ? h`
       <ul class="tiles tiles--wall" data-gallery data-wall>
         ${photos.map((p) => photoTile(p, { favEndpoint: '/panel/favori', csrf, locked: Boolean(couple.album_locked), noDownload: true }))}
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav'
@@ -444,6 +454,7 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
       ${totalCount ? h`<div class="gal-foot">
         ${albumBar(couple, favCount, { admin: false, csrf })}
         <div class="dl-row">
+          ${gal && multi ? h`<a class="btn btn--text btn--sm" href="/panel/indir?gal=${gal.id}" download>${icon('download')}Bu galeriyi indir (${gal.photo_count})</a>` : ''}
           <a class="btn btn--text btn--sm" href="/panel/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>
           ${favCount ? h`<a class="btn btn--text btn--sm" href="/panel/indir?g=fav" download>${icon('download')}Seçimimi indir (${favCount})</a>` : ''}
         </div>

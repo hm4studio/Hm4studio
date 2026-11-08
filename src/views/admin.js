@@ -745,7 +745,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=52"></head>
+  <link rel="stylesheet" href="/css/style.css?v=53"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -830,7 +830,7 @@ function albumDesignSection(couple, pages, base, csrf) {
   </section>`;
 }
 
-function coupleDetail(c, { couple, card, contract: ct = null, selection = [], videos = [], edited = [], albumPages = [], gift = null, deliveries = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
+function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: ct = null, selection = [], videos = [], edited = [], albumPages = [], gift = null, deliveries = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
   <div class="container">
@@ -911,6 +911,13 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
             <option value="duzenli">Düzenlenmiş / renkli (teslim)</option>
           </select>
         </div>
+        <div class="field field--inline" data-gallery-field>
+          <label for="up-gal">Galeri</label>
+          <select id="up-gal" data-gallery-select>
+            ${galleries.length ? galleries.map((g) => h`<option value="${g.id}"${(gal ? g.id === gal.id : g === galleries[galleries.length - 1]) ? raw(' selected') : ''}>${g.name} (${g.photo_count})</option>`) : h`<option value="">Galeri 1</option>`}
+          </select>
+          <button type="submit" form="new-gal" class="btn btn--text btn--sm">${icon('plus')}Yeni galeri</button>
+        </div>
         <label class="uploader__drop">
           ${icon('upload')}
           <span><strong>Fotoğraf seçin</strong> veya buraya sürükleyin</span>
@@ -928,9 +935,24 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     <section class="panel-section" aria-labelledby="gallery-title">
       <div class="panel-section__head">
         <h2 class="panel-section__title" id="gallery-title">Galeri ve albüm seçimi</h2>
-        <p class="muted">Kalbe dokunarak çiftin albüm seçimini düzenleyebilirsiniz. ${icon('star')} ile çiftin Fotoğraflar sayfasındaki tam ekran kapak fotoğrafını seçin${couple.cover_photo_id ? '' : ' (seçmezseniz sistem yatay bir fotoğrafı otomatik koyar)'}.</p>
+        <p class="muted">Birden çok çekim varsa (ör. sokak ve plato) her birini ayrı galeriye yükleyin: “Yeni galeri” ile açın, adını verin. Çift tek galeri varsa doğrudan fotoğrafları, birden çok varsa galerileri görür; seçtikleri kareler tek albüm listesinde toplanır. Kalbe dokunarak çiftin albüm seçimini düzenleyebilirsiniz. ${icon('star')} ile çiftin Fotoğraflar sayfasındaki tam ekran kapak fotoğrafını seçin${couple.cover_photo_id ? '' : ' (seçmezseniz sistem yatay bir fotoğrafı otomatik koyar)'}.</p>
         ${totalCount ? h`<div class="dl-row"><a class="btn btn--outline btn--sm" href="${base}/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>${favCount ? h`<a class="btn btn--text btn--sm" href="${base}/indir?g=fav" download>${icon('download')}Seçimi indir (${favCount})</a>` : ''}</div>` : ''}
       </div>
+      <form id="new-gal" method="post" action="${base}/galeri" hidden>${csrfField(csrf)}</form>
+      ${galleries.length > 1 || gal ? h`<nav class="galbar" aria-label="Galeriler">
+        <a class="galbar__c${!gal && view !== 'fav' ? ' is-on' : ''}" href="${base}#foto">Tümü <span>${totalCount}</span></a>
+        ${galleries.map((g) => h`<a class="galbar__c${gal && gal.id === g.id ? ' is-on' : ''}" href="${base}?gal=${g.id}#foto">${g.name} <span>${g.photo_count}</span></a>`)}
+      </nav>` : ''}
+      ${gal ? h`<div class="galedit">
+        <form method="post" action="${base}/galeri/${gal.id}" class="galedit__name">${csrfField(csrf)}
+          <label class="sr-only" for="gal-name">Galeri adı</label>
+          <input id="gal-name" name="name" maxlength="60" value="${gal.name}" placeholder="Ör. Sokak çekimi">
+          <button class="btn btn--outline btn--sm" type="submit">Adı kaydet</button>
+        </form>
+        <form method="post" action="${base}/galeri/${gal.id}/sil" class="inline-form" data-confirm="“${gal.name}” galerisi ve içindeki ${gal.photo_count} fotoğraf kalıcı olarak silinsin mi?">${csrfField(csrf)}
+          <button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Galeriyi sil</button>
+        </form>
+      </div>` : ''}
       ${galleryTabs(base, view, totalCount, favCount)}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
@@ -1057,7 +1079,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=5', '/js/admin.js?v=6', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=5', '/js/admin.js?v=7', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
 function calendar(c, { couples, monthEvents = [], ym = today().slice(0, 7), csrf, demoAdmin }) {
@@ -1186,7 +1208,7 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       </ul>` : h`<div class="empty-box">${icon('image')}<p>Henüz portfolyo fotoğrafı yok.</p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
+  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
 }
 
 // Ekip: personel ekle, düzenle, sil; her kişinin görevleri
@@ -1327,7 +1349,7 @@ function reminderForm(c, { id, values: v = {}, action, title, errors = [], csrf,
       <form method="post" action="/admin/hatirlatma/${id}/sil" class="inline-form" data-confirm="Bu hatırlatma silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
     </div>` : ''}
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
 }
 
 
@@ -1404,7 +1426,7 @@ function prebookForm(c, { id, values: v = {}, action, title, errors = [], csrf, 
       <form method="post" action="/admin/on-randevu/${id}/sil" class="inline-form" data-confirm="Bu ön randevu silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
     </div>` : ''}
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
 }
 
 // Sayfa başlıkları: her sayfanın Google'da görünen başlığı ve açıklaması, canlı önizlemeyle
@@ -1448,7 +1470,7 @@ function portfolioTagsPage(c, { counts = {}, csrf, flash: f, demoAdmin }) {
       <button class="btn btn--primary" type="submit">${icon('check')}Kaydet</button>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo etiketleri', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
+  return panelLayout(c, { title: 'Portfolyo etiketleri', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
 }
 
 function sourcesPage(c, { counts = {}, csrf, flash: f, demoAdmin }) {
@@ -1500,7 +1522,7 @@ function seoTitlesPage(c, { csrf, flash: f, demoAdmin }) {
       <button class="btn btn--primary" type="submit">Kaydet</button>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Sayfa başlıkları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
+  return panelLayout(c, { title: 'Sayfa başlıkları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
 }
 
 function deliverySettingsPage(c, { csrf, flash: f, demoAdmin }) {
@@ -1830,7 +1852,7 @@ function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
       <div class="appt-actions"><button class="btn btn--primary" type="submit">Siteyi güncelle</button></div>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=6'] });
+  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
 }
 
 // Paketler: ad, fiyat, içerik; randevu formunda seçilince fiyat ve içerik dolar
