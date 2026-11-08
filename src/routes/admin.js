@@ -102,7 +102,7 @@ function register(router) {
     const outbox = wa.autoSend() ? [] : require('../outbox').list();
     const quotes = db.listQuotes().filter((q) => q.status === 'kabul' && !q.couple_id);
     const newLeads = db.listLeads().filter((l) => l.status === 'yeni').length;
-    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, reminders: db.openReminders(), couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, reminders: db.openReminders(), prebookings: db.openPrebookings(), couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   // Elle gönderilen WhatsApp mesajı "gönderildi" (veya "atla") olarak işaretlenir; listeden düşer
@@ -154,6 +154,14 @@ function register(router) {
         hediye: ql?.gift_code || '',
       });
       if (ql?.gift_code) values.source = 'Tavsiye';
+    }
+    // Ön randevudan: bilgiler gelir, tarihi siz girersiniz
+    const pre = query.get('on') ? db.getPrebooking(Number(query.get('on')) || 0) : null;
+    if (pre && !pre.couple_id) {
+      Object.assign(values, {
+        on: pre.id, fullName: pre.name, phone: pre.phone ? wa.displayPhone(pre.phone) : '', ev0_type: pre.event_type || '',
+        ev0_price: pre.price || '', deposit: pre.deposit || '', notes: [pre.note, pre.est_text ? `Tahmini tarih: ${pre.est_text}` : ''].filter(Boolean).join('\n'),
+      });
     }
     html(res, views.appointmentPage(getContent(), { values, action: '/admin/ciftler', title: 'Yeni randevu', submitLabel: 'Randevuyu oluştur', csrf: req.session.csrf, talepId, teklifId, back: talepId ? '/admin/talepler' : '/admin', demoAdmin: demo.isDemoAdmin(req), isNew: true, team: db.listTeam(), packages: db.listPackages().filter((x) => x.active) }));
   });
@@ -209,6 +217,7 @@ function register(router) {
     db.setRefNo(id, db.nextRefNo((first || today()).slice(0, 4)));
     const lead = form.talep ? db.getLead(Number(form.talep) || 0) : null;
     if (lead && !lead.couple_id) db.setLeadStatus(lead.id, 'rezervasyon', id);
+    if (form.on) { const pb = db.getPrebooking(Number(form.on) || 0); if (pb && !pb.couple_id) { db.setPrebookingCouple(pb.id, id); require('./prebook').closeReminder(pb); } }
     if (form.teklif) { const qt = db.getQuote(Number(form.teklif) || 0); if (qt && !qt.couple_id) db.setQuoteCouple(qt.id, id); }
     // Hediye kuponu: geçerliyse kullanıldı sayılır; tavsiye eden çifte teşekkür hediyesi hatırlatması başlar
     let giftNote = '';

@@ -174,6 +174,14 @@ CREATE TABLE IF NOT EXISTS reminders (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS reminders_due ON reminders(done_at, due_date);
+CREATE TABLE IF NOT EXISTS prebookings (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  phone TEXT, event_type TEXT, est_text TEXT, est_date TEXT,
+  price INTEGER NOT NULL DEFAULT 0, deposit INTEGER NOT NULL DEFAULT 0, note TEXT,
+  reminder_id INTEGER, couple_id INTEGER REFERENCES couples(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `);
 // Randevu kartı alanları
 for (const [col, def] of [
@@ -538,6 +546,17 @@ module.exports = {
   // Saati gelmiş (ya da saatsizse sabah 9'u geçmiş), henüz bildirilmemiş hatırlatıcılar
   remindersToNotify: (day, hm) => q("SELECT * FROM reminders WHERE done_at IS NULL AND notified_at IS NULL AND (due_date < ? OR (due_date = ? AND COALESCE(due_time, '09:00') <= ?))").all(day, day, hm),
   markReminderNotified: (id) => q("UPDATE reminders SET notified_at = datetime('now') WHERE id = ?").run(id),
+
+  // Ön randevular: tarihi belli olmayan çekimler (ör. dış çekim). Kesinleşince gerçek randevuya çevrilir.
+  addPrebooking: (x) => Number(q('INSERT INTO prebookings(name, phone, event_type, est_text, est_date, price, deposit, note) VALUES(?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(x.name, x.phone || null, x.eventType || null, x.estText || null, x.estDate || null, x.price || 0, x.deposit || 0, x.note || null).lastInsertRowid),
+  updatePrebooking: (id, x) => q('UPDATE prebookings SET name = ?, phone = ?, event_type = ?, est_text = ?, est_date = ?, price = ?, deposit = ?, note = ? WHERE id = ?')
+    .run(x.name, x.phone || null, x.eventType || null, x.estText || null, x.estDate || null, x.price || 0, x.deposit || 0, x.note || null, id),
+  setPrebookingReminder: (id, rid) => q('UPDATE prebookings SET reminder_id = ? WHERE id = ?').run(rid || null, id),
+  setPrebookingCouple: (id, coupleId) => q('UPDATE prebookings SET couple_id = ? WHERE id = ?').run(coupleId, id),
+  getPrebooking: (id) => q('SELECT * FROM prebookings WHERE id = ?').get(id),
+  openPrebookings: () => q("SELECT * FROM prebookings WHERE couple_id IS NULL ORDER BY COALESCE(est_date, '9999'), id").all(),
+  deletePrebooking: (id) => q('DELETE FROM prebookings WHERE id = ?').run(id),
 
   addDelivery: (x) => {
     const id = Number(q('INSERT INTO deliveries(couple_id, snapshot, signer_name, signature, ip, user_agent, hash) VALUES(?, ?, ?, ?, ?, ?, ?)')

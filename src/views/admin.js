@@ -278,7 +278,7 @@ function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders 
   return rows.sort((a, b) => b.level - a.level);
 }
 
-function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
@@ -328,6 +328,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     </section>
 
     <div class="dash-one">${programBlock(c, upcoming, tomorrowDue, reminders)}</div>
+    ${prebookBlock(prebookings)}
 
     <section class="couples" aria-labelledby="cards-title">
       <header class="sec-head cards-head">
@@ -434,11 +435,13 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
   <div class="container container--form">
     <a class="back-link" href="${back}">${icon('left')}Geri</a>
     <h1 class="page-title">${title}</h1>
+    ${values.on ? h`<p class="pre-note">${icon('calendar')}<span>Ön randevudan geldi. Kesin tarihi girip kaydedin.</span></p>` : isNew ? h`<p class="pre-note">${icon('calendar')}<span>Tarih henüz belli değil mi? <a href="/admin/on-randevu/yeni">Ön randevu olarak kaydedin</a></span></p>` : ''}
     ${errors.length ? h`<div class="flash flash--error" role="alert">${errors.map((e) => h`<div>${e}</div>`)}</div>` : ''}
     <form class="form appt-form" method="post" action="${action}" data-appt-form data-couple="${coupleId}" data-packages="${JSON.stringify(packages.map((x) => ({ n: x.name, p: x.price, d: x.detail, t: x.event_type })))}">
       ${csrfField(csrf)}
       ${talepId ? h`<input type="hidden" name="talep" value="${talepId}">` : ''}
       ${teklifId || values.teklif ? h`<input type="hidden" name="teklif" value="${teklifId || values.teklif}">` : ''}
+      ${values.on ? h`<input type="hidden" name="on" value="${values.on}">` : ''}
       <datalist id="pkg-list">${packages.map((x) => h`<option value="${x.name}">${x.price ? tl(x.price) : ''}</option>`)}</datalist>
 
       <fieldset class="appt-group">
@@ -723,7 +726,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=45"></head>
+  <link rel="stylesheet" href="/css/style.css?v=46"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1284,6 +1287,83 @@ function reminderForm(c, { id, values: v = {}, action, title, errors = [], csrf,
   return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
 }
 
+
+// Ön randevular: tarihi belli olmayan çekimler
+const preWhen = (p) => p.est_text || (p.est_date ? formatDate(p.est_date) : 'Tarih yok');
+function preBadge(p, t) {
+  if (!p.est_date) return h`<span class="pre-badge pre-badge--wait">Tarih bekleniyor</span>`;
+  const d = daysBetween(t, p.est_date);
+  if (d < 0) return h`<span class="pre-badge pre-badge--late">Tahmini tarih geçti</span>`;
+  if (d <= 14) return h`<span class="pre-badge pre-badge--soon">${d === 0 ? 'Bugün' : `${d} gün kaldı`}</span>`;
+  return h`<span class="pre-badge pre-badge--wait">Tarih bekleniyor</span>`;
+}
+function prebookRows(list, t) {
+  return h`<ul class="pre-list">${list.map((p) => h`
+    <li class="pre-item">
+      <a class="pre-item__main" href="/admin/on-randevu/${p.id}">
+        <b>${p.name}</b>
+        <span class="muted">${p.event_type || 'Çekim'} · tahmini ${preWhen(p)}${p.deposit ? ` · kapora ${tl(p.deposit)}` : ''}</span>
+      </a>
+      ${preBadge(p, t)}
+      <span class="pre-item__acts">
+        ${p.phone ? h`<a class="btn btn--text btn--sm" href="https://wa.me/${p.phone}" target="_blank" rel="noopener" aria-label="WhatsApp">${icon('whatsapp')}</a>` : ''}
+        <a class="btn btn--primary btn--sm" href="/admin/randevu/yeni?on=${p.id}">${icon('check')}Kesinleştir</a>
+      </span>
+    </li>`)}</ul>`;
+}
+function prebookBlock(list) {
+  return h`<section class="pre-block" aria-labelledby="pre-title">
+    <header class="sec-head"><h2 class="sec-title" id="pre-title">Ön randevular <span class="sec-count">${list.length}</span></h2>
+      <a class="btn btn--text btn--sm" href="/admin/on-randevu/yeni">${icon('plus')}Ekle</a></header>
+    ${list.length ? prebookRows(list.slice(0, 5), today()) : h`<p class="sec-empty">Tarihi belli olmayan çekim yok. Dış çekim gibi esnek randevuları buraya ekleyin.</p>`}
+    ${list.length > 5 ? h`<a class="btn btn--text btn--sm" href="/admin/on-randevu">Tümü (${list.length})</a>` : ''}
+  </section>`;
+}
+function prebookList(c, { list, csrf, demoAdmin, flash: f }) {
+  const body = h`
+  <div class="container">
+    <a class="back-link" href="/admin">${icon('left')}Bugün</a>
+    <div class="panel-title-row"><h1 class="page-title">Ön randevular</h1><a class="btn btn--primary btn--sm" href="/admin/on-randevu/yeni">${icon('plus')}Yeni ön randevu</a></div>
+    ${flashBlock(f)}
+    <p class="muted">Tarihi henüz belli olmayan çekimler. Takvimde görünmez, teslim süresi saymaz. Tahmini tarihten 2 hafta önce size hatırlatma gelir; tarih belli olunca “Kesinleştir” ile randevuya çevirin.</p>
+    ${list.length ? prebookRows(list, today()) : h`<p class="sec-empty">Henüz ön randevu yok.</p>`}
+  </div>`;
+  return panelLayout(c, { title: 'Ön randevular', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body });
+}
+function prebookForm(c, { id, values: v = {}, action, title, errors = [], csrf, demoAdmin }) {
+  const types = c.appointments?.eventTypes || [];
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/on-randevu">${icon('left')}Ön randevular</a>
+    <h1 class="page-title">${title}</h1>
+    ${errors.length ? h`<div class="flash flash--error" role="alert">${errors.map((e) => h`<div>${e}</div>`)}</div>` : ''}
+    <form class="form" method="post" action="${action}">
+      ${csrfField(csrf)}
+      <div class="appt-row">
+        <div class="field"><label for="pb-n">Çiftin adı</label><input id="pb-n" name="name" required maxlength="120" placeholder="Ör. Ayşe & Ali" value="${v.name || ''}" autofocus></div>
+        <div class="field"><label for="pb-p">Telefon <span class="muted">(isteğe bağlı)</span></label><input id="pb-p" name="phone" type="tel" inputmode="tel" placeholder="05xx xxx xx xx" value="${v.phone || ''}"></div>
+      </div>
+      <div class="appt-row">
+        <div class="field"><label for="pb-t">Çekim türü</label><select id="pb-t" name="eventType">${[...new Set([v.eventType, ...types].filter(Boolean))].map((x) => h`<option${x === v.eventType ? raw(' selected') : ''}>${x}</option>`)}</select></div>
+        <div class="field"><label for="pb-e">Tahmini tarih</label><input id="pb-e" name="estText" maxlength="80" placeholder="Ör. Nisan 2027, 10–25 Mayıs, Bahar" value="${v.estText || ''}"></div>
+      </div>
+      <div class="field"><label for="pb-d">En erken tarih <span class="muted">(isteğe bağlı, hatırlatma için)</span></label><input id="pb-d" name="estDate" type="date" value="${v.estDate || ''}">
+        <p class="muted">Boş bırakırsanız tahmini tarihten anlaşılır (ör. “Nisan 2027” → 1 Nisan). 2 hafta önce hatırlatma gelir.</p></div>
+      <div class="appt-row">
+        <div class="field"><label for="pb-pr">Fiyat (₺) <span class="muted">(isteğe bağlı)</span></label><input id="pb-pr" name="price" inputmode="numeric" placeholder="0" value="${v.price || ''}" data-money></div>
+        <div class="field"><label for="pb-dp">Kapora (₺) <span class="muted">(alındıysa)</span></label><input id="pb-dp" name="deposit" inputmode="numeric" placeholder="0" value="${v.deposit || ''}" data-money></div>
+      </div>
+      <div class="field"><label for="pb-no">Not <span class="muted">(isteğe bağlı)</span></label><textarea id="pb-no" name="note" rows="3" maxlength="600" placeholder="Ör. Hava güzel olunca, Kastamonu'da">${v.note || ''}</textarea></div>
+      <button class="btn btn--primary" type="submit">${icon('check')}Kaydet</button>
+    </form>
+    ${id ? h`<div class="cd-danger-row">
+      <a class="btn btn--outline btn--sm" href="/admin/randevu/yeni?on=${id}">${icon('check')}Kesinleştir, randevuya çevir</a>
+      <form method="post" action="/admin/on-randevu/${id}/sil" class="inline-form" data-confirm="Bu ön randevu silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
+    </div>` : ''}
+  </div>`;
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
+}
+
 // Sayfa başlıkları: her sayfanın Google'da görünen başlığı ve açıklaması, canlı önizlemeyle
 function seoPages(c) {
   const b = c.brand.name;
@@ -1726,6 +1806,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
 }
 
 module.exports = {
+  prebookList, prebookForm,
   sourcesPage,
   seoTitlesPage,
   seoPages,
