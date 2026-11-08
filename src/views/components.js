@@ -154,7 +154,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=48">
+<link rel="stylesheet" href="/css/style.css?v=52">
 <link rel="stylesheet" href="/css/tema.css">
 </head>
 <body class="${bodyClass}">
@@ -177,7 +177,7 @@ ${siteBanner(c)}
 ${siteHeader(c, active, overlayHeader)}
 <main id="main">${body}</main>
 ${siteFooter(c)}
-<script src="/js/site.js?v=9" defer></script>
+<script src="/js/site.js?v=10" defer></script>
 <script src="/js/pwa.js?v=2" defer></script>
 </body>
 </html>`);
@@ -205,7 +205,7 @@ ${demoBanner()}
 </header>
 <main id="main" class="panel-main${tabs.length ? ' has-tabbar' : ''}">${body}</main>
 ${tabbar(tabs)}
-<script src="/js/site.js?v=9" defer></script>
+<script src="/js/site.js?v=10" defer></script>
 <script src="/js/pwa.js?v=2" defer></script>
 ${scripts.map((s) => h`<script src="${s}" defer></script>`)}
 </body>
@@ -231,14 +231,14 @@ function placeholder(label, ratio = 'portrait') {
 }
 
 // Herkese açık portfolyo ızgarası (dokununca büyük görüntüleme açılır)
-function portfolioGrid(items, { limit, only = '' } = {}) {
+function portfolioGrid(items, { limit, only = '', wall = false } = {}) {
   const list = limit ? items.slice(0, limit) : items;
   return h`
-  <ul class="gallery" data-gallery>
+  <ul class="gallery${wall ? ' gallery--wall' : ''}" data-gallery${wall ? raw(' data-wall') : ''}>
     ${list.map((p, i) => h`
     <li class="gallery__item" data-category="${p.category}" data-tags="${(p.tags || []).join('|')}"${only && !(p.tags || []).includes(only) ? raw(' hidden') : ''}>
       <a class="gallery__link" href="${p.display}" data-lb data-caption="${p.alt || p.category}">
-        <img src="${p.thumb}" alt="${p.alt || `${p.category || 'Düğün'} fotoğrafı`}" loading="${i < 4 ? 'eager' : 'lazy'}" decoding="async" width="600" height="750">
+        <img src="${p.thumb}" alt="${p.alt || `${p.category || 'Düğün'} fotoğrafı`}" loading="${i < 4 ? 'eager' : 'lazy'}" decoding="async"${wall ? '' : raw(' width="600" height="750"')}>
       </a>
     </li>`)}
   </ul>`;

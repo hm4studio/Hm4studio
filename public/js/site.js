@@ -5,6 +5,7 @@
 
   const ICONS = {
     close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    download: '<path d="M12 4v11"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>',
     left: '<path d="M14.5 5.5L8 12l6.5 6.5"/>',
     right: '<path d="M9.5 5.5L16 12l-6.5 6.5"/>',
     heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"/>',
@@ -154,7 +155,7 @@
         if (img?.complete) fit(); else img?.addEventListener('load', fit, { once: true });
       }
     });
-    g.classList.add('is-flow');
+    if (!g.hasAttribute('data-wall')) g.classList.add('is-flow');
   });
 
   // ── Büyük görüntüleme (lightbox) ──
@@ -173,7 +174,7 @@
       <button type="button" class="lb__btn lb__close" aria-label="Kapat">${svg('close')}</button>
       <button type="button" class="lb__btn lb__prev" aria-label="Önceki">${svg('left')}</button>
       <button type="button" class="lb__btn lb__next" aria-label="Sonraki">${svg('right')}</button>
-      <div class="lb__bar"><span class="lb__count"></span><button type="button" class="lb__btn lb__fav" aria-pressed="false" hidden>${svg('heart')}<span class="lb__fav-text"></span></button></div>`;
+      <div class="lb__bar"><span class="lb__count"></span><a class="lb__btn lb__dl" hidden aria-label="Bu fotoğrafı indir">${svg('download')}</a><button type="button" class="lb__btn lb__fav" aria-pressed="false" hidden>${svg('heart')}<span class="lb__fav-text"></span></button></div>`;
     document.body.appendChild(lb);
     imgEl = lb.querySelector('.lb__img');
     countEl = lb.querySelector('.lb__count');
@@ -291,6 +292,8 @@
     imgEl.alt = a.dataset.caption || a.querySelector('img')?.alt || '';
     if (from) requestAnimationFrame(() => anim());
     countEl.textContent = `${index + 1} / ${items.length}`;
+    const dl = lb.querySelector('.lb__dl');
+    if (a.dataset.dl) { dl.href = a.dataset.dl; dl.hidden = false; } else dl.hidden = true;
     syncFav();
     // Öncekini ve sonrakini önceden yükle
     for (const d of [1, -1]) { const n = items[(index + d + items.length) % items.length]; if (n) { const pre = new Image(); pre.src = n.getAttribute('href'); } }

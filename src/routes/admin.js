@@ -1152,6 +1152,19 @@ function register(router) {
     json(res, { ok: true, id });
   });
 
+  // Çiftin Fotoğraflar sayfasındaki tam ekran kapak (aynı fotoğrafa tekrar basınca kaldırılır)
+  router.post('/admin/ciftler/:id/kapak/:pid', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const photo = db.getPhoto(toId(params.pid));
+    if (!photo || photo.couple_id !== couple.id) throw new HttpError(404, 'Bulunamadı');
+    const off = couple.cover_photo_id === photo.id;
+    db.setCoverPhoto(couple.id, off ? null : photo.id);
+    setFlash(req, { message: off ? 'Kapak kaldırıldı; sistem otomatik seçecek.' : 'Kapak fotoğrafı seçildi. Çift, Fotoğraflar sayfasını bu fotoğrafla açılmış görecek.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}${photo.kind === 'duzenli' ? '#duzenli' : '#foto'}`);
+  });
+
   router.post('/admin/ciftler/:id/fotograflar/:pid/sil', async (req, res, { params }) => {
     const form = await formGuard(req, res);
     if (!form) return;

@@ -195,7 +195,7 @@ for (const [col, def] of [
   ['source', "TEXT NOT NULL DEFAULT ''"], ['notes', "TEXT NOT NULL DEFAULT ''"],
   ['photo_ready', 'INTEGER NOT NULL DEFAULT 0'], ['video_ready', 'INTEGER NOT NULL DEFAULT 0'], ['album_ready', 'INTEGER NOT NULL DEFAULT 0'],
   ['album_info_sent_at', 'TEXT'],
-  ['first_seen_at', 'TEXT'], ['last_seen_at', 'TEXT'], ['visit_count', 'INTEGER NOT NULL DEFAULT 0'],
+  ['cover_photo_id', 'INTEGER'], ['first_seen_at', 'TEXT'], ['last_seen_at', 'TEXT'], ['visit_count', 'INTEGER NOT NULL DEFAULT 0'],
 ]) addColumn('couples', col, def);
 
 db.exec(`
@@ -500,6 +500,7 @@ module.exports = {
     SELECT p.*, 1 AS is_fav FROM favorites f JOIN photos p ON p.id = f.photo_id
     WHERE f.couple_id = ? ORDER BY p.id`).all(coupleId)),
   getPhoto: (id) => q('SELECT * FROM photos WHERE id = ?').get(id),
+  setCoverPhoto: (coupleId, photoId) => q('UPDATE couples SET cover_photo_id = ? WHERE id = ?').run(photoId || null, coupleId),
   addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey, w = null, h = null }) =>
     Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind, upload_key, w, h) VALUES(?, ?, ?, ?, date('now'), ?, ?, ?, ?)")
       .run(coupleId, fileKey, originalName, originalExt || null, kind === 'duzenli' ? 'duzenli' : 'secim', uploadKey || null, w, h).lastInsertRowid),

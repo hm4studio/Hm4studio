@@ -173,7 +173,7 @@ function portfolioPage(c, { portfolio, instagram, active = '' }) {
         </div>
       </nav>` : ''}
       ${portfolio.length
-        ? h`<div class="pf-grid" data-pf-grid>${portfolioGrid(portfolio, { only: active })}</div>
+        ? h`<div class="pf-grid" data-pf-grid>${portfolioGrid(portfolio, { only: active, wall: true })}</div>
           <p class="pf-ask" data-pf-ask${active ? '' : raw(' hidden')}>
             <span data-pf-ask-text>${active ? `${active} gibi bir çekim mi düşünüyorsunuz?` : ''}</span>
             <a href="${active ? ask(active) : '#'}" target="_blank" rel="noopener" data-pf-ask-link data-wa="${String(c.contact.whatsapp).replace(/\D/g, '')}">Bize yazın ${icon('arrow')}</a>

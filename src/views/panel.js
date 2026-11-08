@@ -90,18 +90,23 @@ function formatDate(iso) {
 }
 
 // Çift ve admin galerilerinde ortak fotoğraf kutusu
-function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFav }) {
+function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFav, noDownload, coverAction, isCover }) {
   const fav = Boolean(p.is_fav);
   return h`
-  <li class="tile${fav ? ' is-fav' : ''}" data-tile data-r="${p.w && p.h ? (p.w / p.h).toFixed(3) : ''}">
-    <a class="tile__img" href="/m/${p.id}/display" data-lb data-caption="${p.original_name || ''}">
+  <li class="tile${fav ? ' is-fav' : ''}${isCover ? ' is-cover' : ''}" data-tile data-r="${p.w && p.h ? (p.w / p.h).toFixed(3) : ''}">
+    <a class="tile__img" href="/m/${p.id}/display" data-lb data-caption="${p.original_name || ''}" data-dl="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1">
       <img src="/m/${p.id}/thumb" alt="${p.original_name || 'Fotoğraf'}" loading="lazy" decoding="async" width="${p.w || 640}" height="${p.h || 640}">
     </a>
     <div class="tile__bar">
       ${noFav ? h`<span></span>` : h`<button type="button" class="tile__fav" data-fav="${favEndpoint}" data-photo="${p.id}" aria-pressed="${fav ? 'true' : 'false'}" aria-label="${fav ? 'Albümden çıkar' : 'Albüme ekle'}"${locked ? raw(' disabled') : ''}>
         ${icon('heart')}
       </button>`}
-      <a class="tile__btn" href="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1" aria-label="İndir">${icon('download')}</a>
+      ${isCover ? h`<span class="tile__cover">Kapak</span>` : ''}
+      ${coverAction ? h`<form method="post" action="${coverAction}" class="inline-form">
+        <input type="hidden" name="csrf" value="${csrf}">
+        <button type="submit" class="tile__btn${isCover ? ' is-on' : ''}" aria-label="${isCover ? 'Kapaktan kaldır' : 'Çiftin galerisine kapak yap'}" title="${isCover ? 'Kapaktan kaldır' : 'Kapak yap'}">${icon('star')}</button>
+      </form>` : ''}
+      ${noDownload ? '' : h`<a class="tile__btn" href="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1" aria-label="İndir">${icon('download')}</a>`}
       ${canDelete ? h`<form method="post" action="${deleteAction}" class="inline-form" data-confirm="Bu fotoğraf kalıcı olarak silinsin mi?">
         <input type="hidden" name="csrf" value="${csrf}">
         <button type="submit" class="tile__btn tile__btn--danger" aria-label="Sil">${icon('trash')}</button>
@@ -393,34 +398,46 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
 }
 
 // Fotoğraflar: galeri, albüm seçimi, indirme
-function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount, view, csrf, flash: f }) {
+function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount, view, cover = null, events = [], csrf, flash: f }) {
   const isEdited = view === 'edited';
+  const first = events.map((e) => e.event_date).filter(Boolean).sort()[0];
+  const place = [couple.venue, couple.city].filter(Boolean)[0] || (events.find((e) => e.venue || e.city) || {}).venue || '';
+  const coverBlock = cover ? h`<section class="gcover" aria-label="Kapak">
+      <img class="gcover__img" src="/m/${cover.id}/display" alt="" decoding="async" fetchpriority="high">
+      <div class="gcover__text">
+        ${first || place ? h`<p class="gcover__meta">${[first ? formatDate(first) : '', place].filter(Boolean).join(' · ')}</p>` : ''}
+        <h1 class="gcover__name">${couple.name}</h1>
+        <a class="gcover__btn" href="#galeri">Galeriyi gör</a>
+      </div>
+    </section>` : '';
   const sets = editedCount && totalCount ? h`<nav class="sets" aria-label="Fotoğraf grupları">
       <a class="sets__link" href="/panel/fotograflar?g=duzenli"${isEdited ? raw(' aria-current="page"') : ''}><span>Düzenlenmiş fotoğraflar</span><span class="sets__count">${editedCount}</span></a>
       <a class="sets__link" href="/panel/fotograflar?g=secim"${!isEdited ? raw(' aria-current="page"') : ''}><span>Seçim fotoğrafları</span><span class="sets__count">${totalCount}</span></a>
     </nav>` : '';
   const body = isEdited ? h`
-    <section class="panel-section cpage" id="fotograflar" aria-labelledby="gallery-title">
-      <div class="panel-section__head">
-        <h1 class="panel-section__title" id="gallery-title">Fotoğraflarınız</h1>
+    ${coverBlock}
+    <section class="panel-section cpage cpage--gal" id="fotograflar" aria-labelledby="gallery-title">
+      <div class="panel-section__head" id="galeri">
+        <h${cover ? '2' : '1'} class="panel-section__title" id="gallery-title">Fotoğraflarınız</h${cover ? '2' : '1'}>
         <p class="muted">Renk ve ışık düzenlemesi yapılmış, teslim edilen fotoğraflarınız.</p>
         <div class="dl-row"><a class="btn btn--primary btn--sm" href="/panel/indir?g=duzenli" download>${icon('download')}Tümünü indir (${editedCount})</a></div>
       </div>
       ${sets}
-      <ul class="tiles" data-gallery>
+      <ul class="tiles tiles--wall" data-gallery data-wall>
         ${photos.map((p) => photoTile(p, { csrf, locked: true, noFav: true }))}
       </ul>
     </section>` : h`
-    <section class="panel-section cpage" id="fotograflar" aria-labelledby="gallery-title">
-      <div class="panel-section__head">
-        <h1 class="panel-section__title" id="gallery-title">${editedCount ? 'Seçim fotoğrafları' : 'Fotoğraflarınız'}</h1>
+    ${coverBlock}
+    <section class="panel-section cpage cpage--gal" id="fotograflar" aria-labelledby="gallery-title">
+      <div class="panel-section__head" id="galeri">
+        <h${cover ? '2' : '1'} class="panel-section__title" id="gallery-title">${editedCount ? 'Seçim fotoğrafları' : 'Fotoğraflarınız'}</h${cover ? '2' : '1'}>
         ${totalCount ? h`<p class="muted">${couple.album_locked ? 'Seçtiğiniz kareleri “Albüm seçimi” sekmesinde görebilirsiniz.' : `Albümünüz için ${couple.album_limit || 35} kare seçin: beğendiğiniz fotoğrafın üzerindeki kalbe dokunun.`}</p>` : ''}
       </div>
       ${sets}
       ${totalCount ? galleryTabs('/panel/fotograflar', view, totalCount, favCount) : ''}
       ${photos.length ? h`
-      <ul class="tiles" data-gallery>
-        ${photos.map((p) => photoTile(p, { favEndpoint: '/panel/favori', csrf, locked: Boolean(couple.album_locked) }))}
+      <ul class="tiles tiles--wall" data-gallery data-wall>
+        ${photos.map((p) => photoTile(p, { favEndpoint: '/panel/favori', csrf, locked: Boolean(couple.album_locked), noDownload: true }))}
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav'
           ? 'Henüz albüm için kare seçmediniz. “Tüm fotoğraflar” sekmesinden kalbe dokunarak ekleyebilirsiniz.'
           : couple.archived_at ? 'Fotoğraflarınız teslim edildi ve sunucumuzdan kaldırıldı. Yeniden ihtiyacınız olursa bize yazın.' : 'Fotoğraflarınız hazırlandığında burada görünecek.'}</p></div>`}

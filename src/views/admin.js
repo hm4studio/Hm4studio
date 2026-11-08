@@ -745,7 +745,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=48"></head>
+  <link rel="stylesheet" href="/css/style.css?v=52"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -928,13 +928,13 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
     <section class="panel-section" aria-labelledby="gallery-title">
       <div class="panel-section__head">
         <h2 class="panel-section__title" id="gallery-title">Galeri ve albüm seçimi</h2>
-        <p class="muted">Kalbe dokunarak çiftin albüm seçimini düzenleyebilirsiniz.</p>
+        <p class="muted">Kalbe dokunarak çiftin albüm seçimini düzenleyebilirsiniz. ${icon('star')} ile çiftin Fotoğraflar sayfasındaki tam ekran kapak fotoğrafını seçin${couple.cover_photo_id ? '' : ' (seçmezseniz sistem yatay bir fotoğrafı otomatik koyar)'}.</p>
         ${totalCount ? h`<div class="dl-row"><a class="btn btn--outline btn--sm" href="${base}/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>${favCount ? h`<a class="btn btn--text btn--sm" href="${base}/indir?g=fav" download>${icon('download')}Seçimi indir (${favCount})</a>` : ''}</div>` : ''}
       </div>
       ${galleryTabs(base, view, totalCount, favCount)}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
-        ${photos.map((p) => photoTile(p, { favEndpoint: `${base}/favori`, canDelete: true, csrf, deleteAction: `${base}/fotograflar/${p.id}/sil` }))}
+        ${photos.map((p) => photoTile(p, { favEndpoint: `${base}/favori`, canDelete: true, csrf, deleteAction: `${base}/fotograflar/${p.id}/sil`, coverAction: `${base}/kapak/${p.id}`, isCover: p.id === couple.cover_photo_id }))}
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav' ? 'Bu çift henüz albüm için kare seçmedi.' : 'Henüz fotoğraf yüklenmedi.'}</p></div>`}
     </section>
 
@@ -944,7 +944,7 @@ function coupleDetail(c, { couple, card, contract: ct = null, selection = [], vi
         <p class="muted">Renk ve ışık düzenlemesi yapılmış teslim fotoğrafları. Çift, Fotoğraflar sayfasında bunları ayrı görür ve tek tıkla indirir. Yüklerken yukarıda "Düzenlenmiş / renkli" seçin; orijinal dosyaları sakla işaretli kalsın.</p>
         ${edited.length ? h`<div class="dl-row"><a class="btn btn--outline btn--sm" href="${base}/indir?g=duzenli" download>${icon('download')}Tümünü indir (${edited.length})</a></div>` : ''}
       </div>
-      ${edited.length ? h`<ul class="tiles" data-gallery>${edited.map((p) => photoTile(p, { canDelete: true, csrf, noFav: true, deleteAction: `${base}/fotograflar/${p.id}/sil` }))}</ul>` : h`<p class="sec-empty">Henüz düzenlenmiş fotoğraf yüklenmedi.</p>`}
+      ${edited.length ? h`<ul class="tiles" data-gallery>${edited.map((p) => photoTile(p, { canDelete: true, csrf, noFav: true, deleteAction: `${base}/fotograflar/${p.id}/sil`, coverAction: `${base}/kapak/${p.id}`, isCover: p.id === couple.cover_photo_id }))}</ul>` : h`<p class="sec-empty">Henüz düzenlenmiş fotoğraf yüklenmedi.</p>`}
     </section>
 
     </div>

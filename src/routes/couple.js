@@ -148,7 +148,15 @@ function register(router) {
     // Düzenlenmiş fotoğraflar varsa sayfa onlarla açılır
     const view = g === 'fav' ? 'fav' : g === 'secim' ? 'all' : g === 'duzenli' || (!g && edited.length) ? 'edited' : 'all';
     const photos = view === 'edited' ? edited : view === 'fav' ? favs : all;
-    html(res, views.couplePhotos(getContent(), { couple, photos, totalCount: all.length, editedCount: edited.length, favCount: favs.length, view, csrf: req.session.csrf, flash: takeFlash(req) }));
+    // Kapak: sayfa ilk açıldığında (sekme seçilmemişken) tam ekran; mümkünse yatay bir kare
+    let cover = null;
+    if (!g) {
+      const pool = (edited.length ? edited : all).slice(0, 24);
+      const chosen = couple.cover_photo_id ? [...edited, ...all].find((p) => p.id === couple.cover_photo_id) : null;
+      cover = chosen || pool.find((p) => p.w && p.h && p.w > p.h * 1.15) || pool[0] || null;
+    }
+    const events = db.listEvents(couple.id);
+    html(res, views.couplePhotos(getContent(), { couple, photos, totalCount: all.length, editedCount: edited.length, favCount: favs.length, view, cover, events, csrf: req.session.csrf, flash: takeFlash(req) }));
   });
 
   // Videolar
