@@ -60,7 +60,7 @@ function form(c, { values = {}, error, thanks, services, gift = null }) {
       </form>`}
     </div>
   </section>`;
-  return publicLayout(c, { title: 'Uygunluk sorun', body });
+  return publicLayout(c, { title: 'Uygunluk sorun', body, seoKey: 'talep' });
 }
 
 // Talepler ve teklifler tek sayfada: Yeni / Teklif gönderildi / Kabul etti / Olmadı

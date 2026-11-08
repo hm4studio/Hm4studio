@@ -492,6 +492,30 @@ function register(router) {
     if (!requireAdmin(req, res)) return;
     html(res, views.citiesPage(getContent(), { csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req), siteUrl: config.siteUrl }));
   });
+  // Sayfa başlıkları (Google'da görünen başlık ve açıklama)
+  router.get('/admin/sayfa-basliklari', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, views.seoTitlesPage(getContent(), { csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/sayfa-basliklari', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const c = getContent();
+    const base = require('../content').baseContent();
+    const o = siteOver();
+    const t = (v, n) => cleanText(String(v || ''), n);
+    const pageSeo = {};
+    for (const p of views.seoPages(c)) {
+      const title = t(form[`t_${p.key}`], 90); const description = t(form[`d_${p.key}`], 220);
+      if (p.key === 'home') o.seo = { title: title || base.seo?.title, description: description || base.seo?.description };
+      else if (title || description) pageSeo[p.key] = { ...(title ? { title } : {}), ...(description ? { description } : {}) };
+    }
+    o.pageSeo = pageSeo;
+    saveOver(o);
+    setFlash(req, { message: 'Sayfa başlıkları kaydedildi.', type: 'success' });
+    redirect(res, '/admin/sayfa-basliklari');
+  });
+
   // Teslim ayarları: tutanak kalemleri, metni, dosyaların saklanma süresi
   router.get('/admin/teslim-ayarlari', (req, res) => {
     if (!requireAdmin(req, res)) return;
@@ -518,7 +542,6 @@ function register(router) {
     const list = (k, n) => String(form[k] || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 30).map((x) => x.slice(0, n));
     const blocks = (k) => String(form[k] || '').replace(/\r/g, '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
     const o = siteOver();
-    o.seo = { title: t('seoTitle', 70) || c.seo?.title, description: t('seoDescription', 170) || c.seo?.description };
     o.business = { ...(c.business || {}), locality: t('locality', 60), region: t('region', 60), areas: list('areas', 40), dugunProfil: /^https:\/\//.test(String(form.dugunProfil || '')) ? String(form.dugunProfil).trim().slice(0, 300) : '' };
     o.cities = (c.cities || []).map((x, i) => ({
       ...x,

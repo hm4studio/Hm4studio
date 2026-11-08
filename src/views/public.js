@@ -191,7 +191,7 @@ function portfolioPage(c, { portfolio, instagram }) {
 
   ${contactBand(c)}`;
 
-  return publicLayout(c, { title: c.portfolio.title, description: c.portfolio.text, active: 'portfolio', body });
+  return publicLayout(c, { title: c.portfolio.title, description: c.portfolio.text, active: 'portfolio', body, seoKey: 'portfolio' });
 }
 
 function aboutPage(c) {
@@ -212,7 +212,7 @@ function aboutPage(c) {
 
   ${contactBand(c)}`;
 
-  return publicLayout(c, { title: c.about.title, description: c.about.lead, active: 'about', body });
+  return publicLayout(c, { title: c.about.title, description: c.about.lead, active: 'about', body, seoKey: 'about' });
 }
 
 function contactPage(c) {
@@ -255,7 +255,7 @@ function contactPage(c) {
     </div>
   </section>`;
 
-  return publicLayout(c, { title: c.contact.title, description: c.contact.text, active: 'contact', body });
+  return publicLayout(c, { title: c.contact.title, description: c.contact.text, active: 'contact', body, seoKey: 'contact' });
 }
 
 function notFound(c) {
@@ -338,7 +338,7 @@ function cityPage(c, { city, portfolio, heroUrl }) {
       provider: { '@id': `${config.siteUrl}/#isletme` }, areaServed: { '@type': 'City', name: city.city }, description: city.description },
     ...(faq.length ? [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faq.map((x) => ({ '@type': 'Question', name: x.q, acceptedAnswer: { '@type': 'Answer', text: x.a } })) }] : []),
   ];
-  return publicLayout(c, { fullTitle: `${city.title} | ${c.brand.name}`, description: city.description, path: `/${city.slug}`, ld, body, image: heroUrl ? new URL(heroUrl, config.siteUrl).href : '' });
+  return publicLayout(c, { fullTitle: `${city.title} | ${c.brand.name}`, description: city.description, path: `/${city.slug}`, ld, body, seoKey: `city:${city.slug}`, image: heroUrl ? new URL(heroUrl, config.siteUrl).href : '' });
 }
 
 // Hediye kuponu sayfası: "Elif & Burak size HM4 Studio'dan bir hediye gönderdi"

@@ -185,3 +185,20 @@ document.querySelectorAll('[data-set-date]').forEach((b) => b.addEventListener('
   if (inp) inp.value = b.dataset.setDate;
   document.querySelectorAll('[data-set-date]').forEach((x) => x.classList.toggle('is-active', x === b));
 }));
+
+// Sayfa başlıkları: Google önizlemesi ve harf sayacı
+document.querySelectorAll('[data-seo-row]').forEach((row) => {
+  const pairs = [[row.querySelector('[data-seo-t]'), row.querySelector('[data-seo-pt]')], [row.querySelector('[data-seo-d]'), row.querySelector('[data-seo-pd]')]];
+  const counters = row.querySelectorAll('[data-seo-n]');
+  pairs.forEach(([inp, out], i) => {
+    if (!inp || !out) return;
+    const upd = () => {
+      const v = inp.value.trim() || inp.placeholder;
+      out.textContent = v;
+      const n = v.length; const max = Number(inp.dataset.max);
+      counters[i].textContent = `(${n}/${max}${n > max ? ' · uzun, Google keser' : ''})`;
+      counters[i].classList.toggle('is-over', n > max);
+    };
+    inp.addEventListener('input', upd); upd();
+  });
+});

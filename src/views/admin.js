@@ -7,6 +7,7 @@ const { jobStatus, daysBetween, today, addDays } = require('../jobs');
 const { displayPhone, taskText } = require('../whatsapp');
 const { payment, tl, shortDate, eventIndexes } = require('../appointments');
 const journey = require('./journey');
+const config = require('../config');
 
 const SETTINGS_KEYS = ['gifts', 'cities', 'messages', 'contract', 'account', 'feedback', 'portfolio', 'team', 'packages', 'site', 'data'];
 function adminNav(active, csrf, demoAdmin = false) {
@@ -714,7 +715,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=44"></head>
+  <link rel="stylesheet" href="/css/style.css?v=45"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1212,12 +1213,7 @@ function citiesPage(c, { csrf, flash: f, demoAdmin, siteUrl }) {
     ${flashBlock(f)}
     <form class="form" method="post" action="/admin/sehirler">
       ${csrfField(csrf)}
-      <section class="panel-section">
-        <div class="panel-section__head"><h2 class="panel-section__title">Google’da görünen başlık</h2></div>
-        <p class="muted">Sitenizin Google arama sonuçlarında görünen başlığı ve altındaki kısa açıklama.</p>
-        <div class="field"><label for="seo-t">Başlık <span class="muted">(en fazla 70 harf)</span></label><input id="seo-t" name="seoTitle" maxlength="70" value="${c.seo?.title || ''}"></div>
-        <div class="field"><label for="seo-d">Açıklama <span class="muted">(en fazla 170 harf)</span></label><textarea id="seo-d" name="seoDescription" rows="3" maxlength="170">${c.seo?.description || ''}</textarea></div>
-      </section>
+      <p class="muted">Sayfaların Google’da görünen başlıkları: <a href="/admin/sayfa-basliklari">Ayarlar › Sayfa başlıkları</a>.</p>
       <section class="panel-section">
         <div class="panel-section__head"><h2 class="panel-section__title">İşletme bilgisi</h2></div>
         <p class="muted">Google’a “işletmemiz nerede, nerelere hizmet veriyor” diye bildirilir. Google İşletme Profilinizdeki bilgilerle aynı olmalı.</p>
@@ -1276,7 +1272,48 @@ function reminderForm(c, { id, values: v = {}, action, title, errors = [], csrf,
       <form method="post" action="/admin/hatirlatma/${id}/sil" class="inline-form" data-confirm="Bu hatırlatma silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
     </div>` : ''}
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=4'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
+}
+
+// Sayfa başlıkları: her sayfanın Google'da görünen başlığı ve açıklaması, canlı önizlemeyle
+function seoPages(c) {
+  const b = c.brand.name;
+  const host = (() => { try { return new URL(config.siteUrl).host; } catch { return 'hm4studio.com'; } })();
+  return [
+    { key: 'home', name: 'Ana sayfa', path: '/', defT: c.seo?.title || b, defD: c.seo?.description || '' },
+    { key: 'portfolio', name: 'Portfolyo', path: '/portfolyo', defT: `${c.portfolio.title} — ${b}`, defD: c.portfolio.text || '' },
+    { key: 'about', name: 'Hakkımızda', path: '/hakkimizda', defT: `${c.about.title} — ${b}`, defD: c.about.lead || '' },
+    { key: 'contact', name: 'İletişim', path: '/iletisim', defT: `${c.contact.title} — ${b}`, defD: c.contact.text || '' },
+    { key: 'talep', name: 'Uygunluk sorun (form)', path: '/talep', defT: `Uygunluk sorun — ${b}`, defD: c.seo?.description || '' },
+    ...(c.cities || []).map((x) => ({ key: `city:${x.slug}`, name: `Şehir: ${x.title}`, path: `/${x.slug}`, defT: `${x.title} | ${b}`, defD: x.description || '' })),
+  ].map((p) => ({ ...p, host, cur: p.key === 'home' ? { title: c.seo?.title || '', description: c.seo?.description || '' } : (c.pageSeo?.[p.key] || {}) }));
+}
+function seoTitlesPage(c, { csrf, flash: f, demoAdmin }) {
+  const pages = seoPages(c);
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/hesap">${icon('left')}Ayarlar</a>
+    <h1 class="page-title">Sayfa başlıkları</h1>
+    ${flashBlock(f)}
+    <p class="muted">Her sayfanın Google arama sonuçlarında ve paylaşımlarda (WhatsApp, Instagram) görünen başlığı ve açıklaması. Boş bırakırsanız gri yazan varsayılan kullanılır. Başlık 60, açıklama 155 harfi geçmesin; Google fazlasını keser.</p>
+    <form class="form" method="post" action="/admin/sayfa-basliklari">
+      ${csrfField(csrf)}
+      ${pages.map((p) => h`<section class="panel-section seo-row" data-seo-row>
+        <div class="panel-section__head"><h2 class="panel-section__title">${p.name}</h2></div>
+        <div class="seo-prev" aria-hidden="true">
+          <span class="seo-prev__url">${p.host}${p.path === '/' ? '' : p.path.replace(/\//g, ' › ')}</span>
+          <span class="seo-prev__t" data-seo-pt>${p.cur.title || p.defT}</span>
+          <span class="seo-prev__d" data-seo-pd>${p.cur.description || p.defD}</span>
+        </div>
+        <div class="field"><label for="st-${p.key}">Başlık <span class="muted" data-seo-n></span></label>
+          <input id="st-${p.key}" name="t_${p.key}" maxlength="90" value="${p.cur.title || ''}" placeholder="${p.defT}" data-seo-t data-max="60"></div>
+        <div class="field"><label for="sd-${p.key}">Açıklama <span class="muted" data-seo-n></span></label>
+          <textarea id="sd-${p.key}" name="d_${p.key}" rows="2" maxlength="220" placeholder="${p.defD}" data-seo-d data-max="155">${p.cur.description || ''}</textarea></div>
+      </section>`)}
+      <button class="btn btn--primary" type="submit">Kaydet</button>
+    </form>
+  </div>`;
+  return panelLayout(c, { title: 'Sayfa başlıkları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=5'] });
 }
 
 function deliverySettingsPage(c, { csrf, flash: f, demoAdmin }) {
@@ -1366,7 +1403,8 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
     { title: 'Web sitesi', links: [
       { href: '/admin/site', title: 'Site', text: 'Metinler, renkler, kapak, iletişim' },
       { href: '/admin/portfolyo', title: 'Portfolyo', text: 'Sitedeki fotoğraflar' },
-      { href: '/admin/sehirler', title: 'Google ve şehir sayfaları', text: 'Google’da görünen başlık, şehir sayfaları, işletme bilgileri' },
+      { href: '/admin/sayfa-basliklari', title: 'Sayfa başlıkları', text: 'Her sayfanın Google’da görünen başlığı ve açıklaması' },
+      { href: '/admin/sehirler', title: 'Google ve şehir sayfaları', text: 'Şehir sayfaları ve işletme bilgileri' },
     ] },
     { title: 'Hesap', links: [
       { href: '#bildirim', title: 'Telefon bildirimleri', text: 'Bu cihaza bildirim' },
@@ -1653,5 +1691,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
 }
 
 module.exports = {
+  seoTitlesPage,
+  seoPages,
   reminderForm,
   deliverySettingsPage, giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };

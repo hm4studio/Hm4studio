@@ -151,7 +151,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=44">
+<link rel="stylesheet" href="/css/style.css?v=45">
 <link rel="stylesheet" href="/css/tema.css">
 </head>
 <body class="${bodyClass}">
@@ -161,7 +161,11 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 // Herkese açık sayfa iskeleti
 // path: sayfanın kalıcı adresi (Google'a "asıl adres bu" denir); yoksa sayfa dizine eklenmez
 const ACTIVE_PATH = { home: '/', portfolio: '/portfolyo', about: '/hakkimizda', contact: '/iletisim' };
-function publicLayout(c, { title, description, active, overlayHeader = false, body, path, ld = [], image = '', fullTitle = '' }) {
+function publicLayout(c, { title, description, active, overlayHeader = false, body, path, ld = [], image = '', fullTitle = '', seoKey = '' }) {
+  // Panelden girilen sayfa başlığı / açıklaması (Ayarlar › Sayfa başlıkları) varsayılanın önüne geçer
+  const ps = (seoKey && c.pageSeo && c.pageSeo[seoKey]) || {};
+  if (ps.title) fullTitle = ps.title;
+  if (ps.description) description = ps.description;
   const p = path || ACTIVE_PATH[active];
   const canonical = p ? `${config.siteUrl}${p === '/' ? '/' : p}` : '';
   return String(h`${head({ title: fullTitle || (title ? `${title} — ${c.brand.name}` : c.seo.title), description: description || c.seo.description, canonical, ld: [businessJsonLd(c), ...ld], image: image || `${config.siteUrl}/images/icon-512.png` })}
