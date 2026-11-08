@@ -104,7 +104,7 @@ function register(router) {
     const signer = { ...values, imza, tarih: contractViews.trTime(signedAt).split(' ')[0] };
     const changed = db.signContract(k.id, { ...signer, signedAt, ip: clientIp(req), ua: String(req.headers['user-agent'] || '').slice(0, 300), hash: contract.fingerprint(data, signer) });
     if (changed) { db.setCoupleWaConsent(couple.id, values.waConsent === '1'); events.contractSigned(couple, values.ad); }
-    setFlash(req, { message: changed ? 'Teşekkürler, sözleşmeniz onaylandı.' : 'Sözleşme bu arada güncellendi, lütfen yeniden bakın.', type: changed ? 'success' : 'error' });
+    setFlash(req, { message: changed ? 'Teşekkürler, sözleşmeniz onaylandı. Kaydınız kesinleşti; onaylı sözleşmeniz aşağıda ve her zaman bu sayfada.' : 'Sözleşme bu arada güncellendi, lütfen yeniden bakın.', type: changed ? 'success' : 'error' });
     redirect(res, '/panel/sozlesme');
   });
 

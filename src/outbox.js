@@ -10,11 +10,11 @@ const { today, daysBetween, addDays } = require('./jobs');
 const { dueReminders } = require('./routes/api');
 
 const LABELS = {
-  sozlesme: 'Sözleşme onaya sunuldu', fotograflar: 'Seçim fotoğrafları hazır', teslim: 'Teslim edildi',
+  sozlesme: 'Sözleşme onaya sunuldu', sozlesmeOnay: 'Sözleşme onaylandı', fotograflar: 'Seçim fotoğrafları hazır', teslim: 'Teslim edildi',
   plan: 'Çekim planı hatırlatması', yorum: 'Yorum isteği', gorev: 'Ekip görevi', ekip: 'Ekip hatırlatması',
   albumTasarim: 'Albüm tasarımı hazır', yildonumu: 'Yıl dönümü kutlaması',
 };
-const KEY_RE = /^(sozlesme|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|yildonumu):\d+(:[\w-]+)*$/;
+const KEY_RE = /^(sozlesme|sozlesmeonay|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|yildonumu):\d+(:[\w-]+)*$/;
 
 // Yıl dönümü için esas tarih: "Düğün" etkinliği, yoksa çiftin ana tarihi
 function anniversaryBase(c) {
@@ -39,6 +39,7 @@ function list() {
     const link = wa.panelLink();
     const k = db.activeContract(c.id);
     if (k && !k.signed_at && recent(k.sent_at, 7)) add('sozlesme', `sozlesme:${c.id}:${k.id}`, who, c.phone, 'sozlesme', { ad: c.name, link });
+    if (k && k.signed_at && recent(k.signed_at, 7)) add('sozlesmeOnay', `sozlesmeonay:${c.id}:${k.id}`, who, c.phone, 'sozlesmeOnay', { ad: c.name, link });
     const sel = db.listPhotos(c.id, 'secim');
     const firstUp = sel.map((p) => p.uploaded_on).filter(Boolean).sort()[0];
     if (sel.length && !c.album_locked && recent(firstUp, 7)) add('fotograflar', `fotograflar:${c.id}`, who, c.phone, 'fotograflar', { ad: c.name, link });

@@ -1198,6 +1198,7 @@ function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) 
 const MESSAGE_INFO = [
   ['randevu', 'Randevu oluşturuldu', 'Yeni randevu kaydedilince; panel giriş bilgileriyle birlikte.', ['ad', 'no', 'tarih', 'link', 'kod', 'sifre']],
   ['sozlesme', 'Sözleşme onaya sunuldu', 'Sözleşme çifte gönderilince.', ['ad', 'link']],
+  ['sozlesmeOnay', 'Sözleşme onaylandı', 'Çift sözleşmeyi onaylayınca; teşekkür ve bilgi mesajı.', ['ad', 'link']],
   ['plan', 'Çekim planı hatırlatması', 'Çekimden 3 gün önce, gün planı doldurulmadıysa.', ['ad', 'gun', 'link']],
   ['fotograflar', 'Seçim fotoğrafları hazır', 'Seçim fotoğrafları ilk yüklendiğinde.', ['ad', 'link']],
   ['teslim', 'Teslim edildi (video yok)', 'İş "Teslim" aşamasına alınınca, videosu olmayan işlerde.', ['ad', 'link']],

@@ -151,11 +151,18 @@ function flushPhotoTimers() {
 // Çift sözleşmeyi onayladı (n8n üzerinden size bildirim gönderilebilir)
 function contractSigned(couple, signerName) {
   safePush(() => push.toAdmin({ title: 'Sözleşme onaylandı', body: `${couple.name} sözleşmeyi onayladı (imzalayan: ${signerName}).`, url: `/admin/ciftler/${couple.id}#sozlesme`, tag: `soz-${couple.id}` }));
+  safePush(() => require('./telegram').notifyAll(`✅ Sözleşme onaylandı\n${couple.name} sözleşmeyi onayladı (imzalayan: ${signerName}).`));
+  safePush(() => push.toCouple(couple.id, { title: 'Sözleşmeniz onaylandı', body: 'Teşekkür ederiz! Onaylı sözleşmenize panelinizden her zaman ulaşabilirsiniz.', url: '/panel/sozlesme', tag: 'sozlesme' }));
+  const c = db.getCouple(couple.id);
+  const k = db.activeContract(couple.id);
+  const key = `sozlesmeonay:${couple.id}:${k ? k.id : 0}`;
+  if (wa.autoSend() && canMessage(c) && !db.wasNotified(key)) {
+    db.markNotified(key);
+    post({ event: 'sozlesme_onay_mesaji', at: new Date().toISOString(), couple: coupleInfo(c), whatsapp: wa.templateMessage(c.phone, 'sozlesmeOnay', { ad: c.name, link: wa.panelLink() }) });
+  }
   if (!config.n8nWebhookUrl) return;
   post({ event: 'sozlesme_onaylandi', at: new Date().toISOString(), couple: coupleInfo(couple), signerName });
 }
-
-// Çifte: sözleşme gönderildi (WhatsApp + bildirim); video eklendi ve video durumu değişti (yalnızca telefon bildirimi)
 function contractSent(coupleId, contractId) {
   const c = db.getCouple(coupleId);
   const key = `sozlesme:${coupleId}:${contractId}`;

@@ -29,6 +29,11 @@
       ],
       "metin": "Merhaba {ad}, hizmet sözleşmeniz onayınıza sunuldu. Sözleşmeyi panelinizden inceleyip onaylayabilirsiniz: {link}\n\nHM4 Studio"
     },
+    "sozlesmeOnay": {
+      "ad": "hm4_sozlesme_onaylandi",
+      "degiskenler": ["ad", "link"],
+      "metin": "Merhaba {ad}, sözleşmenizi onayladığınız için teşekkür ederiz. Kaydınız kesinleşti; onaylı sözleşmenize panelinizden her zaman ulaşabilirsiniz: {link}\n\nHM4 Studio"
+    },
     "plan": {
       "ad": "hm4_plan_hatirlatma",
       "degiskenler": [
