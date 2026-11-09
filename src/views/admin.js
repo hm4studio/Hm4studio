@@ -818,7 +818,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=67"></head>
+  <link rel="stylesheet" href="/css/style.css?v=69"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1029,7 +1029,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
       ${galleryTabs(base, view, totalCount, favCount)}
       ${photos.length ? h`
       <ul class="tiles" data-gallery>
-        ${photos.map((p) => photoTile(p, { favEndpoint: `${base}/favori`, canDelete: true, csrf, deleteAction: `${base}/fotograflar/${p.id}/sil`, coverAction: `${base}/kapak/${p.id}`, isCover: p.id === couple.cover_photo_id }))}
+        ${photos.map((p) => photoTile(p, { favEndpoint: `${base}/favori`, canDelete: true, csrf, deleteAction: `${base}/fotograflar/${p.id}/sil`, coverAction: `${base}/kapak/${p.id}`, isCover: p.id === couple.cover_photo_id, albumCover: couple.album_cover_id }))}
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav' ? 'Bu çift henüz albüm için kare seçmedi.' : 'Henüz fotoğraf yüklenmedi.'}</p></div>`}
     </section>
 
@@ -1152,7 +1152,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
     </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=5', '/js/admin.js?v=7', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=6', '/js/admin.js?v=7', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
 function calendar(c, { couples, monthEvents = [], ym = today().slice(0, 7), csrf, demoAdmin }) {

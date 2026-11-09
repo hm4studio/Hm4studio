@@ -5,6 +5,7 @@
 
   const ICONS = {
     close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    book: '<path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5c-3.5-.5-6.5 0-8.5 1.5z"/><path d="M12 6.5v13"/>',
     download: '<path d="M12 4v11"/><path d="M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/>',
     left: '<path d="M14.5 5.5L8 12l6.5 6.5"/>',
     right: '<path d="M9.5 5.5L16 12l-6.5 6.5"/>',
@@ -174,16 +175,19 @@
       <button type="button" class="lb__btn lb__close" aria-label="Kapat">${svg('close')}</button>
       <button type="button" class="lb__btn lb__prev" aria-label="Önceki">${svg('left')}</button>
       <button type="button" class="lb__btn lb__next" aria-label="Sonraki">${svg('right')}</button>
-      <div class="lb__bar"><span class="lb__count"></span><a class="lb__btn lb__dl" hidden aria-label="Bu fotoğrafı indir">${svg('download')}</a><button type="button" class="lb__btn lb__fav" aria-pressed="false" hidden>${svg('heart')}<span class="lb__fav-text"></span></button></div>`;
+      <div class="lb__bar"><span class="lb__count"></span><a class="lb__btn lb__dl" hidden aria-label="Bu fotoğrafı indir">${svg('download')}</a><button type="button" class="lb__btn lb__fav lb__acov" aria-pressed="false" hidden>${svg('book')}<span>Kapak yap</span></button><button type="button" class="lb__btn lb__fav lb__favh" aria-pressed="false" hidden>${svg('heart')}<span class="lb__fav-text"></span></button></div>`;
     document.body.appendChild(lb);
     imgEl = lb.querySelector('.lb__img');
     countEl = lb.querySelector('.lb__count');
-    favBtn = lb.querySelector('.lb__fav');
+    favBtn = lb.querySelector('.lb__favh');
     lb.querySelector('.lb__close').addEventListener('click', () => close());
     lb.querySelector('.lb__prev').addEventListener('click', () => show(index - 1));
     lb.querySelector('.lb__next').addEventListener('click', () => show(index + 1));
     imgEl.addEventListener('load', () => imgEl.classList.remove('is-loading'));
     favBtn.addEventListener('click', () => { const t = tileFavFor(items[index]); if (t) t.click(); });
+    const covBtn = lb.querySelector('.lb__acov');
+    covBtn?.addEventListener('click', () => { const t = items[index]?.closest('[data-tile]')?.querySelector('[data-acov]'); if (t) t.click(); });
+    document.addEventListener('hm4:fav', () => setTimeout(syncFav, 60));
     document.addEventListener('hm4:fav', syncFav);
 
     // Parmakla kaydırma: fotoğraf parmağı izler; yeterince kaydırılınca sonrakine geçer, yoksa yerine döner.
@@ -269,6 +273,15 @@
     if (!lb || !lb.classList.contains('is-open')) return;
     const tileFav = tileFavFor(items[index]);
     favBtn.hidden = !tileFav || tileFav.disabled;
+    const tileCov = items[index]?.closest('[data-tile]')?.querySelector('[data-acov]');
+    const covBtn = lb.querySelector('.lb__acov');
+    if (covBtn) {
+      covBtn.hidden = !tileCov || tileCov.disabled;
+      const con = tileCov?.getAttribute('aria-pressed') === 'true';
+      covBtn.classList.toggle('is-on', Boolean(con));
+      covBtn.setAttribute('aria-pressed', String(Boolean(con)));
+      covBtn.querySelector('span').textContent = con ? 'Albüm kapağı' : 'Kapak yap';
+    }
     if (tileFav) {
       const on = tileFav.getAttribute('aria-pressed') === 'true';
       const n = document.querySelector('[data-album-count]')?.textContent;

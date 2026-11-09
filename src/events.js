@@ -125,7 +125,8 @@ function teamAssigned(eventId, memberIds) {
 
 function albumLocked(couple) {
   const c = db.getCouple(couple.id);
-  safePush(() => push.toAdmin({ title: 'Albüm seçimi tamamlandı', body: `${c.name} albüm seçimini tamamladı (${db.favoriteCount(c.id)} fotoğraf).`, url: `/admin/ciftler/${c.id}`, tag: `album-${c.id}` }));
+  safePush(() => require('./telegram').notifyAll(`📖 Albüm seçimi tamamlandı\n${c.name}: ${db.favoriteCount(c.id)} kare${c.album_cover_id ? ' + kapak' : ''}.\n${config.siteUrl}/admin/ciftler/${c.id}#album`));
+  safePush(() => push.toAdmin({ title: 'Albüm seçimi tamamlandı', body: `${c.name} albüm seçimini tamamladı: ${db.favoriteCount(c.id)} kare${c.album_cover_id ? ' + kapak' : ''}.`, url: `/admin/ciftler/${c.id}`, tag: `album-${c.id}` }));
   if (!config.n8nWebhookUrl) return;
   post({ event: 'album_tamamlandi', at: new Date().toISOString(), couple: coupleInfo(c), selected: db.favoriteCount(c.id), limit: c.album_limit });
 }

@@ -171,7 +171,8 @@ function register(router) {
     // Düzenlenmiş fotoğraflar varsa sayfa onlarla açılır
     let view = gal ? 'all' : g === 'fav' ? 'fav' : g === 'secim' ? 'all' : g === 'duzenli' || (!g && edited.length) ? 'edited' : 'all';
     if (view === 'all' && !gal && galleries.length > 1) view = 'galleries';
-    const photos = view === 'edited' ? edited : view === 'fav' ? favs : view === 'galleries' ? [] : gal ? all.filter((p) => p.gallery_id === gal.id) : all;
+    const acov = couple.album_cover_id ? all.find((p) => p.id === couple.album_cover_id) : null;
+    const photos = view === 'edited' ? edited : view === 'fav' ? (acov && !acov.is_fav ? [acov, ...favs] : favs) : view === 'galleries' ? [] : gal ? all.filter((p) => p.gallery_id === gal.id) : all;
     // Kapak: sayfa ilk açıldığında (sekme seçilmemişken) tam ekran; mümkünse yatay bir kare
     let cover = null;
     if (!g && !gal) {
@@ -274,6 +275,20 @@ function register(router) {
     json(res, { ok: true, on: Boolean(on), count: db.listFavoritePhotos(photo.couple_id).length });
   });
 
+  // Albüm kapağı: seçim karelerinin dışında tek bir fotoğraf (aynısına tekrar dokunulursa kalkar)
+  router.post('/panel/kapak', async (req, res) => {
+    if (req.session?.kind !== 'couple') throw new HttpError(401, 'Oturum gerekli');
+    checkCsrf(req);
+    const { photoId } = await readJson(req);
+    const photo = db.getPhoto(toId(photoId));
+    if (!photo || photo.couple_id !== req.session.userId || photo.kind === 'duzenli') throw new HttpError(404, 'Bulunamadı');
+    const couple = db.getCouple(photo.couple_id);
+    if (couple.album_locked) throw new HttpError(409, 'Albüm seçiminiz tamamlandı. Değişiklik için bize yazın.');
+    const on = couple.album_cover_id !== photo.id;
+    db.setAlbumCover(couple.id, on ? photo.id : null);
+    json(res, { ok: true, on, coverId: on ? photo.id : null, thumb: on ? `/m/${photo.id}/thumb` : '' });
+  });
+
   // Albüm seçimini tamamla (kilitle)
   router.post('/panel/album-tamamla', async (req, res) => {
     if (!requireCouple(req, res)) return;
@@ -283,6 +298,8 @@ function register(router) {
     if (!couple) throw new HttpError(404, 'Bulunamadı');
     if (db.favoriteCount(couple.id) === 0) {
       setFlash(req, { message: 'Önce albüm için en az bir kare seçin.', type: 'error' });
+    } else if (!couple.album_cover_id || !db.getPhoto(couple.album_cover_id)) {
+      setFlash(req, { message: 'Albüm kapağınızı da seçin: kapak olmasını istediğiniz fotoğraftaki kitap simgesine dokunun.', type: 'error' });
     } else {
       db.setAlbumLocked(couple.id, true);
       events.albumLocked(couple);
@@ -313,8 +330,10 @@ function register(router) {
     const onlyFav = g === 'fav';
     const galx = db.getGallery(Number(query.get('gal')) || 0);
     const gal = galx && galx.couple_id === couple.id ? galx : null;
-    const photos = onlyFav ? db.listFavoritePhotos(couple.id) : gal ? db.listPhotos(couple.id, 'secim').filter((p) => p.gallery_id === gal.id) : db.listPhotos(couple.id, g === 'duzenli' ? 'duzenli' : 'secim');
-    const entries = require('../media').couplePhotoEntries(couple.id, photos);
+    const coverPh = onlyFav && couple.album_cover_id ? db.getPhoto(couple.album_cover_id) : null;
+    const favs = onlyFav ? db.listFavoritePhotos(couple.id) : [];
+    const photos = onlyFav ? (coverPh && coverPh.couple_id === couple.id && !favs.some((p) => p.id === coverPh.id) ? [coverPh, ...favs] : favs) : gal ? db.listPhotos(couple.id, 'secim').filter((p) => p.gallery_id === gal.id) : db.listPhotos(couple.id, g === 'duzenli' ? 'duzenli' : 'secim');
+    const entries = require('../media').couplePhotoEntries(couple.id, photos, { coverId: onlyFav ? couple.album_cover_id : null });
     if (!entries.length) throw new HttpError(404, 'İndirilecek fotoğraf yok');
     const name = `${couple.name}${onlyFav ? ' - Albüm seçimi' : gal ? ` - ${gal.name}` : g === 'duzenli' ? ' - Düzenlenmiş fotoğraflar' : ' - Fotoğraflar'}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
     res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="fotograflar.zip"; filename*=UTF-8''${encodeURIComponent(name)}`, 'Cache-Control': 'no-store' });

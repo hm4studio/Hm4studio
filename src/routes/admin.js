@@ -792,7 +792,10 @@ function register(router) {
     const couple = getCoupleOr404(params.id);
     const g = query.get('g');
     const onlyFav = g === 'fav';
-    const entries = media.couplePhotoEntries(couple.id, onlyFav ? db.listFavoritePhotos(couple.id) : db.listPhotos(couple.id, g === 'duzenli' ? 'duzenli' : 'secim'));
+    let favs = onlyFav ? db.listFavoritePhotos(couple.id) : null;
+    const cov = onlyFav && couple.album_cover_id ? db.getPhoto(couple.album_cover_id) : null;
+    if (cov && cov.couple_id === couple.id && !favs.some((p) => p.id === cov.id)) favs = [cov, ...favs];
+    const entries = media.couplePhotoEntries(couple.id, onlyFav ? favs : db.listPhotos(couple.id, g === 'duzenli' ? 'duzenli' : 'secim'), { coverId: onlyFav ? couple.album_cover_id : null });
     if (!entries.length) throw new HttpError(404, 'İndirilecek fotoğraf yok');
     const name = `${couple.ref_no ? couple.ref_no + ' ' : ''}${couple.name}${onlyFav ? ' - Albüm seçimi' : g === 'duzenli' ? ' - Düzenlenmiş' : ' - Seçim'}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
     res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="fotograflar.zip"; filename*=UTF-8''${encodeURIComponent(name)}`, 'Cache-Control': 'no-store' });
@@ -925,7 +928,7 @@ function register(router) {
     html(res, views.coupleDetail(getContent(), {
       couple,
       galleries, gal,
-      photos: view === 'fav' ? favs : gal ? all.filter((p) => p.gallery_id === gal.id) : all,
+      photos: view === 'fav' ? (() => { const ac = couple.album_cover_id && all.find((p) => p.id === couple.album_cover_id); return ac && !ac.is_fav ? [ac, ...favs] : favs; })() : gal ? all.filter((p) => p.gallery_id === gal.id) : all,
       totalCount: all.length,
       favCount: favs.length,
       view,

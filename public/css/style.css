@@ -2681,3 +2681,25 @@ html { overflow-x: clip; }
 .pui .tabs .tab.is-active, .pui .cd-tabs a[aria-current], .pui .cd-tab.is-on { border-bottom-color: var(--gold); }
 .pui .set-links { border-top-color: #e9e3d7; }
 .pui .set-links a:hover .set-links__title { color: var(--gold-d); }
+
+/* Albüm kapağı seçimi */
+.tile__acov { position: absolute; left: 6px; bottom: 6px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 9px; border: 0; border-radius: 999px; background: rgba(20, 22, 28, .38); color: #fff; font: inherit; font-size: .7rem; letter-spacing: .02em; cursor: pointer; backdrop-filter: blur(4px); }
+.tile__acov .icon { width: 15px; height: 15px; }
+.tile__acov > span { display: none; }
+.tile__acov.is-on { background: var(--gold, #b49a66); color: #fff; }
+.tile__acov.is-on > span { display: inline; }
+.tile__acov.is-static { position: static; }
+.tile__acov[disabled]:not(.is-on) { display: none; }
+.tile.is-acover .tile__img { outline: 2px solid var(--gold, #b49a66); outline-offset: -2px; }
+.album-bar { flex-wrap: wrap; }
+.album-bar__cov { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--navy, #1f2a3a); padding-right: 14px; margin-right: 4px; border-right: 1px solid var(--rule, #e6e0d4); }
+.album-bar__covimg { width: 38px; height: 48px; border-radius: 6px; overflow: hidden; display: grid; place-items: center; background: var(--gold-bg, #f4efe4); color: var(--gold-d, #8a7448); border: 1px dashed var(--gold, #b49a66); flex: none; }
+.album-bar__cov.is-on .album-bar__covimg { border: 0; }
+.album-bar__covimg img { width: 100%; height: 100%; object-fit: cover; }
+.album-bar__covimg .icon { width: 18px; height: 18px; }
+.album-bar__cov b { display: block; font-size: .85rem; }
+.album-bar__cov small { display: block; font-size: .72rem; color: var(--pencil, #6d6a63); }
+.album-bar__cov:not(.is-on) small { color: var(--gold-d, #8a7448); }
+.lb__acov.is-on { background: var(--gold, #b49a66); color: #fff; }
+.tile__acov.is-static { position: absolute; left: 6px; top: 6px; bottom: auto; white-space: nowrap; }
+.tile__acov.is-static > span { display: inline; }

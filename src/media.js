@@ -156,7 +156,7 @@ function removeSiteImage(url) {
 const portfolioUrl = (fileKey, variant) => `/media/portfolio/${fileKey}-${variant}.jpg`;
 
 // Çiftin fotoğrafları ZIP için: varsa orijinal, yoksa büyük boy; dosya adı yüklendiği ad
-function couplePhotoEntries(coupleId, photos) {
+function couplePhotoEntries(coupleId, photos, { coverId = null } = {}) {
   const used = new Map();
   const out = [];
   photos.forEach((p, i) => {
@@ -166,6 +166,7 @@ function couplePhotoEntries(coupleId, photos) {
     if (!fs.existsSync(file)) return;
     const ext = file === orig ? p.original_ext : 'jpg';
     let base = String(p.original_name || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[\\/:*?"<>|]+/g, '-').trim() || `foto-${String(i + 1).padStart(4, '0')}`;
+    if (coverId && p.id === coverId) base = `KAPAK - ${base}`;
     const n = (used.get(base) || 0) + 1; used.set(base, n);
     if (n > 1) base = `${base} (${n})`;
     out.push({ name: `${base}.${ext}`, file });

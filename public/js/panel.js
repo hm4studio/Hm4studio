@@ -64,6 +64,43 @@
     }
   });
 
+  // Albüm kapağı: tek fotoğraf; seçilince diğerlerinden kalkar
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-acov]');
+    if (!btn || btn.disabled || btn.classList.contains('is-busy')) return;
+    btn.classList.add('is-busy');
+    try {
+      const res = await fetch(btn.dataset.acov, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-Token': csrf },
+        body: JSON.stringify({ photoId: Number(btn.dataset.photo) }),
+        credentials: 'same-origin',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || 'İşlem başarısız');
+      document.querySelectorAll('[data-acov]').forEach((b) => {
+        const on = data.on && Number(b.dataset.photo) === data.coverId;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-pressed', String(on));
+        b.setAttribute('aria-label', on ? 'Albüm kapağından çıkar' : 'Albüm kapağı yap');
+        b.closest('[data-tile]')?.classList.toggle('is-acover', on);
+      });
+      const st = document.querySelector('[data-acov-state]');
+      if (st) {
+        st.classList.toggle('is-on', data.on);
+        const im = st.querySelector('.album-bar__covimg');
+        if (im) im.innerHTML = data.on ? `<img src="${data.thumb}" alt="">` : '';
+        const t = st.querySelector('[data-acov-text]'); if (t) t.textContent = data.on ? 'seçildi' : 'kitap simgesiyle seçin';
+      }
+      toast(data.on ? 'Albüm kapağı seçildi.' : 'Albüm kapağı kaldırıldı.');
+      document.dispatchEvent(new CustomEvent('hm4:fav'));
+    } catch (err) {
+      toast(err.message);
+    } finally {
+      btn.classList.remove('is-busy');
+    }
+  });
+
   document.querySelectorAll('[data-fav]').forEach((b) => {
     b.setAttribute('aria-label', b.getAttribute('aria-pressed') === 'true' ? 'Albümden çıkar' : 'Albüme ekle');
   });

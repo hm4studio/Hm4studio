@@ -91,10 +91,10 @@ function formatDate(iso) {
 }
 
 // Çift ve admin galerilerinde ortak fotoğraf kutusu
-function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFav, noDownload, coverAction, isCover }) {
+function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFav, noDownload, coverAction, isCover, albumCover = null, albumCoverEndpoint = '' }) {
   const fav = Boolean(p.is_fav);
   return h`
-  <li class="tile${fav ? ' is-fav' : ''}${isCover ? ' is-cover' : ''}" data-tile data-r="${p.w && p.h ? (p.w / p.h).toFixed(3) : ''}">
+  <li class="tile${fav ? ' is-fav' : ''}${isCover ? ' is-cover' : ''}${albumCover === p.id ? ' is-acover' : ''}" data-tile data-r="${p.w && p.h ? (p.w / p.h).toFixed(3) : ''}">
     <a class="tile__img" href="/m/${p.id}/display" data-lb data-caption="${p.original_name || ''}" data-dl="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1">
       <img src="/m/${p.id}/thumb" alt="${p.original_name || 'Fotoğraf'}" loading="lazy" decoding="async" width="${p.w || 640}" height="${p.h || 640}">
     </a>
@@ -102,7 +102,8 @@ function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFa
       ${noFav ? h`<span></span>` : h`<button type="button" class="tile__fav" data-fav="${favEndpoint}" data-photo="${p.id}" aria-pressed="${fav ? 'true' : 'false'}" aria-label="${fav ? 'Albümden çıkar' : 'Albüme ekle'}"${locked ? raw(' disabled') : ''}>
         ${icon('heart')}
       </button>`}
-      ${isCover ? h`<span class="tile__cover">Kapak</span>` : ''}
+      ${albumCoverEndpoint ? h`<button type="button" class="tile__acov${albumCover === p.id ? ' is-on' : ''}" data-acov="${albumCoverEndpoint}" data-photo="${p.id}" aria-pressed="${albumCover === p.id ? 'true' : 'false'}" aria-label="${albumCover === p.id ? 'Albüm kapağından çıkar' : 'Albüm kapağı yap'}"${locked ? raw(' disabled') : ''}>${icon('book')}<span>Kapak</span></button>` : albumCover === p.id ? h`<span class="tile__acov is-on is-static">${icon('book')}<span>Albüm kapağı</span></span>` : ''}
+      ${isCover ? h`<span class="tile__cover">Galeri kapağı</span>` : ''}
       ${coverAction ? h`<form method="post" action="${coverAction}" class="inline-form">
         <input type="hidden" name="csrf" value="${csrf}">
         <button type="submit" class="tile__btn${isCover ? ' is-on' : ''}" aria-label="${isCover ? 'Kapaktan kaldır' : 'Çiftin galerisine kapak yap'}" title="${isCover ? 'Kapaktan kaldır' : 'Kapak yap'}">${icon('star')}</button>
@@ -126,6 +127,7 @@ function galleryTabs(base, view, total, favs) {
 
 // Albüm seçimi: sayaç, ilerleme ve "Seçimi tamamladım"
 function albumBar(couple, favCount, { admin, csrf, base }) {
+  const cov = couple.album_cover_id || null;
   const limit = couple.album_limit || 35;
   const locked = Boolean(couple.album_locked);
   const pct = Math.min(100, Math.round((favCount / limit) * 100));
@@ -146,6 +148,10 @@ function albumBar(couple, favCount, { admin, csrf, base }) {
   }
   return h`
   <div class="album-bar" data-album data-limit="${limit}">
+    <a class="album-bar__cov${cov ? ' is-on' : ''}" data-acov-state href="${admin ? `${base}?g=fav#foto` : '/panel/fotograflar?g=fav#galeri'}" title="Albüm kapağı">
+      <span class="album-bar__covimg">${cov ? h`<img src="/m/${cov}/thumb" alt="">` : icon('book')}</span>
+      <span><b>+1 kapak</b><small data-acov-text>${cov ? 'seçildi' : admin ? 'henüz seçilmedi' : 'kitap simgesiyle seçin'}</small></span>
+    </a>
     <div class="album-bar__info">
       <p class="album-bar__title">Albüm seçimi</p>
       <p class="album-bar__count"><strong data-album-count>${favCount}</strong> / ${limit} kare</p>
@@ -417,7 +423,7 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
     </section>` : pushbox}
 
     <div class="cout">${logoutForm(csrf, 'Çıkış yap')}</div>`;
-  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=5', '/js/push.js?v=2'] });
+  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=6', '/js/push.js?v=2'] });
 }
 
 // Fotoğraflar: galeri, albüm seçimi, indirme
@@ -470,7 +476,7 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
           <span class="galcard__n">${g.photo_count} fotoğraf${g.fav_count ? ` · ${g.fav_count} seçili` : ''}</span>
         </a></li>`)}</ul>` : photos.length ? h`
       <ul class="tiles tiles--wall" data-gallery data-wall>
-        ${photos.map((p) => photoTile(p, { favEndpoint: '/panel/favori', csrf, locked: Boolean(couple.album_locked), noDownload: true }))}
+        ${photos.map((p) => photoTile(p, { favEndpoint: '/panel/favori', csrf, locked: Boolean(couple.album_locked), noDownload: true, albumCover: couple.album_cover_id, albumCoverEndpoint: '/panel/kapak' }))}
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav'
           ? 'Henüz albüm için kare seçmediniz. “Tüm fotoğraflar” sekmesinden kalbe dokunarak ekleyebilirsiniz.'
           : couple.archived_at ? 'Fotoğraflarınız teslim edildi ve sunucumuzdan kaldırıldı. Yeniden ihtiyacınız olursa bize yazın.' : 'Fotoğraflarınız hazırlandığında burada görünecek.'}</p></div>`}
@@ -490,7 +496,7 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
         </form>
       </div>` : ''}
     </section>`;
-  return coupleShell(c, { couple, page: 'foto', csrf, flash: f, body, scripts: ['/js/panel.js?v=5'] });
+  return coupleShell(c, { couple, page: 'foto', csrf, flash: f, body, scripts: ['/js/panel.js?v=6'] });
 }
 
 // Video: klip, film, reels — izle ve indir
@@ -541,7 +547,7 @@ function coupleAlbum(c, { couple, pages, csrf, flash: f }) {
         <p class="muted" data-alb-hint>Onaylamak için tüm sayfaları “Beğendim” olarak işaretleyin; değişiklik istediğiniz sayfa varsa hepsini inceledikten sonra “Değişiklikleri gönder”e basın.</p>
       </div>` : ''}
     </section>`;
-  return coupleShell(c, { couple, page: 'album', csrf, flash: f, body, scripts: ['/js/panel.js?v=5', '/js/album.js?v=1'] });
+  return coupleShell(c, { couple, page: 'album', csrf, flash: f, body, scripts: ['/js/panel.js?v=6', '/js/album.js?v=1'] });
 }
 
 function coupleVideos(c, { couple, videos, csrf, flash: f }) {
@@ -573,7 +579,7 @@ function coupleVideos(c, { couple, videos, csrf, flash: f }) {
 
 // Plan: çekim günü planı
 function couplePlan(c, { couple, csrf, flash: f }) {
-  return coupleShell(c, { couple, page: 'plan', csrf, flash: f, body: planSection(couple, csrf), scripts: ['/js/panel.js?v=5'] });
+  return coupleShell(c, { couple, page: 'plan', csrf, flash: f, body: planSection(couple, csrf), scripts: ['/js/panel.js?v=6'] });
 }
 
 module.exports = { coupleAlbum, coupleShell, couplePhotos, coupleVideos, couplePlan, coupleLogin, adminLogin, couplePanel, photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView };
