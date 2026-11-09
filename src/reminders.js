@@ -20,10 +20,34 @@ async function tick() {
   }
 }
 
+// Disk doluluğu: saatte bir bakar; %85'i geçince günde bir kez telefona ve Telegram'a uyarı gönderir
+const DISK_LIMIT = 0.85;
+function diskUsage() {
+  try {
+    const st = require('fs').statfsSync(config.dataDir);
+    const total = st.blocks * st.bsize;
+    const free = st.bavail * st.bsize;
+    return total ? { used: 1 - free / total, free, total } : null;
+  } catch { return null; }
+}
+function diskCheck() {
+  const d = diskUsage();
+  if (!d || d.used < DISK_LIMIT) return;
+  const key = `disk:${today()}`;
+  if (db.wasNotified(key)) return;
+  db.markNotified(key);
+  const gb = (n) => `${(n / 1024 ** 3).toFixed(1)} GB`;
+  const body = `Sunucu diski %${Math.round(d.used * 100)} dolu, ${gb(d.free)} boş yer kaldı (toplam ${gb(d.total)}). Disk dolarsa fotoğraf yüklenemez; eski sezonları arşivleyin ya da Hostinger'dan diski büyütün.`;
+  push.toAdmin({ title: 'Disk dolmak üzere', body, url: '/admin/veriler' }).catch(() => {});
+  require('./telegram').notifyAll(`⚠️ Disk dolmak üzere\n${body}\n\n${config.siteUrl}/admin/veriler`).catch(() => {});
+}
+
 function start() {
   if (config.demoMode) return;
   setTimeout(tick, 20 * 1000).unref();
   setInterval(tick, 60 * 1000).unref();
+  setTimeout(diskCheck, 60 * 1000).unref();
+  setInterval(diskCheck, 60 * 60 * 1000).unref();
 }
 
-module.exports = { start, tick, nowHm };
+module.exports = { start, tick, nowHm, diskUsage, DISK_LIMIT };

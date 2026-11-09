@@ -72,11 +72,20 @@ function register(router) {
   router.get('/panel/sozlesme', (req, res) => {
     if (!requireCouple(req, res)) return;
     const couple = me(req);
+    // Sözleşme henüz gönderilmediyse "bulunamadı" yerine bilgi verip Durum sayfasına dön
+    if (!db.activeContract(couple.id)) {
+      setFlash(req, { message: 'Sözleşmeniz hazırlanıyor. Hazır olduğunda size haber vereceğiz ve buradan onaylayabileceksiniz.', type: 'info' });
+      return redirect(res, '/panel');
+    }
     const { k, data } = myContract(couple);
     html(res, contractViews.signPage(getContent(), { coupleShell: views.coupleShell, couple, k, data, csrf: req.session.csrf, flash: takeFlash(req) }));
   });
   router.get('/panel/sozlesme/belge', (req, res) => {
     if (!requireCouple(req, res)) return;
+    if (!db.activeContract(me(req).id)) {
+      setFlash(req, { message: 'Sözleşmeniz hazırlanıyor. Hazır olduğunda size haber vereceğiz.', type: 'info' });
+      return redirect(res, '/panel');
+    }
     const { k, data } = myContract(me(req));
     html(res, contractViews.contractDoc(getContent(), { k, data, back: '/panel/sozlesme' }));
   });

@@ -56,8 +56,9 @@ function coupleLogin(c, { error, values } = {}) {
     values,
     demoKind: 'couple',
   })}
-  <p class="auth__help">Erişim kodunuzu bilmiyor musunuz? <a href="/iletisim">Bize ulaşın</a>.</p>`;
-  return publicLayout(c, { title: 'Çift Girişi', body });
+  <p class="auth__help">Erişim kodunuzu ya da şifrenizi mi unuttunuz?
+    <a href="https://wa.me/${String(c.contact.whatsapp || '').replace(/\D/g, '')}?text=${encodeURIComponent('Merhaba, panel giriş bilgilerimi unuttum. Adımız: ')}" target="_blank" rel="noopener">WhatsApp’tan yenisini isteyin</a>.</p>`;
+  return publicLayout(c, { title: 'Çift Girişi', description: `${c.brand.name} çiftlerine özel panel: fotoğraflarınızı görün, albüm karelerinizi seçin, sözleşmenizi ve teslim durumunu takip edin.`, body });
 }
 
 function adminLogin(c, { error, values, noAdmin } = {}) {
@@ -72,7 +73,7 @@ function adminLogin(c, { error, values, noAdmin } = {}) {
     note: noAdmin && !config.demoMode ? 'Henüz yönetici hesabı yok. Sunucuda "npm run admin" komutunu çalıştırarak oluşturun.' : null,
     demoKind: 'admin',
   });
-  return publicLayout(c, { title: 'Yönetim Paneli', body });
+  return publicLayout(c, { title: 'Yönetim Paneli', description: `${c.brand.name} stüdyo yönetim paneli.`, body });
 }
 
 function logoutForm(csrf, label = 'Çıkış') {

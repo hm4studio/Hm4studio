@@ -15,6 +15,7 @@ function appLogin(c, { error, values = {}, heroUrl }) {
 <title>Giriş — ${c.brand.name}</title>
 <meta name="theme-color" content="#1c1a18">
 <meta name="robots" content="noindex">
+<meta name="description" content="${c.brand.name} uygulamasına giriş.">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/images/favicon.svg" type="image/svg+xml">

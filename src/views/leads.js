@@ -60,7 +60,7 @@ function form(c, { values = {}, error, thanks, services, gift = null }) {
       </form>`}
     </div>
   </section>`;
-  return publicLayout(c, { title: 'Uygunluk sorun', body, seoKey: 'talep' });
+  return publicLayout(c, { title: 'Uygunluk sorun', description: `Düğün, nişan, kına ya da dış çekim tarihiniz için ${c.brand.name} uygunluğunu sorun; size kısa sürede fiyat ve bilgiyle dönelim.`, path: '/talep', body, seoKey: 'talep' });
 }
 
 // Talepler ve teklifler tek sayfada: Yeni / Teklif gönderildi / Kabul etti / Olmadı

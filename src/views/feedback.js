@@ -64,7 +64,7 @@ function form(c, { roles, areas, error, values = {}, thanks, preArea }) {
       </form>`}
     </div>
   </section>`;
-  return publicLayout(c, { title: 'Görüş bildir', body });
+  return publicLayout(c, { title: 'Görüş bildir', description: `${c.brand.name} sitesi ve paneli hakkındaki görüşünüzü bize iletin.`, body });
 }
 
 function stars(n) {

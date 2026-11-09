@@ -297,7 +297,7 @@ function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders 
   return rows.sort((a, b) => b.level - a.level);
 }
 
-function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
@@ -320,6 +320,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       </div>
     </header>
     ${flashBlock(f)}
+    ${disk && disk.used >= 0.85 ? h`<div class="flash flash--error" role="alert">Sunucu diski %${Math.round(disk.used * 100)} dolu, ${(disk.free / 1024 ** 3).toFixed(1)} GB boş yer kaldı. Disk dolarsa fotoğraf yüklenemez. <a href="/admin/veriler">Veriler ve arşiv</a></div>` : ''}
     ${signed.length ? h`<section class="signed" aria-label="Sözleşme onayları">${signed.map((k) => h`
       <div class="signed__item">
         <span class="signed__icon" aria-hidden="true">${icon('check')}</span>
