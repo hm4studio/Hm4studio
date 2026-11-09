@@ -204,7 +204,7 @@ for (const [col, def] of [
   ['source', "TEXT NOT NULL DEFAULT ''"], ['notes', "TEXT NOT NULL DEFAULT ''"],
   ['photo_ready', 'INTEGER NOT NULL DEFAULT 0'], ['video_ready', 'INTEGER NOT NULL DEFAULT 0'], ['album_ready', 'INTEGER NOT NULL DEFAULT 0'],
   ['album_info_sent_at', 'TEXT'],
-  ['cover_photo_id', 'INTEGER'], ['first_seen_at', 'TEXT'], ['last_seen_at', 'TEXT'], ['visit_count', 'INTEGER NOT NULL DEFAULT 0'],
+  ['cover_photo_id', 'INTEGER'], ['deposit_promise', 'INTEGER NOT NULL DEFAULT 0'], ['deposit_promise_on', 'TEXT'], ['deposit_reminder_id', 'INTEGER'], ['first_seen_at', 'TEXT'], ['last_seen_at', 'TEXT'], ['visit_count', 'INTEGER NOT NULL DEFAULT 0'],
 ]) addColumn('couples', col, def);
 
 db.exec(`
@@ -537,6 +537,8 @@ module.exports = {
   unseenSignedContracts: () => q(`SELECT k.id, k.couple_id, k.signed_at, k.signer_name, c.name FROM contracts k JOIN couples c ON c.id = k.couple_id
     WHERE k.signed_at IS NOT NULL AND k.admin_seen_at IS NULL AND k.cancelled_at IS NULL ORDER BY k.signed_at DESC`).all(),
   markContractSeen: (id) => q("UPDATE contracts SET admin_seen_at = datetime('now') WHERE id = ?").run(id),
+  // Kapora sözü: çift kaporayı ileri bir tarihte ödeyecek (ödenmiş sayılmaz)
+  setDepositPromise: (id, amount, on, reminderId) => q('UPDATE couples SET deposit_promise = ?, deposit_promise_on = ?, deposit_reminder_id = ? WHERE id = ?').run(amount || 0, on || null, reminderId || null, id),
   setCoverPhoto: (coupleId, photoId) => q('UPDATE couples SET cover_photo_id = ? WHERE id = ?').run(photoId || null, coupleId),
   addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey, w = null, h = null, galleryId = null }) =>
     Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind, upload_key, w, h, gallery_id) VALUES(?, ?, ?, ?, date('now'), ?, ?, ?, ?, ?)")

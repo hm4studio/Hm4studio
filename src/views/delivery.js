@@ -62,7 +62,7 @@ function doc(c, { d, back }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Teslim tutanağı ${s.refNo || ''} — ${s.couple || ''}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=58">
+<link rel="stylesheet" href="/css/style.css?v=59">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -96,7 +96,7 @@ function doc(c, { d, back }) {
     <p>Doğrulama kodu, tutanak metninin ve imzanın parmak izidir; sonradan yapılacak her değişiklik bu kodu değiştirir.</p>
   </section>
 </main>
-<script src="/js/dashboard.js?v=11" defer></script>
+<script src="/js/dashboard.js?v=12" defer></script>
 </body></html>`);
 }
 

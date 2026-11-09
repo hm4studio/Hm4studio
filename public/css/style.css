@@ -2423,3 +2423,14 @@ html { overflow-x: clip; }
 .appt-form .field { min-width: 0; }
 .pui input[type="date"], .pui input[type="time"] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; box-sizing: border-box; }
 .appt-form input[type="date"], .appt-form input[type="time"] { min-height: 2.9em; line-height: 1.4; background-color: #fff; color: var(--graphite, #1f2a3a); }
+
+/* Kapora sözü */
+.dep-later { grid-column: 1 / -1; }
+.dep-promise { display: grid; gap: 10px; margin: 0 0 16px; padding: 12px 14px; border-radius: 10px; background: var(--gold-bg, #f4efe4); border: 1px solid var(--rule, #e6e0d4); }
+.dep-promise.is-late { background: var(--c-late-bg, #f6ebe6); border-color: #e6c8bf; }
+.dep-promise p { display: flex; gap: 8px; align-items: center; margin: 0; }
+.dep-promise p .icon { width: 18px; height: 18px; color: var(--gold-d, #8a7448); flex: none; }
+.dep-promise.is-late p .icon, .dep-promise.is-late strong { color: var(--c-late, #a14b3f); }
+.dep-promise__acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.dep-promise__move { display: flex; gap: 6px; align-items: center; }
+.dep-promise__move input { width: auto; min-height: 34px; }

@@ -71,6 +71,7 @@ function readForm(form, content) {
     discountRaw: String(form.discount ?? '').trim().slice(0, 20),
     deposit: money(form.deposit),
     depositDate: cleanDate(form.depositDate),
+    depositLater: form.depositLater === '1',
   };
   a.phone = wa.normalizePhone(a.phoneRaw);
   a.name = displayName(a.fullName, a.partnerName);

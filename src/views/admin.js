@@ -188,6 +188,7 @@ function attentionItems(c, couples) {
     if (k.next_date && pay[2] > 0 && daysBetween(t, k.next_date) <= 14) items.push({ k, level: daysBetween(t, k.next_date) <= 3 ? 3 : 2, text: `Etkinlik ${relDays(daysBetween(t, k.next_date))}, ${tl(pay[2])} bakiye var`, tag: 'Ödeme' });
     if (k.next_date && !plan.saved && daysBetween(t, k.next_date) <= 10) items.push({ k, level: 1, text: 'Gün planı doldurulmadı', ctx: `etkinlik ${relDays(daysBetween(t, k.next_date))}`, tag: 'Plan' });
     if (k.contract_status === 'bekliyor') items.push({ k, level: k.next_date && daysBetween(t, k.next_date) <= 14 ? 2 : 1, text: 'Sözleşme onayı bekleniyor', tag: 'Sözleşme' });
+    if (k.deposit_promise > 0 && k.deposit_promise_on && k.deposit_promise_on <= t) items.push({ k, level: k.deposit_promise_on < t ? 3 : 2, text: k.deposit_promise_on < t ? `Kapora sözü geçti: ${tl(k.deposit_promise)} (${formatDate(k.deposit_promise_on)})` : `Kapora günü bugün: ${tl(k.deposit_promise)}`, tag: 'Ödeme' });
     if (k.album_design_state === 'degisiklik') items.push({ k, level: 2, text: 'Albüm tasarımında değişiklik istendi', tag: 'Albüm' });
     if (k.album_design_state === 'onaylandi' && k.album_design_at && daysBetween(k.album_design_at.slice(0, 10), t) <= 3) items.push({ k, level: 1, text: 'Albüm tasarımı onaylandı, baskıya hazır', tag: 'Albüm' });
     if (k.photo_count > 0 && !k.album_locked && k.stage < last) items.push({ k, level: 1, text: `Albüm seçimi bekleniyor (${k.fav_count}/${k.album_limit})`, tag: 'Albüm' });
@@ -386,7 +387,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=11', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=2'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -501,7 +502,10 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
         <div class="appt-sum" data-sum aria-live="polite"></div>
         ${isNew ? h`<div class="appt-row">
           <div class="field"><label for="deposit">Kapora (₺)</label><input id="deposit" name="deposit" type="text" inputmode="numeric" placeholder="0" value="${v('deposit')}" data-money data-deposit></div>
-          <div class="field"><label for="depositDate">Kapora tarihi</label><input id="depositDate" name="depositDate" type="date" value="${v('depositDate')}"></div>
+          <div class="field"><label for="depositDate" data-dep-date-label>${values.depositLater ? 'Söz verilen tarih' : 'Kapora tarihi'}</label><input id="depositDate" name="depositDate" type="date" value="${v('depositDate')}"></div>
+        </div>
+        <div class="appt-row">
+          <label class="check dep-later"><input type="checkbox" name="depositLater" value="1" data-dep-later${values.depositLater ? raw(' checked') : ''}><span>Kapora sonra ödenecek <span class="muted">(ör. maaş günü; söz verilen gün size ve çifte hatırlatılır)</span></span></label>
         </div>` : h`<p class="muted appt-help">Ödemeleri kişi kartındaki "Ödemeler" bölümünden ekleyin.</p>`}
       </fieldset>
 
@@ -525,7 +529,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=11', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=2'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -581,6 +585,14 @@ function paymentsSection(c, k, payments, csrf) {
     <div class="panel-section__head">
       <h2 class="panel-section__title" id="pay-title">Ödemeler</h2>
     </div>
+    ${k.deposit_promise > 0 ? h`<div class="dep-promise${k.deposit_promise_on < today() ? ' is-late' : ''}">
+      <p>${icon('clock')}<span><strong>Kapora sözü: ${tl(k.deposit_promise)}</strong> · ${k.deposit_promise_on < today() ? `${formatDate(k.deposit_promise_on)} geçti` : k.deposit_promise_on === today() ? 'bugün' : formatDate(k.deposit_promise_on)}</span></p>
+      <div class="dep-promise__acts">
+        <form method="post" action="${base}/kapora-alindi" class="inline-form">${csrfField(csrf)}<button class="btn btn--primary btn--sm" type="submit">${icon('check')}Kapora alındı</button></form>
+        <form method="post" action="${base}/kapora-soz" class="dep-promise__move">${csrfField(csrf)}<input type="hidden" name="amount" value="${k.deposit_promise}"><label class="sr-only" for="dp-on">Yeni tarih</label><input id="dp-on" type="date" name="on" value="${k.deposit_promise_on}"><button class="btn btn--outline btn--sm" type="submit">Tarihi değiştir</button></form>
+        <form method="post" action="${base}/kapora-soz" class="inline-form" data-confirm="Kapora sözü kaldırılsın mı?">${csrfField(csrf)}<input type="hidden" name="remove" value="1"><button class="btn btn--text btn--sm btn--danger-text" type="submit">Kaldır</button></form>
+      </div>
+    </div>` : ''}
     <div class="pay-sum">
       <div><span class="pay-sum__label">Toplam</span><span class="pay-sum__num">${tl(k.total)}</span></div>
       <div><span class="pay-sum__label">Alınan</span><span class="pay-sum__num">${tl(k.paid)}</span></div>
@@ -746,7 +758,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=58"></head>
+  <link rel="stylesheet" href="/css/style.css?v=59"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1267,6 +1279,7 @@ function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) 
 const MESSAGE_INFO = [
   ['randevu', 'Randevu oluşturuldu', 'Yeni randevu kaydedilince; panel giriş bilgileriyle birlikte.', ['ad', 'no', 'tarih', 'link', 'kod', 'sifre']],
   ['sozlesme', 'Sözleşme onaya sunuldu', 'Sözleşme çifte gönderilince.', ['ad', 'link']],
+  ['kapora', 'Kapora hatırlatma', 'Kapora sözü verilen gün; kibar ödeme hatırlatması.', ['ad', 'tutar', 'tarih']],
   ['sozlesmeOnay', 'Sözleşme onaylandı', 'Çift sözleşmeyi onaylayınca; teşekkür ve bilgi mesajı.', ['ad', 'link']],
   ['plan', 'Çekim planı hatırlatması', 'Çekimden 3 gün önce, gün planı doldurulmadıysa.', ['ad', 'gun', 'link']],
   ['fotograflar', 'Seçim fotoğrafları hazır', 'Seçim fotoğrafları ilk yüklendiğinde.', ['ad', 'link']],
@@ -1899,7 +1912,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=11', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=2'] });
 }
 
 module.exports = {

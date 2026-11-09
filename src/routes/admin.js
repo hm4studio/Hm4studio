@@ -58,6 +58,17 @@ async function formGuard(req, res) {
   return form;
 }
 
+// Kapora sözü: söz günü için hatırlatma kurulur; ödeme gelince "Kapora alındı" ile kapanır
+function setDepositPromise(coupleId, name, amount, on) {
+  const c = db.getCouple(coupleId);
+  if (c?.deposit_reminder_id) { const r = db.getReminder(c.deposit_reminder_id); if (r && !r.done_at) db.doneReminder(r.id); }
+  const rid = db.addReminder({ title: `${name}: kapora günü (${Number(amount).toLocaleString('tr-TR')} ₺)`, dueDate: on, dueTime: '10:00', person: name, phone: c?.phone || '', note: 'Kapora sözü · ödeme gelince çift sayfasında “Kapora alındı”ya basın', coupleId });
+  db.setDepositPromise(coupleId, amount, on, rid);
+}
+function clearDepositPromise(c) {
+  if (c.deposit_reminder_id) { const r = db.getReminder(c.deposit_reminder_id); if (r && !r.done_at) db.doneReminder(r.id); }
+  db.setDepositPromise(c.id, 0, null, null);
+}
 const pfUploads = new Map(); // portfolyo yüklemesi: aynı dosya ikinci kez eklenmesin
 function register(router) {
   // ── Giriş ──
@@ -213,7 +224,8 @@ function register(router) {
     db.updateCard(id, a);
     db.setDiscount(id, a.discount);
     const assigned = saveEvents(id, list);
-    if (a.deposit > 0) db.addPayment(id, { amount: a.deposit, paidOn: a.depositDate || today(), note: 'Kapora' });
+    if (a.deposit > 0 && a.depositLater) setDepositPromise(id, a.name, a.deposit, a.depositDate > today() ? a.depositDate : addDays(today(), 7));
+    else if (a.deposit > 0) db.addPayment(id, { amount: a.deposit, paidOn: a.depositDate || today(), note: 'Kapora' });
     const first = list.map((e) => e.eventDate).filter(Boolean).sort()[0];
     db.setRefNo(id, db.nextRefNo((first || today()).slice(0, 4)));
     const lead = form.talep ? db.getLead(Number(form.talep) || 0) : null;
@@ -1167,6 +1179,28 @@ function register(router) {
     if (!form) return;
     db.markContractSeen(toId(params.id));
     redirect(res, '/admin');
+  });
+
+  router.post('/admin/ciftler/:id/kapora-alindi', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const c = getCoupleOr404(params.id);
+    if (c.deposit_promise > 0) {
+      db.addPayment(c.id, { amount: c.deposit_promise, paidOn: today(), method: cleanText(form.method, 20) || 'IBAN', note: 'Kapora' });
+      clearDepositPromise(c);
+      setFlash(req, { message: `Kapora alındı olarak işlendi: ${c.deposit_promise.toLocaleString('tr-TR')} ₺.`, type: 'success' });
+    }
+    redirect(res, `/admin/ciftler/${c.id}#odeme`);
+  });
+  router.post('/admin/ciftler/:id/kapora-soz', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const c = getCoupleOr404(params.id);
+    const amount = require('../appointments').money(form.amount);
+    const on = require('../appointments').cleanDate(form.on);
+    if (form.remove === '1' || !amount) { clearDepositPromise(c); setFlash(req, { message: 'Kapora sözü kaldırıldı.', type: 'success' }); }
+    else { setDepositPromise(c.id, c.name, amount, on && on >= today() ? on : addDays(today(), 7)); setFlash(req, { message: 'Kapora sözü kaydedildi; o gün size hatırlatılacak.', type: 'success' }); }
+    redirect(res, `/admin/ciftler/${c.id}#odeme`);
   });
 
   // ── Galeriler: bir çiftin birden çok çekimi ayrı galerilerde (ör. "Sokak çekimi", "Plato") ──

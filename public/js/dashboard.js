@@ -138,7 +138,8 @@
     const gross = [...evList.querySelectorAll('[data-ev-price]')].reduce((s, el) => s + num(el.value), 0);
     const off = discountOf(gross);
     const total = Math.max(gross - off, 0);
-    const d = dep ? num(dep.value) : 0;
+    const later = form.querySelector('[data-dep-later]');
+    const d = dep && !(later && later.checked) ? num(dep.value) : 0;
     bar(gross ? total : 0, dep ? Math.max(total - d, 0) : null);
     if (!gross) { sum.textContent = 'Etkinliklere tutar girdikçe toplam burada hesaplanır.'; sum.className = 'appt-sum muted'; return; }
     const head = off ? `Ara toplam ${tl(gross)} · İndirim −${tl(off)} · Toplam ${tl(total)}` : `Toplam ${tl(total)}`;
@@ -148,6 +149,13 @@
     sum.textContent = dep ? `${head} · Kapora ${tl(d)} · Kalan ${tl(total - d)}` : head;
   }
   disc?.addEventListener('input', updateSum);
+  // Kapora sonra ödenecekse: tarih "söz verilen tarih" olur, kalan hesabına katılmaz
+  const later = form.querySelector('[data-dep-later]');
+  later?.addEventListener('change', () => {
+    const lab = form.querySelector('[data-dep-date-label]');
+    if (lab) lab.textContent = later.checked ? 'Söz verilen tarih' : 'Kapora tarihi';
+    updateSum();
+  });
 
   // Aynı gün başka çekim var mı?
   async function checkDate(input) {

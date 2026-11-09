@@ -29,6 +29,11 @@
       ],
       "metin": "Merhaba {ad}, hizmet sözleşmeniz onayınıza sunuldu. Sözleşmeyi panelinizden inceleyip onaylayabilirsiniz: {link}\n\nHM4 Studio"
     },
+    "kapora": {
+      "ad": "hm4_kapora_hatirlatma",
+      "degiskenler": ["ad", "tutar", "tarih"],
+      "metin": "Merhaba {ad}, {tarih} tarihli çekiminiz için konuştuğumuz {tutar} kapora ödemesini nazikçe hatırlatmak isteriz. Ödemeyi yaptığınızda bize kısa bir mesaj atmanız yeterli. Teşekkür ederiz.\n\nHM4 Studio"
+    },
     "sozlesmeOnay": {
       "ad": "hm4_sozlesme_onaylandi",
       "degiskenler": ["ad", "link"],
