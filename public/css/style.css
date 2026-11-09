@@ -2416,3 +2416,10 @@ html { overflow-x: clip; }
 .pre-note .icon { color: var(--gold-d); }
 .signed__item { background: #fff; border: 1px solid var(--rule); box-shadow: inset 3px 0 0 var(--gold); }
 .signed__icon { background: var(--navy); }
+/* iPad/iPhone Safari: başlık kartın içinde kalsın, tarih/saat kutuları taşmasın */
+.appt-form .appt-group > .appt-head { margin: 0 -16px 2px; padding: 13px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--rule, #e6e5e1); font-size: 1rem; }
+.appt-form input[type="date"], .appt-form input[type="time"], .appt-form input[type="datetime-local"] { -webkit-appearance: none; appearance: none; display: block; box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; text-align: left; }
+.appt-form input[type="date"]::-webkit-date-and-time-value, .appt-form input[type="time"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+.appt-form .field { min-width: 0; }
+.pui input[type="date"], .pui input[type="time"] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.appt-form input[type="date"], .appt-form input[type="time"] { min-height: 2.9em; line-height: 1.4; background-color: #fff; color: var(--graphite, #1f2a3a); }

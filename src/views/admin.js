@@ -472,7 +472,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       <datalist id="pkg-list">${packages.map((x) => h`<option value="${x.name}">${x.price ? tl(x.price) : ''}</option>`)}</datalist>
 
       <fieldset class="appt-group">
-        <legend class="appt-head"><span class="appt-head__n appt-head__n--1">1</span>${icon('users')}<span class="appt-head__t">Çift</span></legend>
+        <legend class="sr-only">Çift</legend><div class="appt-head"><span class="appt-head__n appt-head__n--1">1</span>${icon('users')}<span class="appt-head__t">Çift</span></div>
         <div class="appt-row">
           <div class="field"><label for="fullName">Ad soyad</label><input id="fullName" name="fullName" type="text" required maxlength="80" value="${v('fullName')}" autocomplete="off"></div>
           <div class="field"><label for="partnerName">Eş adı</label><input id="partnerName" name="partnerName" type="text" maxlength="80" value="${v('partnerName')}" autocomplete="off"></div>
@@ -484,7 +484,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </fieldset>
 
       <fieldset class="appt-group">
-        <legend class="appt-head"><span class="appt-head__n appt-head__n--2">2</span>${icon('camera')}<span class="appt-head__t">Çekimler</span></legend>
+        <legend class="sr-only">Çekimler</legend><div class="appt-head"><span class="appt-head__n appt-head__n--2">2</span>${icon('camera')}<span class="appt-head__t">Çekimler</span></div>
         <p class="muted appt-help">Her hizmeti ayrı etkinlik olarak girin; her birinin kendi paketi, tutarı ve ekibi olur. Aynı gün birden fazla hizmet varsa (örn. dış çekim + düğün) “Aynı güne hizmet ekle”ye dokunun: tarih, şehir ve mekân kopyalanır.</p>
         <div class="ev-list" data-ev-list>
           ${idx.map((i, n) => eventBlock(c, values, i, n + 1, team, packages))}
@@ -494,7 +494,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </fieldset>
 
       <fieldset class="appt-group">
-        <legend class="appt-head"><span class="appt-head__n appt-head__n--3">3</span>${icon('lira')}<span class="appt-head__t">Ödeme</span></legend>
+        <legend class="sr-only">Ödeme</legend><div class="appt-head"><span class="appt-head__n appt-head__n--3">3</span>${icon('lira')}<span class="appt-head__t">Ödeme</span></div>
         <div class="appt-row">
           <div class="field"><label for="discount">İndirim <span class="muted">(₺ ya da %, isteğe bağlı)</span></label><input id="discount" name="discount" type="text" inputmode="decimal" placeholder="Örn. 2.000 ya da %10" value="${v('discount')}" data-discount></div>
         </div>
@@ -506,7 +506,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </fieldset>
 
       <fieldset class="appt-group">
-        <legend class="appt-head"><span class="appt-head__n appt-head__n--4">4</span>${icon('book')}<span class="appt-head__t">Teslim ve ek</span><span class="appt-head__s">isteğe bağlı</span></legend>
+        <legend class="sr-only">Teslim ve ek</legend><div class="appt-head"><span class="appt-head__n appt-head__n--4">4</span>${icon('book')}<span class="appt-head__t">Teslim ve ek</span><span class="appt-head__s">isteğe bağlı</span></div>
         <div class="appt-row">
           ${isNew ? '' : h`<div class="field"><label for="dueDate">Teslim tarihi <span class="muted">(boş bırakın: son çekimden ${o.defaultDeliveryDays || 45} gün sonra)</span></label><input id="dueDate" name="dueDate" type="date" value="${v('dueDate')}"></div>`}
           <div class="field"><label for="albumLimit">Albüm kare sayısı</label><input id="albumLimit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${v('albumLimit') || 35}"></div>
@@ -746,7 +746,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=57"></head>
+  <link rel="stylesheet" href="/css/style.css?v=58"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
