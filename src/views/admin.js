@@ -201,18 +201,20 @@ function attentionItems(c, couples) {
     const k = couples.find((x) => x.id === g.couple_id);
     if (k) items.push({ k, level: 1, text: `Teşekkür hediyesi borçlusunuz: ${c.gifts?.reward || 'hediye'} (${g.used_by} kuponla geldi)`, tag: 'Hediye' });
   }
-  // Aynı çiftin işleri tek satırda: "Etkinlik yarın, 15.000 ₺ bakiye var · Gün planı doldurulmadı"
+  // Aynı çiftin aynı başlıktaki işleri tek satırda: "Etkinlik yarın, 15.000 ₺ bakiye var · Gün planı doldurulmadı"
   const groups = new Map();
   for (const x of items) {
-    const g = groups.get(x.k.id) || { k: x.k, level: 0, items: [] };
+    const grp = todoGroup(x.tag, x.level);
+    const key = `${x.k.id}:${grp}`;
+    const g = groups.get(key) || { k: x.k, level: 0, grp, items: [] };
     g.level = Math.max(g.level, x.level);
     g.items.push(x);
-    groups.set(x.k.id, g);
+    groups.set(key, g);
   }
   return [...groups.values()].map((g) => {
     const hasWhen = g.items.some((x) => x.text.startsWith('Etkinlik'));
     const sorted = g.items.sort((a, b) => b.level - a.level);
-    return { k: g.k, level: g.level, tag: sorted[0].tag, text: sorted.map((x) => (x.ctx && !hasWhen ? `${x.text} (${x.ctx})` : x.text)).join(' · ') };
+    return { k: g.k, level: g.level, grp: g.grp, tag: sorted[0].tag, text: sorted.map((x) => (x.ctx && !hasWhen ? `${x.text} (${x.ctx})` : x.text)).join(' · ') };
   }).sort((a, b) => b.level - a.level);
 }
 
@@ -266,35 +268,50 @@ function stageBoard(c, couples) {
 
 // Yapılacaklar: bekleyen işler, gönderilecek mesajlar, tamamlanan seçimler, kabul edilen teklifler ve yeni talepler tek listede
 const TAG_ICON = { Hatırlatma: ['bell', 'cek'], Teslim: ['gift', 'tes'], Ödeme: ['lira', 'pay'], Plan: ['calendar', 'cek'], Sözleşme: ['sign', 'soz'], Albüm: ['book', 'alb'], Hediye: ['gift', 'alb'], Dosyalar: ['folder', 'vid'], Mesaj: ['whatsapp', 'tes'], Ekip: ['users', 'soz'], Seçim: ['heart', 'sec'], Teklif: ['sign', 'pay'], Talep: ['inbox', 'sec'], Panel: ['users', 'soz'] };
+// Yapılacaklar başlıkları: acil olanlar (gecikenler) üstte, diğerleri konusuna göre
+const TODO_GROUPS = [
+  { key: 'acil', title: 'Acil', icon: 'alert', tone: 'late', open: true },
+  { key: 'mesaj', title: 'Gönderilecek mesajlar', icon: 'whatsapp', tone: 'tes', open: true },
+  { key: 'hatirlatma', title: 'Hatırlatmalar', icon: 'bell', tone: 'cek', open: true },
+  { key: 'soz', title: 'Sözleşme onayı bekleyenler', icon: 'sign', tone: 'soz' },
+  { key: 'alb', title: 'Albüm ve seçim', icon: 'book', tone: 'alb' },
+  { key: 'pay', title: 'Ödeme ve gün planı', icon: 'lira', tone: 'pay' },
+  { key: 'diger', title: 'Diğer', icon: 'folder', tone: 'vid' },
+];
+const TAG_GROUP = { Mesaj: 'mesaj', Ekip: 'mesaj', Hatırlatma: 'hatirlatma', Sözleşme: 'soz', Albüm: 'alb', Seçim: 'alb', Ödeme: 'pay', Plan: 'pay', Teklif: 'pay' };
+function todoGroup(tag, level) {
+  if (TAG_GROUP[tag] === 'mesaj' || TAG_GROUP[tag] === 'hatirlatma') return TAG_GROUP[tag];
+  return level >= 3 ? 'acil' : TAG_GROUP[tag] || 'diger';
+}
 const TAG_TAB = { Teslim: 'teslim', Ödeme: 'odeme', Plan: 'plan', Sözleşme: 'odeme', Albüm: 'album', Hediye: 'hediye', Dosyalar: 'ayar', Panel: 'ayar' };
 function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders = [], csrf = '' }) {
   const rows = [];
   const t = today();
   for (const r of reminders.filter((x) => x.due_date <= t)) {
     const late = r.due_date < t;
-    rows.push({ level: late ? 3 : 2, tag: 'Hatırlatma', name: r.title, href: `/admin/hatirlatma/${r.id}`,
+    rows.push({ grp: 'hatirlatma', level: late ? 3 : 2, tag: 'Hatırlatma', name: r.title, href: `/admin/hatirlatma/${r.id}`,
       text: [late ? `${formatDate(r.due_date)} (geçti)` : r.due_time ? `Bugün ${r.due_time}` : 'Bugün', r.person, r.couple_name, r.note].filter(Boolean).join(' · '),
       actions: h`${r.phone ? h`<a class="btn btn--text btn--sm" href="https://wa.me/${r.phone}" target="_blank" rel="noopener" aria-label="WhatsApp">${icon('whatsapp')}</a><a class="btn btn--text btn--sm" href="tel:+${r.phone}" aria-label="Ara">${icon('phone')}</a>` : ''}
         <form method="post" action="/admin/hatirlatma/${r.id}/ertele" class="inline-form">${csrfField(csrf)}<button class="btn btn--text btn--sm" type="submit" title="Yarına ertele">Yarın</button></form>
         <form method="post" action="/admin/hatirlatma/${r.id}/tamam" class="inline-form">${csrfField(csrf)}<button class="btn btn--primary btn--sm" type="submit">${icon('check')}Tamam</button></form>` });
   }
   for (const x of attentionItems(c, couples)) {
-    rows.push({ level: x.level, tag: x.tag, name: x.k.name, href: `/admin/ciftler/${x.k.id}`, text: x.text,
+    rows.push({ grp: x.grp, level: x.level, tag: x.tag, name: x.k.name, href: `/admin/ciftler/${x.k.id}`, text: x.text,
       actions: h`<a class="go go--${(TAG_ICON[x.tag] || ['', 'soz'])[1]}" href="/admin/ciftler/${x.k.id}#${TAG_TAB[x.tag] || 'ozet'}" aria-label="${x.k.name} aç">${icon('right')}</a>` });
   }
   for (const x of outbox) {
-    rows.push({ level: 2, tag: x.team ? 'Ekip' : 'Mesaj', name: x.to, href: x.coupleId && !x.team ? `/admin/ciftler/${x.coupleId}` : '', text: x.label, outbox: x,
+    rows.push({ grp: 'mesaj', level: 2, tag: x.team ? 'Ekip' : 'Mesaj', name: x.to, href: x.coupleId && !x.team ? `/admin/ciftler/${x.coupleId}` : '', text: x.label, outbox: x,
       actions: h`<a class="btn btn--primary btn--sm" href="${x.href}" target="_blank" rel="noopener" data-outbox-send>${icon('whatsapp')}Gönder</a><button type="button" class="btn btn--text btn--sm" data-outbox-skip title="Göndermeden listeden kaldır">Atla</button>` });
   }
   for (const { k, names } of selections) {
-    rows.push({ level: 2, tag: 'Seçim', name: k.name, href: `/admin/ciftler/${k.id}#album`, text: `Albüm seçimini tamamladı (${names.length} kare). Albüm tasarımını hazırlayın.`,
+    rows.push({ grp: 'alb', level: 2, tag: 'Seçim', name: k.name, href: `/admin/ciftler/${k.id}#album`, text: `Albüm seçimini tamamladı (${names.length} kare). Albüm tasarımını hazırlayın.`,
       actions: h`<button type="button" class="btn btn--text btn--sm" data-copy="${names.join(' ')}" title="Seri numaralarını boşlukla ayrılmış olarak kopyalar (Lightroom/Bridge araması için)">Kopyala</button><a class="btn btn--outline btn--sm" href="/admin/ciftler/${k.id}/secim.txt">${icon('download')}Liste</a>` });
   }
   for (const q of quotes) {
-    rows.push({ level: 3, tag: 'Teklif', name: q.accepted_name || q.name, href: `/admin/teklif/${q.id}`, text: `Teklifi kabul etti (${tl(require('./quotes').total(q))})`,
+    rows.push({ grp: 'acil', level: 3, tag: 'Teklif', name: q.accepted_name || q.name, href: `/admin/teklif/${q.id}`, text: `Teklifi kabul etti (${tl(require('./quotes').total(q))})`,
       actions: h`<a class="btn btn--primary btn--sm" href="/admin/randevu/yeni?teklif=${q.id}">Randevuya çevir</a>` });
   }
-  if (newLeads) rows.push({ level: 2, tag: 'Talep', name: `${newLeads} yeni talep`, href: '/admin/talepler', text: 'Yanıt bekliyor', actions: h`<a class="btn btn--outline btn--sm" href="/admin/talepler">Talepler</a>` });
+  if (newLeads) rows.push({ grp: 'acil', level: 2, tag: 'Talep', name: `${newLeads} yeni talep`, href: '/admin/talepler', text: 'Yanıt bekliyor', actions: h`<a class="btn btn--outline btn--sm" href="/admin/talepler">Talepler</a>` });
   return rows.sort((a, b) => b.level - a.level);
 }
 
@@ -342,7 +359,8 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
         <h2 class="sec-title" id="todo-title">Yapılacaklar <span class="sec-count" data-todo-count>${todo.length}</span></h2>
         <span class="sec-note">Bekleyen işler ve gönderilecek mesajlar</span>
       </header>
-      ${todo.length ? h`<ul class="todo__list">${todo.map((x) => h`
+      ${todo.length ? (() => {
+        const item = (x) => h`
         <li class="todo__item${x.level === 3 ? ' is-urgent' : ''}" data-todo-item${x.outbox ? raw(` data-outbox-item data-keys="${x.outbox.keys.join(',')}"`) : ''}>
           <span class="dic dic--${(TAG_ICON[x.tag] || ['alert', 'soz'])[1]}" aria-hidden="true">${icon((TAG_ICON[x.tag] || ['alert'])[0])}</span>
           <span class="todo__main">
@@ -351,7 +369,25 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
             <span class="todo__text">${x.text}</span>
           </span>
           <span class="todo__actions">${x.actions}</span>
-        </li>`)}</ul>` : h`<p class="sec-empty">Bekleyen iş yok.</p>`}
+        </li>`;
+        const groups = TODO_GROUPS.map((g) => ({ ...g, rows: todo.filter((x) => (x.grp || 'diger') === g.key) })).filter((g) => g.rows.length);
+        return h`
+        <div class="tgf" role="toolbar" aria-label="Yapılacakları süz" data-tg-filter>
+          <button type="button" class="tgf__c is-on" data-tg="">Tümü <b>${todo.length}</b></button>
+          ${groups.map((g) => h`<button type="button" class="tgf__c" data-tg="${g.key}">${g.key === 'mesaj' ? 'Mesajlar' : g.key === 'soz' ? 'Sözleşme' : g.key === 'alb' ? 'Albüm' : g.key === 'pay' ? 'Ödeme ve plan' : g.title} <b data-tg-count="${g.key}">${g.rows.length}</b></button>`)}
+        </div>
+        ${groups.map((g) => h`
+        <details class="tg tg--${g.tone}" data-tg-group="${g.key}"${g.open || g.rows.some((x) => x.level >= 3) ? raw(' open') : ''}>
+          <summary class="tg__head">
+            <span class="dic dic--${g.tone}" aria-hidden="true">${icon(g.icon)}</span>
+            <span class="tg__title">${g.title}</span>
+            <span class="tg__n" data-tg-count="${g.key}">${g.rows.length}</span>
+            <span class="tg__names">${[...new Set(g.rows.map((x) => String(x.name).split(/\s+&\s+|\s+/)[0]))].slice(0, 4).join(', ')}${g.rows.length > 4 ? '…' : ''}</span>
+            <span class="tg__chev" aria-hidden="true">${icon('right')}</span>
+          </summary>
+          <ul class="todo__list">${g.rows.map(item)}</ul>
+        </details>`)}`;
+      })() : h`<p class="sec-empty">Bekleyen iş yok.</p>`}
       <p class="sec-empty" data-todo-empty hidden>Bekleyen iş kalmadı.</p>
     </section>
 
@@ -387,7 +423,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=3'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -529,7 +565,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=3'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -758,7 +794,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=59"></head>
+  <link rel="stylesheet" href="/css/style.css?v=61"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1912,7 +1948,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=3'] });
 }
 
 module.exports = {

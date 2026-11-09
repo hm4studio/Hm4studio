@@ -2434,3 +2434,27 @@ html { overflow-x: clip; }
 .dep-promise__acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .dep-promise__move { display: flex; gap: 6px; align-items: center; }
 .dep-promise__move input { width: auto; min-height: 34px; }
+
+/* Yapılacaklar: başlık süzgeci ve açılır gruplar */
+.tgf { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0 6px; }
+.tgf__c { font: inherit; font-size: .82rem; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--rule-2, #d6cebf); background: #fff; color: var(--pencil, #6d6a63); cursor: pointer; }
+.tgf__c b { font-weight: 600; color: var(--navy, #1f2a3a); margin-left: 2px; }
+.tgf__c.is-on { background: var(--navy, #1f2a3a); border-color: var(--navy, #1f2a3a); color: #fff; }
+.tgf__c.is-on b { color: #fff; }
+.tg { border-top: 1px solid var(--rule, #e6e0d4); }
+.tg[hidden] { display: none; }
+.tg__head { display: flex; align-items: center; gap: 10px; padding: 14px 0; cursor: pointer; list-style: none; }
+.tg__head::-webkit-details-marker { display: none; }
+.tg__head .dic { width: 34px; height: 34px; border-radius: 10px; flex: none; }
+.tg__head .dic .icon { width: 17px; height: 17px; }
+.tg__title { font-weight: 600; color: var(--navy, #1f2a3a); }
+.tg__n { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; display: grid; place-items: center; font-size: .75rem; font-weight: 600; background: var(--canvas, #f3f0e9); color: var(--navy, #1f2a3a); }
+.tg--late .tg__n { background: var(--c-late-bg, #f6ebe6); color: var(--c-late, #a14b3f); }
+.tg__names { margin-left: auto; font-size: .82rem; color: var(--faint, #a7a197); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+.tg[open] .tg__names { visibility: hidden; }
+.tg__chev { display: grid; color: var(--faint, #a7a197); transition: transform .25s; }
+.tg__chev .icon { width: 16px; height: 16px; }
+.tg[open] .tg__chev { transform: rotate(90deg); }
+.tg > .todo__list { margin: 0 0 8px; }
+.tg > .todo__list > .todo__item:first-child { border-top: 0; }
+.dic--late { background: var(--c-late-bg, #f6ebe6); color: var(--c-late, #a14b3f); }
