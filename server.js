@@ -19,6 +19,7 @@ require('./src/routes/push').register(router);
 require('./src/routes/quotes').register(router);
 require('./src/routes/reminders').register(router);
 require('./src/routes/prebook').register(router);
+require('./src/routes/tasks').register(router);
 require('./src/demo').start();
 require('./src/backup').start();
 require('./src/reminders').start();

@@ -86,6 +86,31 @@ addColumn('couples', 'phone', 'TEXT');
 addColumn('couples', 'wa_optin', 'INTEGER NOT NULL DEFAULT 1');
 addColumn('couples', 'stage_changed_at', 'TEXT');
 addColumn('photos', 'uploaded_on', 'TEXT');
+// İş takibi: çekim sonrası "yapıldı mı?" kontrolleri ve görevler
+db.exec(`CREATE TABLE IF NOT EXISTS checks (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  event_id INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'diger',
+  member_id INTEGER,
+  state TEXT NOT NULL DEFAULT 'open',
+  snooze_until TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at TEXT,
+  UNIQUE (event_id, title)
+);
+CREATE TABLE IF NOT EXISTS tasks (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER REFERENCES couples(id) ON DELETE CASCADE,
+  check_id INTEGER,
+  title TEXT NOT NULL,
+  member_id INTEGER REFERENCES team(id) ON DELETE SET NULL,
+  due_date TEXT NOT NULL,
+  done_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS tasks_open ON tasks(done_at, due_date);`);
 // Çiftin birden çok galerisi (ör. "Sokak çekimi", "Plato"); albüm seçimi (favoriler) hepsinde ortaktır
 db.exec(`CREATE TABLE IF NOT EXISTS galleries (
   id INTEGER PRIMARY KEY,
@@ -539,6 +564,24 @@ module.exports = {
   markContractSeen: (id) => q("UPDATE contracts SET admin_seen_at = datetime('now') WHERE id = ?").run(id),
   // Kapora sözü: çift kaporayı ileri bir tarihte ödeyecek (ödenmiş sayılmaz)
   setDepositPromise: (id, amount, on, reminderId) => q('UPDATE couples SET deposit_promise = ?, deposit_promise_on = ?, deposit_reminder_id = ? WHERE id = ?').run(amount || 0, on || null, reminderId || null, id),
+  // ── İş takibi ──
+  addCheck: (x) => q('INSERT OR IGNORE INTO checks(couple_id, event_id, title, kind, member_id) VALUES(?, ?, ?, ?, ?)').run(x.coupleId, x.eventId, x.title, x.kind, x.memberId || null),
+  openChecks: () => q(`SELECT k.*, e.event_date, e.event_type, c.name AS couple_name, c.album_locked, t.name AS member_name
+    FROM checks k JOIN events e ON e.id = k.event_id JOIN couples c ON c.id = k.couple_id LEFT JOIN team t ON t.id = k.member_id
+    WHERE k.state = 'open' ORDER BY e.event_date, k.id`).all(),
+  getCheck: (id) => q('SELECT * FROM checks WHERE id = ?').get(id),
+  resolveCheck: (id, state) => q("UPDATE checks SET state = ?, resolved_at = datetime('now') WHERE id = ?").run(state, id),
+  snoozeCheck: (id, until) => q('UPDATE checks SET snooze_until = ? WHERE id = ?').run(until, id),
+  addTask: (x) => Number(q('INSERT INTO tasks(couple_id, check_id, title, member_id, due_date) VALUES(?, ?, ?, ?, ?)').run(x.coupleId || null, x.checkId || null, x.title, x.memberId || null, x.dueDate).lastInsertRowid),
+  getTask: (id) => q('SELECT * FROM tasks WHERE id = ?').get(id),
+  openTasks: () => q(`SELECT k.*, c.name AS couple_name, t.name AS member_name, t.phone AS member_phone, t.active AS member_active, t.wa_optin AS member_optin
+    FROM tasks k LEFT JOIN couples c ON c.id = k.couple_id LEFT JOIN team t ON t.id = k.member_id
+    WHERE k.done_at IS NULL ORDER BY k.due_date, k.id`).all(),
+  doneTasks: (limit = 30) => q(`SELECT k.*, c.name AS couple_name, t.name AS member_name FROM tasks k LEFT JOIN couples c ON c.id = k.couple_id LEFT JOIN team t ON t.id = k.member_id
+    WHERE k.done_at IS NOT NULL ORDER BY k.done_at DESC LIMIT ?`).all(limit),
+  setTaskDone: (id, done) => (done ? q("UPDATE tasks SET done_at = datetime('now') WHERE id = ?") : q('UPDATE tasks SET done_at = NULL WHERE id = ?')).run(id),
+  updateTask: (id, x) => q('UPDATE tasks SET title = ?, member_id = ?, due_date = ? WHERE id = ?').run(x.title, x.memberId || null, x.dueDate, id),
+  deleteTask: (id) => q('DELETE FROM tasks WHERE id = ?').run(id),
   setAlbumCover: (coupleId, photoId) => q('UPDATE couples SET album_cover_id = ? WHERE id = ?').run(photoId || null, coupleId),
   setCoverPhoto: (coupleId, photoId) => q('UPDATE couples SET cover_photo_id = ? WHERE id = ?').run(photoId || null, coupleId),
   addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey, w = null, h = null, galleryId = null }) =>

@@ -2703,3 +2703,68 @@ html { overflow-x: clip; }
 .lb__acov.is-on { background: var(--gold, #b49a66); color: #fff; }
 .tile__acov.is-static { position: absolute; left: 6px; top: 6px; bottom: auto; white-space: nowrap; }
 .tile__acov.is-static > span { display: inline; }
+
+/* İş takibi: "Bu işler yapıldı mı?" kartı ve Görevler sayfası */
+.chk { margin: 0 0 22px; padding: 20px 22px; background: var(--off, #f7f5f0); border: 1px solid #e9e3d7; border-radius: 18px; box-shadow: inset 3px 0 0 var(--gold, #b49a66), 0 12px 30px -26px rgba(31, 42, 58, .4); }
+.chk .sec-head { border: 0; padding: 0; margin: 0 0 6px; align-items: center; }
+.chk .sec-title { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; font-size: 1.65rem; color: var(--navy); }
+.chk .sec-count { background: var(--gold, #b49a66); color: #fff; }
+.chk__grp { padding: 14px 0 6px; border-top: 1px solid #e9e3d7; }
+.chk__grp:first-of-type { border-top: 0; }
+.chk__head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.chk__name { display: block; font-weight: 600; color: var(--navy); text-decoration: none; }
+.chk__when { display: block; font-size: .8rem; color: var(--pencil); }
+.chk__all { margin-left: auto; }
+.chk__list { list-style: none; margin: 0; padding: 0 0 0 54px; display: grid; gap: 6px; }
+.chk__item { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; background: #fff; border: 1px solid #ece6da; border-radius: 12px; }
+.chk__t { flex: 1 1 180px; min-width: 0; }
+.chk__t b { display: block; font-size: .95rem; }
+.chk__t span { font-size: .78rem; color: var(--pencil); }
+.chk__acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-start; }
+.chk__pop { position: relative; }
+.chk__pop > summary { list-style: none; cursor: pointer; }
+.chk__pop > summary::-webkit-details-marker { display: none; }
+.chk__pop[open] > summary { box-shadow: 0 0 0 3px rgba(180, 154, 102, .25); }
+.chk__form, .chk__days { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: grid; gap: 8px; min-width: 230px; padding: 12px; background: #fff; border: 1px solid #e2dbcc; border-radius: 12px; box-shadow: 0 18px 40px -18px rgba(31, 42, 58, .45); }
+.chk__days { grid-auto-flow: column; min-width: 0; }
+.chk__form label { display: grid; gap: 4px; font-size: .75rem; color: var(--pencil); }
+.chk__form--wide { min-width: 280px; }
+@media (max-width: 599px) { .chk { padding: 16px; } .chk__list { padding-left: 0; } .chk__form { right: auto; left: 0; } .chk__days { left: 0; right: auto; } }
+.tasks__who { margin-bottom: 8px; }
+.tasks { display: grid; gap: 4px; }
+.tasks__grp { background: var(--off, #f7f5f0); border: 1px solid #e9e3d7; border-radius: 18px; padding: 14px 18px; margin-top: 14px; }
+.tasks__grp.is-late { box-shadow: inset 3px 0 0 var(--c-late); }
+.tasks__h { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--pencil); font-weight: 500; }
+.tasks__h span { color: var(--faint); }
+.tasks__grp.is-late .tasks__h { color: var(--c-late); }
+.tasks__list { list-style: none; margin: 0; padding: 0; }
+.task { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid #ece6da; }
+.task:first-child { border-top: 0; }
+.task__cb { width: 26px; height: 26px; border-radius: 8px; border: 1.5px solid #cfc6b4; background: #fff; display: grid; place-items: center; color: transparent; cursor: pointer; padding: 0; }
+.task__cb .icon { width: 15px; height: 15px; }
+.task__cb:hover { color: var(--gold-d); border-color: var(--gold); }
+.task__cb.is-on { background: var(--navy); border-color: var(--navy); color: #fff; }
+.task .av { width: 34px; height: 34px; font-size: .85rem; }
+.task__m { flex: 1; min-width: 0; display: grid; }
+.task__m b { font-weight: 600; font-size: .93rem; }
+.task__m span { font-size: .78rem; color: var(--pencil); }
+.task__due { font-size: .8rem; color: var(--pencil); white-space: nowrap; }
+.task.is-late .task__due { color: var(--c-late); font-weight: 500; }
+.task.is-done .task__m b { text-decoration: line-through; color: var(--faint); }
+.tasks__done { margin-top: 18px; }
+.tasks__done summary { cursor: pointer; font-size: .85rem; color: var(--pencil); }
+.tasks__note { margin-top: 18px; font-size: .82rem; }
+a.tgf__c { text-decoration: none; display: inline-block; }
+@media (max-width: 599px) {
+  .tasks__grp { padding: 12px 14px; }
+  .task { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "cb m more" "cb due more"; column-gap: 12px; row-gap: 2px; }
+  .task .av { display: none; }
+  .task__cb { grid-area: cb; }
+  .task__m { grid-area: m; }
+  .task__due { grid-area: due; font-size: .75rem; }
+  .task__more { grid-area: more; }
+}
+/* Telefonda alt menüde Ayarlar yok: üst barda dişli */
+@media (max-width: 899px) { body:has(.tabbar) .panel-nav .panel-nav__link--keep { display: inline-flex; } }
+@media (max-width: 699px) { body:has(.tabbar) .pui .panel-nav__link--keep .icon, .pui:has(.tabbar) .panel-nav__link--keep .icon { display: inline-block; width: 22px; height: 22px; } .pui:has(.tabbar) .panel-nav__link--keep { padding: 8px; } }
+@media (max-width: 599px) { .cards-head { flex-wrap: wrap; } }

@@ -15,12 +15,14 @@ function adminNav(active, csrf, demoAdmin = false) {
     { href: '/admin', label: 'Bugün', key: 'couples', icon: 'users' },
     { href: '/admin/talepler', label: 'Talepler', key: 'leads', icon: 'whatsapp' },
     { href: '/admin/takvim', label: 'Takvim', key: 'calendar', icon: 'clock' },
+    { href: '/admin/ciftler', label: 'Çiftler', key: 'list', icon: 'heart' },
+    { href: '/admin/gorevler', label: 'Görevler', key: 'tasks', icon: 'tasks' },
     { href: '/admin/rapor', label: 'Rapor', key: 'report', icon: 'chart' },
     { href: '/admin/hesap', label: 'Ayarlar', key: 'settings', icon: 'settings' },
   ];
   const cur = SETTINGS_KEYS.includes(active) ? 'settings' : active;
   return h`<nav class="panel-nav" aria-label="Yönetim menüsü">
-    ${items.map((i) => h`<a class="panel-nav__link" href="${i.href}"${i.key === cur ? raw(' aria-current="page"') : ''}>${icon(i.icon)}<span>${i.label}</span></a>`)}
+    ${items.map((i) => h`<a class="panel-nav__link${i.key === 'settings' ? ' panel-nav__link--keep' : ''}" href="${i.href}"${i.key === cur ? raw(' aria-current="page"') : ''}>${icon(i.icon)}<span>${i.label}</span></a>`)}
     ${logoutForm(csrf)}
   </nav>`;
 }
@@ -31,8 +33,8 @@ function adminTabs(active, demoAdmin = false) {
     { href: '/admin', label: 'Bugün', icon: 'users', active: active === 'couples' },
     { href: '/admin/talepler', label: 'Talepler', icon: 'whatsapp', active: active === 'leads' },
     { href: '/admin/takvim', label: 'Takvim', icon: 'clock', active: active === 'calendar' },
-    { href: '/admin/rapor', label: 'Rapor', icon: 'chart', active: active === 'report' },
-    { href: '/admin/hesap', label: 'Ayarlar', icon: 'settings', active: SETTINGS_KEYS.includes(active) },
+    { href: '/admin/ciftler', label: 'Çiftler', icon: 'heart', active: active === 'list' },
+    { href: '/admin/gorevler', label: 'Görevler', icon: 'tasks', active: active === 'tasks' },
   ];
 }
 
@@ -270,18 +272,19 @@ function stageBoard(c, couples) {
 }
 
 // Yapılacaklar: bekleyen işler, gönderilecek mesajlar, tamamlanan seçimler, kabul edilen teklifler ve yeni talepler tek listede
-const TAG_ICON = { Hatırlatma: ['bell', 'cek'], Teslim: ['gift', 'tes'], Ödeme: ['lira', 'pay'], Plan: ['calendar', 'cek'], Sözleşme: ['sign', 'soz'], Albüm: ['book', 'alb'], Hediye: ['gift', 'alb'], Dosyalar: ['folder', 'vid'], Mesaj: ['whatsapp', 'tes'], Ekip: ['users', 'soz'], Seçim: ['heart', 'sec'], Teklif: ['sign', 'pay'], Talep: ['inbox', 'sec'], Panel: ['users', 'soz'] };
+const TAG_ICON = { Hatırlatma: ['bell', 'cek'], Teslim: ['gift', 'tes'], Ödeme: ['lira', 'pay'], Plan: ['calendar', 'cek'], Sözleşme: ['sign', 'soz'], Albüm: ['book', 'alb'], Hediye: ['gift', 'alb'], Dosyalar: ['folder', 'vid'], Mesaj: ['whatsapp', 'tes'], Ekip: ['users', 'soz'], Seçim: ['heart', 'sec'], Teklif: ['sign', 'pay'], Talep: ['inbox', 'sec'], Panel: ['users', 'soz'], Görev: ['tasks', 'pay'] };
 // Yapılacaklar başlıkları: acil olanlar (gecikenler) üstte, diğerleri konusuna göre
 const TODO_GROUPS = [
   { key: 'acil', title: 'Acil', icon: 'alert', tone: 'late', open: true },
   { key: 'mesaj', title: 'Gönderilecek mesajlar', icon: 'whatsapp', tone: 'tes', open: true },
+  { key: 'gorev', title: 'Görevler', icon: 'tasks', tone: 'pay', open: true },
   { key: 'hatirlatma', title: 'Hatırlatmalar', icon: 'bell', tone: 'cek', open: true },
   { key: 'soz', title: 'Sözleşme onayı bekleyenler', icon: 'sign', tone: 'soz' },
   { key: 'alb', title: 'Albüm ve seçim', icon: 'book', tone: 'alb' },
   { key: 'pay', title: 'Ödeme ve gün planı', icon: 'lira', tone: 'pay' },
   { key: 'diger', title: 'Diğer', icon: 'folder', tone: 'vid' },
 ];
-const TAG_GROUP = { Mesaj: 'mesaj', Ekip: 'mesaj', Hatırlatma: 'hatirlatma', Sözleşme: 'soz', Albüm: 'alb', Seçim: 'alb', Ödeme: 'pay', Plan: 'pay', Teklif: 'pay' };
+const TAG_GROUP = { Görev: 'gorev', Mesaj: 'mesaj', Ekip: 'mesaj', Hatırlatma: 'hatirlatma', Sözleşme: 'soz', Albüm: 'alb', Seçim: 'alb', Ödeme: 'pay', Plan: 'pay', Teklif: 'pay' };
 function initials(name) {
   const up = (w) => (w || '').charAt(0).toLocaleUpperCase('tr-TR');
   const sides = String(name || '').split('&').map((x) => x.trim().split(/\s+/).filter(Boolean)).filter((x) => x.length);
@@ -294,12 +297,18 @@ function greet() {
   return hr < 5 ? 'İyi geceler' : hr < 12 ? 'Günaydın' : hr < 18 ? 'İyi günler' : 'İyi akşamlar';
 }
 function todoGroup(tag, level) {
-  if (TAG_GROUP[tag] === 'mesaj' || TAG_GROUP[tag] === 'hatirlatma') return TAG_GROUP[tag];
+  if (TAG_GROUP[tag] === 'mesaj' || TAG_GROUP[tag] === 'hatirlatma' || TAG_GROUP[tag] === 'gorev') return TAG_GROUP[tag];
   return level >= 3 ? 'acil' : TAG_GROUP[tag] || 'diger';
 }
 const TAG_TAB = { Teslim: 'teslim', Ödeme: 'odeme', Plan: 'plan', Sözleşme: 'odeme', Albüm: 'album', Hediye: 'hediye', Dosyalar: 'ayar', Panel: 'ayar' };
-function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders = [], csrf = '' }) {
+function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders = [], tasks = [], csrf = '' }) {
   const rows = [];
+  const t0 = today();
+  for (const x of tasks.filter((x) => x.due_date <= t0)) {
+    rows.push({ grp: 'gorev', level: x.due_date < t0 ? 3 : 2, tag: 'Görev', name: x.title, href: '/admin/gorevler',
+      text: `${x.member_name || 'Kişi atanmadı'} · ${x.due_date < t0 ? `${daysBetween(x.due_date, t0)} gün gecikti` : 'bugün'}`,
+      actions: h`<form method="post" action="/admin/gorevler/${x.id}/tamam" class="inline-form">${csrfField(csrf)}<input type="hidden" name="back" value="/admin#yapilacaklar"><button class="btn btn--outline btn--sm" type="submit">${icon('check')}Yapıldı</button></form>` });
+  }
   const t = today();
   for (const r of reminders.filter((x) => x.due_date <= t)) {
     const late = r.due_date < t;
@@ -329,13 +338,52 @@ function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders 
   return rows.sort((a, b) => b.level - a.level);
 }
 
-function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+// Çiftler: tüm randevular, arama/süzme, liste ve aşama görünümü
+function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
+  const o = c.appointments || {};
+  const body = h`
+  <div class="container">
+    ${flashBlock(f)}
+    <div class="panel-title-row"><h1 class="page-title">Çiftler</h1><a class="btn btn--primary btn--sm" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a></div>
+    <section class="couples" aria-labelledby="cards-title">
+      <header class="sec-head cards-head">
+        <h2 class="sec-title" id="cards-title">Tümü <span class="sec-count" data-card-count>${couples.length}</span></h2>
+        <div class="seg" role="tablist" aria-label="Görünüm">
+          <button type="button" class="seg__btn is-on" data-view="cards" role="tab" aria-selected="true">Liste</button>
+          <button type="button" class="seg__btn" data-view="board" role="tab" aria-selected="false">Aşamalar</button>
+        </div>
+        <a class="btn btn--text btn--sm" href="/admin/randevular.csv">${icon('download')}Excel</a>
+      </header>
+      <div class="card-filters" data-card-filters>
+        <label class="sr-only" for="q">Ara</label>
+        <input id="q" type="search" placeholder="Ara: isim, telefon, randevu no" data-f-q autocomplete="off">
+        <label class="sr-only" for="f-stage">Aşama</label>
+        <select id="f-stage" data-f-stage><option value="">Tüm aşamalar</option>${c.stages.map((s, i) => h`<option value="${i}">${s}</option>`)}</select>
+        <label class="sr-only" for="f-type">Tür</label>
+        <select id="f-type" data-f-type><option value="">Tüm türler</option>${(o.eventTypes || []).map((x) => h`<option>${x}</option>`)}</select>
+        <label class="sr-only" for="f-pay">Ödeme</label>
+        <select id="f-pay" data-f-pay><option value="">Tüm ödemeler</option><option value="unpaid">Ödeme bekleniyor</option><option value="deposit">Kapora alındı</option><option value="paid">Ödendi</option><option value="none">Tutar girilmedi</option></select>
+        <label class="sr-only" for="f-sort">Sıralama</label>
+        <select id="f-sort" data-f-sort><option value="date">Tarihe göre</option><option value="new">En yeni kayıt</option></select>
+      </div>
+      ${couples.length ? h`<div class="crow-head" aria-hidden="true"><span>Çift</span><span>Tarih</span><span>Aşama</span><span>Bakiye</span><span>Hazır</span></div>
+        <ul class="ccards crows" data-cards>${couples.map((k) => coupleCard(c, k))}</ul>
+        ${stageBoard(c, couples)}
+        <p class="sec-empty" data-cards-empty hidden>Aramaya uyan çift yok.</p>
+        <p class="crow-legend">Hazır: <b>F</b> fotoğraf · <b>V</b> video · <b>A</b> albüm · <b>S</b> sözleşme onaylı</p>`
+        : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
+    </section>
+  </div>`;
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=13'] });
+}
+
+function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
   const balance = couples.reduce((s, k) => s + payment(k)[2], 0);
   const late = couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').length;
-  const todo = todoList(c, { couples, outbox, selections, quotes, newLeads, reminders, csrf });
+  const todo = todoList(c, { couples, outbox, selections, quotes, newLeads, reminders, tasks, csrf });
   const todayN = upcoming.filter((e) => e.event_date === t).length;
   const weekN = upcoming.filter((e) => e.event_date <= addDays(t, 6)).length;
   const o = c.appointments || {};
@@ -369,6 +417,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       <a class="dstat${late ? ' dstat--late' : ''}" href="/admin/takvim#teslimler"><span class="dstat__k">Geciken teslim</span><b class="dstat__v">${late}</b><span class="dstat__n">${late ? `En eskisi ${Math.max(...couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').map((k) => daysBetween(k.due_date, t)))} gün` : 'Hepsi zamanında'}</span></a>
     </div>
 
+    ${checksBlock(checks, team, csrf)}
     <div class="dgrid">
     <section class="todo" id="yapilacaklar" aria-labelledby="todo-title" data-outbox>
       <header class="sec-head">
@@ -390,7 +439,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
         return h`
         <div class="tgf" role="toolbar" aria-label="Yapılacakları süz" data-tg-filter>
           <button type="button" class="tgf__c is-on" data-tg="">Tümü <b>${todo.length}</b></button>
-          ${groups.map((g) => h`<button type="button" class="tgf__c" data-tg="${g.key}">${g.key === 'mesaj' ? 'Mesajlar' : g.key === 'soz' ? 'Sözleşme' : g.key === 'alb' ? 'Albüm' : g.key === 'pay' ? 'Ödeme ve plan' : g.title} <b data-tg-count="${g.key}">${g.rows.length}</b></button>`)}
+          ${groups.map((g) => h`<button type="button" class="tgf__c" data-tg="${g.key}">${g.key === 'gorev' ? 'Görevler' : g.key === 'mesaj' ? 'Mesajlar' : g.key === 'soz' ? 'Sözleşme' : g.key === 'alb' ? 'Albüm' : g.key === 'pay' ? 'Ödeme ve plan' : g.title} <b data-tg-count="${g.key}">${g.rows.length}</b></button>`)}
         </div>
         ${groups.map((g) => h`
         <details class="tg tg--${g.tone}" data-tg-group="${g.key}"${g.open || g.rows.some((x) => x.level >= 3) ? raw(' open') : ''}>
@@ -412,42 +461,14 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       <div class="dmini">
         <a href="/admin/on-randevu"><b>${prebookings.length}</b>Ön randevu</a>
         <a href="/admin/hatirlatma/yeni"><b>${reminders.length}</b>Hatırlatma</a>
-        <a href="#cards-title"><b>${couples.filter((k) => k.stage < c.stages.length - 1).length}</b>Aktif çift</a>
+        <a href="/admin/ciftler"><b>${couples.filter((k) => k.stage < c.stages.length - 1).length}</b>Aktif çift</a>
       </div>
     </aside>
     </div>
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
-    <section class="couples" aria-labelledby="cards-title">
-      <header class="sec-head cards-head">
-        <h2 class="sec-title" id="cards-title">Çiftler <span class="sec-count" data-card-count>${couples.length}</span></h2>
-        <div class="seg" role="tablist" aria-label="Görünüm">
-          <button type="button" class="seg__btn is-on" data-view="cards" role="tab" aria-selected="true">Liste</button>
-          <button type="button" class="seg__btn" data-view="board" role="tab" aria-selected="false">Aşamalar</button>
-        </div>
-        <a class="btn btn--text btn--sm" href="/admin/randevular.csv">${icon('download')}Excel</a>
-      </header>
-      <div class="card-filters" data-card-filters>
-        <label class="sr-only" for="q">Ara</label>
-        <input id="q" type="search" placeholder="Ara: isim, telefon, randevu no" data-f-q autocomplete="off">
-        <label class="sr-only" for="f-stage">Aşama</label>
-        <select id="f-stage" data-f-stage><option value="">Tüm aşamalar</option>${c.stages.map((s, i) => h`<option value="${i}">${s}</option>`)}</select>
-        <label class="sr-only" for="f-type">Tür</label>
-        <select id="f-type" data-f-type><option value="">Tüm türler</option>${(o.eventTypes || []).map((x) => h`<option>${x}</option>`)}</select>
-        <label class="sr-only" for="f-pay">Ödeme</label>
-        <select id="f-pay" data-f-pay><option value="">Tüm ödemeler</option><option value="unpaid">Ödeme bekleniyor</option><option value="deposit">Kapora alındı</option><option value="paid">Ödendi</option><option value="none">Tutar girilmedi</option></select>
-        <label class="sr-only" for="f-sort">Sıralama</label>
-        <select id="f-sort" data-f-sort><option value="date">Tarihe göre</option><option value="new">En yeni kayıt</option></select>
-      </div>
-      ${couples.length ? h`<div class="crow-head" aria-hidden="true"><span>Çift</span><span>Tarih</span><span>Aşama</span><span>Bakiye</span><span>Hazır</span></div>
-        <ul class="ccards crows" data-cards>${couples.map((k) => coupleCard(c, k))}</ul>
-        ${stageBoard(c, couples)}
-        <p class="sec-empty" data-cards-empty hidden>Aramaya uyan çift yok.</p>
-        <p class="crow-legend">Hazır: <b>F</b> fotoğraf · <b>V</b> video · <b>A</b> albüm · <b>S</b> sözleşme onaylı</p>`
-        : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
-    </section>
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=13', '/js/outbox.js?v=3'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -589,7 +610,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=13', '/js/outbox.js?v=3'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -818,7 +839,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=69"></head>
+  <link rel="stylesheet" href="/css/style.css?v=71"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1152,7 +1173,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
     </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/panel.js?v=6', '/js/admin.js?v=7', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/panel.js?v=6', '/js/admin.js?v=7', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
 function calendar(c, { couples, monthEvents = [], ym = today().slice(0, 7), csrf, demoAdmin }) {
@@ -1339,6 +1360,7 @@ function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) 
 const MESSAGE_INFO = [
   ['randevu', 'Randevu oluşturuldu', 'Yeni randevu kaydedilince; panel giriş bilgileriyle birlikte.', ['ad', 'no', 'tarih', 'link', 'kod', 'sifre']],
   ['sozlesme', 'Sözleşme onaya sunuldu', 'Sözleşme çifte gönderilince.', ['ad', 'link']],
+  ['gorevYarin', 'Yarınki görevler (ekip)', 'Akşam, görev verilen kişiye ertesi günün listesi.', ['ad', 'liste']],
   ['kapora', 'Kapora hatırlatma', 'Kapora sözü verilen gün; kibar ödeme hatırlatması.', ['ad', 'tutar', 'tarih']],
   ['sozlesmeOnay', 'Sözleşme onaylandı', 'Çift sözleşmeyi onaylayınca; teşekkür ve bilgi mesajı.', ['ad', 'link']],
   ['plan', 'Çekim planı hatırlatması', 'Çekimden 3 gün önce, gün planı doldurulmadıysa.', ['ad', 'gun', 'link']],
@@ -1426,6 +1448,96 @@ function reminderForm(c, { id, values: v = {}, action, title, errors = [], csrf,
   return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
 }
 
+
+// Çekim sonrası kontrol: "bu işler yapıldı mı?" — yapıldı / görev listesine ekle / ertele
+function checksBlock(checks, team, csrf) {
+  if (!checks.length) return '';
+  const t = today();
+  const due = addDays(t, 7);
+  const opts = (sel) => h`<option value="">Kişi seçin</option>${team.map((m) => h`<option value="${m.id}"${m.id === sel ? raw(' selected') : ''}>${m.name}${m.role ? ` · ${m.role}` : ''}</option>`)}`;
+  return h`<section class="chk" id="kontrol" aria-labelledby="chk-title">
+    <header class="sec-head"><h2 class="sec-title" id="chk-title">Bu işler yapıldı mı?</h2><span class="sec-count">${checks.reduce((n, g) => n + g.items.length, 0)}</span></header>
+    ${checks.map((g) => h`
+    <div class="chk__grp">
+      <div class="chk__head">
+        <span class="av av--cek" aria-hidden="true">${initials(g.coupleName)}</span>
+        <div><a class="chk__name" href="/admin/ciftler/${g.coupleId}">${g.coupleName}</a>
+          <span class="chk__when">${g.eventType || 'Çekim'} · ${formatDate(g.eventDate)}${g.items.some((x) => x.kind === 'foto') && g.albumLocked ? ' · albüm seçimi yapıldı' : ''}</span></div>
+        ${g.items.length > 1 ? h`<form method="post" action="/admin/kontrol/etkinlik/${g.eventId}/yapildi" class="inline-form chk__all">${csrfField(csrf)}<button class="btn btn--text btn--sm" type="submit">Hepsi yapıldı</button></form>` : ''}
+      </div>
+      <ul class="chk__list">${g.items.map((k) => h`
+        <li class="chk__item">
+          <div class="chk__t"><b>${k.title}</b><span>${k.kind === 'video' ? 'Video' : k.kind === 'foto' ? 'Fotoğraf' : 'Hizmet'}${k.member_name ? ` · ${k.member_name}` : ''}</span></div>
+          <div class="chk__acts">
+            <form method="post" action="/admin/kontrol/${k.id}/yapildi" class="inline-form">${csrfField(csrf)}<button class="btn btn--outline btn--sm" type="submit">${icon('check')}Yapıldı</button></form>
+            <details class="chk__pop"><summary class="btn btn--primary btn--sm">Görev listesine ekle</summary>
+              <form method="post" action="/admin/kontrol/${k.id}/gorev" class="chk__form">${csrfField(csrf)}
+                <label>Kime<select name="memberId">${opts(k.member_id)}</select></label>
+                <label>Teslim<input type="date" name="due" value="${due}" min="${t}"></label>
+                <button class="btn btn--primary btn--sm" type="submit">Ekle</button>
+              </form>
+            </details>
+            <details class="chk__pop"><summary class="btn btn--text btn--sm">Ertele</summary>
+              <div class="chk__days">${[1, 3, 5, 7].map((d) => h`<form method="post" action="/admin/kontrol/${k.id}/ertele" class="inline-form">${csrfField(csrf)}<input type="hidden" name="days" value="${d}"><button class="btn btn--outline btn--sm" type="submit">${d} gün</button></form>`)}</div>
+            </details>
+          </div>
+        </li>`)}</ul>
+    </div>`)}
+  </section>`;
+}
+
+// Görevler sayfası
+function tasksPage(c, { tasks, done, team, couples, who = 0, csrf, flash: f, demoAdmin }) {
+  const t = today();
+  const tm = addDays(t, 1);
+  const wk = addDays(t, 7);
+  const list = who ? tasks.filter((x) => x.member_id === who) : tasks;
+  const groups = [
+    ['Gecikenler', list.filter((x) => x.due_date < t), 'late'],
+    ['Bugün', list.filter((x) => x.due_date === t), ''],
+    [`Yarın · ${new Date(`${tm}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}`, list.filter((x) => x.due_date === tm), ''],
+    ['Bu hafta', list.filter((x) => x.due_date > tm && x.due_date <= wk), ''],
+    ['Sonra', list.filter((x) => x.due_date > wk), ''],
+  ].filter((g) => g[1].length);
+  const row = (x) => h`<li class="task${x.due_date < t ? ' is-late' : ''}">
+      <form method="post" action="/admin/gorevler/${x.id}/tamam" class="inline-form">${csrfField(csrf)}<input type="hidden" name="back" value="/admin/gorevler${who ? `?kisi=${who}` : ''}"><button class="task__cb" type="submit" aria-label="Yapıldı olarak işaretle">${icon('check')}</button></form>
+      <span class="av av--pay" aria-hidden="true">${x.member_name ? initials(x.member_name) : '?'}</span>
+      <span class="task__m"><b>${x.title}</b><span>${x.member_name || 'Kişi atanmadı'}</span></span>
+      <span class="task__due">${x.due_date < t ? `${daysBetween(x.due_date, t)} gün gecikti` : x.due_date === t ? 'Bugün' : formatDate(x.due_date)}</span>
+      <details class="chk__pop task__more"><summary class="btn btn--text btn--sm" aria-label="Diğer">${icon('dots')}</summary>
+        <div class="chk__days">${[1, 3, 7].map((d) => h`<form method="post" action="/admin/gorevler/${x.id}/ertele" class="inline-form">${csrfField(csrf)}<input type="hidden" name="days" value="${d}"><button class="btn btn--outline btn--sm" type="submit">+${d} gün</button></form>`)}
+        <form method="post" action="/admin/gorevler/${x.id}/sil" class="inline-form" data-confirm="Görev silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form></div>
+      </details>
+    </li>`;
+  const body = h`
+  <div class="container">
+    <div class="panel-title-row"><h1 class="page-title">Görevler</h1>
+      <details class="chk__pop tasks__new"><summary class="btn btn--primary btn--sm">${icon('plus')}Yeni görev</summary>
+        <form method="post" action="/admin/gorevler" class="chk__form chk__form--wide">${csrfField(csrf)}
+          <label>Görev<input name="title" maxlength="160" required placeholder="Ör. Hikaye klip kurgusu"></label>
+          <label>Çift<select name="coupleId"><option value="">—</option>${couples.map((x) => h`<option value="${x.id}">${x.name}</option>`)}</select></label>
+          <label>Kime<select name="memberId"><option value="">Kişi seçin</option>${team.map((m) => h`<option value="${m.id}">${m.name}</option>`)}</select></label>
+          <label>Teslim<input type="date" name="due" value="${addDays(t, 7)}"></label>
+          <button class="btn btn--primary btn--sm" type="submit">Ekle</button>
+        </form>
+      </details>
+    </div>
+    ${flashBlock(f)}
+    <nav class="tgf tasks__who" aria-label="Kişiye göre">
+      <a class="tgf__c${who ? '' : ' is-on'}" href="/admin/gorevler">Tümü <b>${tasks.length}</b></a>
+      ${team.filter((m) => tasks.some((x) => x.member_id === m.id)).map((m) => h`<a class="tgf__c${who === m.id ? ' is-on' : ''}" href="/admin/gorevler?kisi=${m.id}">${m.name.split(' ')[0]} <b>${tasks.filter((x) => x.member_id === m.id).length}</b></a>`)}
+    </nav>
+    <section class="tasks">
+      ${groups.length ? groups.map(([title, rows, tone]) => h`<div class="tasks__grp${tone ? ` is-${tone}` : ''}"><p class="tasks__h">${title}<span>${rows.length}</span></p><ul class="tasks__list">${rows.map(row)}</ul></div>`)
+        : h`<p class="sec-empty">Açık görev yok. Çekimden sonra Bugün sayfasında “Bu işler yapıldı mı?” sorusundan ya da “Yeni görev” ile ekleyebilirsiniz.</p>`}
+    </section>
+    ${done.length ? h`<details class="tasks__done"><summary>Tamamlananlar (${done.length})</summary><ul class="tasks__list">${done.map((x) => h`<li class="task is-done">
+      <form method="post" action="/admin/gorevler/${x.id}/tamam" class="inline-form">${csrfField(csrf)}<button class="task__cb is-on" type="submit" aria-label="Geri al">${icon('check')}</button></form>
+      <span class="task__m"><b>${x.title}</b><span>${x.member_name || ''}</span></span></li>`)}</ul></details>` : ''}
+    <p class="muted tasks__note">Her akşam 20:00'de ertesi günün görevleri telefonunuza ve Telegram'a gelir; görev verilen kişinin mesajı “Gönderilecek mesajlar”a düşer.</p>
+  </div>`;
+  return panelLayout(c, { title: 'Görevler', csrf, nav: adminNav('tasks', csrf, demoAdmin), home: '/admin', tabs: adminTabs('tasks', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
+}
 
 // Ön randevular: tarihi belli olmayan çekimler
 const preWhen = (p) => p.est_text || (p.est_date ? formatDate(p.est_date) : 'Tarih yok');
@@ -1623,6 +1735,11 @@ function deliverySettingsPage(c, { csrf, flash: f, demoAdmin }) {
         <p class="muted">Teslimden sonra çifte “son indirme günü” olarak gösterilir. Süre dolunca Yapılacaklar’a hatırlatma düşer; dosyaları siz silersiniz.</p>
         <div class="field field--narrow"><label for="dl-keep">Gün</label><input id="dl-keep" name="keepDays" type="number" min="7" max="730" value="${d.keepDays || 90}"></div>
       </section>
+      <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">Çekim sonrası kontrol</h2></div>
+        <p class="muted">Çekimden kaç gün sonra Bugün sayfasında “Bu işler yapıldı mı?” diye sorulsun (video ve diğer hizmetler). Fotoğraf işleri çift albüm seçimini tamamlayınca sorulur.</p>
+        <div class="field field--narrow"><label for="pr-days">Gün</label><input id="pr-days" name="checkDays" type="number" min="1" max="120" value="${c.production?.checkDays || 10}"></div>
+      </section>
       <button class="btn btn--primary" type="submit">Kaydet</button>
     </form>
   </div>`;
@@ -1674,11 +1791,12 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
   const gs = (() => { try { return require('../gifts').settings(); } catch { return {}; } })();
   const groups = [
     { title: 'İşletme', links: [
+      { href: '/admin/rapor', title: 'Rapor', text: 'Ciro, tahsilat, müşteri kaynakları' },
       { href: '/admin/paketler', title: 'Paketler', text: 'Hizmetler, fiyatlar ve içerikleri' },
       { href: '/admin/ekip', title: 'Ekip', text: 'Personel ve iletişim' },
       { href: '/admin/kaynaklar', title: 'Müşteri kaynakları', text: 'Instagram, Düğün.com, tavsiye… randevu formundaki seçenekler' },
       { href: '/admin/sozlesme', title: 'Sözleşme ve KVKK', text: 'Sözleşme metni, firma bilgileri ve KVKK' },
-      { href: '/admin/teslim-ayarlari', title: 'Teslim', text: 'Tutanaktaki ürünler, tutanak metni, dosya saklama süresi' },
+      { href: '/admin/teslim-ayarlari', title: 'Teslim', text: 'Tutanak, dosya saklama süresi, çekim sonrası kontrol günü' },
     ] },
     { title: 'Müşteriyle iletişim', links: [
       { href: '/admin/mesajlar', title: 'Mesajlar', text: 'WhatsApp metinleri, zamanlama, Google yorum bağlantısı' },
@@ -1972,14 +2090,15 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=12', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=13', '/js/outbox.js?v=3'] });
 }
 
 module.exports = {
+  tasksPage,
   portfolioTagsPage,
   prebookList, prebookForm,
   sourcesPage,
   seoTitlesPage,
   seoPages,
   reminderForm,
-  deliverySettingsPage, giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, coupleDetail, portfolioAdmin, account };
+  deliverySettingsPage, giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, couplesPage, coupleDetail, portfolioAdmin, account };

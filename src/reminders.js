@@ -7,7 +7,22 @@ const { today } = require('./jobs');
 
 const nowHm = () => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
 
+// Her akşam 20:00: yarınki görev listesi (stüdyoya telefon bildirimi ve Telegram)
+function tasksTomorrow() {
+  if (nowHm() < '20:00') return;
+  const tm = require('./jobs').addDays(today(), 1);
+  const key = `gorevyarin:0:${tm.replace(/-/g, '')}`;
+  if (db.wasNotified(key)) return;
+  const list = db.openTasks().filter((x) => x.due_date === tm);
+  db.markNotified(key);
+  if (!list.length) return;
+  const lines = list.map((x) => `• ${x.title}${x.member_name ? ` (${x.member_name.split(' ')[0]})` : ''}`).join('\n');
+  push.toAdmin({ title: `Yarınki görev listen (${list.length})`, body: lines, url: '/admin/gorevler' }).catch(() => {});
+  require('./telegram').notifyAll(`📋 Yarınki görev listen (${list.length})\n${lines}\n\n${config.siteUrl}/admin/gorevler`).catch(() => {});
+}
+
 async function tick() {
+  try { tasksTomorrow(); } catch (err) { console.error('Görev listesi:', err.message); }
   let due;
   try { due = db.remindersToNotify(today(), nowHm()); } catch (err) { console.error('Hatırlatıcı:', err.message); return; }
   for (const r of due) {

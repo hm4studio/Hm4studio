@@ -10,11 +10,11 @@ const { today, daysBetween, addDays } = require('./jobs');
 const { dueReminders } = require('./routes/api');
 
 const LABELS = {
-  sozlesme: 'Sözleşme onaya sunuldu', sozlesmeOnay: 'Sözleşme onaylandı', kapora: 'Kapora hatırlatma', fotograflar: 'Seçim fotoğrafları hazır', teslim: 'Teslim edildi',
+  sozlesme: 'Sözleşme onaya sunuldu', sozlesmeOnay: 'Sözleşme onaylandı', gorevYarin: 'Yarınki görevler', kapora: 'Kapora hatırlatma', fotograflar: 'Seçim fotoğrafları hazır', teslim: 'Teslim edildi',
   plan: 'Çekim planı hatırlatması', yorum: 'Yorum isteği', gorev: 'Ekip görevi', ekip: 'Ekip hatırlatması',
   albumTasarim: 'Albüm tasarımı hazır', yildonumu: 'Yıl dönümü kutlaması',
 };
-const KEY_RE = /^(sozlesme|sozlesmeonay|kapora|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|yildonumu):\d+(:[\w-]+)*$/;
+const KEY_RE = /^(sozlesme|sozlesmeonay|kapora|gorevyarin|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|yildonumu):\d+(:[\w-]+)*$/;
 
 // Yıl dönümü için esas tarih: "Düğün" etkinliği, yoksa çiftin ana tarihi
 function anniversaryBase(c) {
@@ -71,13 +71,25 @@ function list() {
     }
   }
 
+  // Akşam 18:00'den sonra: ekip üyesine yarınki görev listesi
+  if (require('./reminders').nowHm() >= '18:00') {
+    const tm = addDays(t, 1);
+    const byMember = new Map();
+    for (const x of db.openTasks().filter((x) => x.due_date === tm && x.member_id && x.member_phone && x.member_active && x.member_optin)) {
+      byMember.set(x.member_id, [...(byMember.get(x.member_id) || []), x]);
+    }
+    for (const [mid, list] of byMember) {
+      add('gorevYarin', `gorevyarin:${mid}:${tm.replace(/-/g, '')}`, { id: list[0].couple_id || 0, name: list[0].member_name }, list[0].member_phone, 'gorevYarin', { ad: list[0].member_name.split(' ')[0], liste: list.map((x) => `• ${x.title}`).join('\n') }, list[0].member_name);
+    }
+  }
+
   // Günlük hatırlatmalar (plan, yorum, ekip hatırlatması) — otomasyonla aynı kurallar
   const covered = new Set(items.flatMap((x) => x.keys));
   for (const r of dueReminders()) if (!r.keys.some((k) => covered.has(k))) items.push({ ...r, to: r.member?.name });
 
   return items.map((x) => {
     const text = wa.templateText(x.tpl, x.vars);
-    return { type: x.type, label: LABELS[x.type] || x.type, to: x.to || x.couple?.name || '', coupleId: x.couple?.id, keys: x.keys, text, href: wa.waLink(x.phone, text), team: x.type === 'gorev' || x.type === 'ekip' };
+    return { type: x.type, label: LABELS[x.type] || x.type, to: x.to || x.couple?.name || '', coupleId: x.couple?.id, keys: x.keys, text, href: wa.waLink(x.phone, text), team: x.type === 'gorev' || x.type === 'ekip' || x.type === 'gorevYarin' };
   });
 }
 
