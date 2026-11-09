@@ -131,13 +131,16 @@ function programBlock(c, upcoming, tomorrowDue, reminders = []) {
   const dayLabel = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
   const shoot = (e) => h`
     <li class="prog__shoot">
-      <div class="prog__head">
-        <a class="prog__name" href="/admin/ciftler/${e.couple_id}">${e.couple_name}</a>
-        ${e.couple_phone ? h`<a class="tmr__call" href="tel:+${e.couple_phone}" aria-label="${e.couple_name} ara">${icon('phone')}</a>` : ''}
+      <div class="prog__when"><b>${e.start_time || '—'}</b><span>${e.event_type || 'Etkinlik'}</span></div>
+      <div class="prog__box">
+        <div class="prog__head">
+          <a class="prog__name" href="/admin/ciftler/${e.couple_id}">${e.couple_name}</a>
+          ${e.couple_phone ? h`<a class="tmr__call" href="tel:+${e.couple_phone}" aria-label="${e.couple_name} ara">${icon('phone')}</a>` : ''}
+        </div>
+        ${e.venue || e.city ? h`<p class="prog__line">${[e.venue, e.city].filter(Boolean).join(' · ')}</p>` : ''}
+        ${e.team ? h`<p class="prog__team">${String(e.team).split(/,\s*/).map((m) => h`<span class="tav" title="${m}">${initials(m)}</span>`)}</p>` : ''}
+        ${e.package_detail ? h`<p class="prog__note">${e.package_detail}</p>` : ''}
       </div>
-      <p class="prog__line"><span class="prog__time">${e.start_time || 'Saat yok'}</span>${e.event_type || 'Etkinlik'}${e.venue || e.city ? h`, ${[e.venue, e.city].filter(Boolean).join(', ')}` : ''}</p>
-      ${e.team ? h`<p class="prog__team">Ekip: ${e.team}</p>` : ''}
-      ${e.package_detail ? h`<p class="prog__note">${e.package_detail}</p>` : ''}
     </li>`;
   return h`
   <section class="prog" aria-labelledby="prog-title">
@@ -279,6 +282,17 @@ const TODO_GROUPS = [
   { key: 'diger', title: 'Diğer', icon: 'folder', tone: 'vid' },
 ];
 const TAG_GROUP = { Mesaj: 'mesaj', Ekip: 'mesaj', Hatırlatma: 'hatirlatma', Sözleşme: 'soz', Albüm: 'alb', Seçim: 'alb', Ödeme: 'pay', Plan: 'pay', Teklif: 'pay' };
+function initials(name) {
+  const up = (w) => (w || '').charAt(0).toLocaleUpperCase('tr-TR');
+  const sides = String(name || '').split('&').map((x) => x.trim().split(/\s+/).filter(Boolean)).filter((x) => x.length);
+  if (sides.length > 1) return up(sides[0][0]) + up(sides[1][0]);
+  const w = sides[0] || [];
+  return (up(w[0]) + (w.length > 1 ? up(w[w.length - 1]) : '')) || '•';
+}
+function greet() {
+  const hr = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Istanbul', hour: '2-digit', hour12: false }).format(new Date()));
+  return hr < 5 ? 'İyi geceler' : hr < 12 ? 'Günaydın' : hr < 18 ? 'İyi günler' : 'İyi akşamlar';
+}
 function todoGroup(tag, level) {
   if (TAG_GROUP[tag] === 'mesaj' || TAG_GROUP[tag] === 'hatirlatma') return TAG_GROUP[tag];
   return level >= 3 ? 'acil' : TAG_GROUP[tag] || 'diger';
@@ -315,7 +329,7 @@ function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders 
   return rows.sort((a, b) => b.level - a.level);
 }
 
-function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
@@ -329,8 +343,9 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
   <div class="container dashboard">
     <header class="dash-head">
       <div>
-        <p class="dash-head__date">${longDay(t)} · ${todayN ? `bugün ${todayN} çekim` : 'bugün çekim yok'}${weekN > todayN ? `, 7 günde ${weekN}` : ''}</p>
-        <h1 class="dash-head__title">Bugün</h1>
+        <p class="dash-head__date">${longDay(t)}</p>
+        <h1 class="dash-head__title">${greet()}${adminName ? h`, <em>${adminName}</em>` : ''}</h1>
+        <p class="dash-head__sub">${todayN ? `Bugün ${todayN} çekim` : 'Bugün çekim yok'}${weekN > todayN ? ` · 7 günde ${weekN} çekim` : ''} · ${todo.length ? `${todo.length} iş bekliyor` : 'bekleyen iş yok'}</p>
       </div>
       <div class="dash-head__actions">
         <a class="btn btn--outline" href="/admin/hatirlatma/yeni">${icon('bell')}Hatırlatma</a>
@@ -347,13 +362,14 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
         <form method="post" action="/admin/sozlesme/${k.id}/gordum" class="inline-form">${csrfField(csrf)}<button class="btn btn--outline btn--sm" type="submit">Tamam</button></form>
       </div>`)}</section>` : ''}
 
-    <div class="kpis">
-      <a class="kpi kpi--cek" href="/admin/takvim"><span class="dic">${icon('camera')}</span><span><b>${monthEvents.length}</b><span>${MONTHS[Number(ym.slice(5)) - 1]} ayında çekim</span></span></a>
-      <a class="kpi kpi--pay" href="/admin/rapor"><span class="dic">${icon('lira')}</span><span><b>${tl(balance)}</b><span>bekleyen ödeme</span></span></a>
-      <a class="kpi kpi--sec" href="/admin/talepler"><span class="dic">${icon('inbox')}</span><span><b>${newLeads}</b><span>yeni talep</span></span></a>
-      <a class="kpi kpi--${late ? 'late' : 'tes'}" href="/admin/takvim#teslimler"><span class="dic">${icon(late ? 'alert' : 'check')}</span><span><b>${late}</b><span>geciken teslim</span></span></a>
+    <div class="dstats">
+      <a class="dstat" href="/admin/takvim"><span class="dstat__k">${MONTHS[Number(ym.slice(5)) - 1]} çekimleri</span><b class="dstat__v">${monthEvents.length}</b><span class="dstat__n">${(() => { const nx = upcoming[0]; return nx ? `Sıradaki ${new Date(`${nx.event_date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}` : 'Yaklaşan çekim yok'; })()}</span></a>
+      <a class="dstat" href="/admin/rapor"><span class="dstat__k">Bekleyen ödeme</span><b class="dstat__v">${tl(balance).replace(/\s?₺$/, '')}<small>₺</small></b><span class="dstat__n">${couples.filter((k) => payment(k)[2] > 0).length} çiftte</span></a>
+      <a class="dstat" href="/admin/talepler"><span class="dstat__k">Yeni talep</span><b class="dstat__v">${newLeads}</b><span class="dstat__n">${newLeads ? 'Yanıt bekliyor' : 'Hepsi yanıtlandı'}</span></a>
+      <a class="dstat${late ? ' dstat--late' : ''}" href="/admin/takvim#teslimler"><span class="dstat__k">Geciken teslim</span><b class="dstat__v">${late}</b><span class="dstat__n">${late ? `En eskisi ${Math.max(...couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').map((k) => daysBetween(k.due_date, t)))} gün` : 'Hepsi zamanında'}</span></a>
     </div>
 
+    <div class="dgrid">
     <section class="todo" id="yapilacaklar" aria-labelledby="todo-title" data-outbox>
       <header class="sec-head">
         <h2 class="sec-title" id="todo-title">Yapılacaklar <span class="sec-count" data-todo-count>${todo.length}</span></h2>
@@ -362,7 +378,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       ${todo.length ? (() => {
         const item = (x) => h`
         <li class="todo__item${x.level === 3 ? ' is-urgent' : ''}" data-todo-item${x.outbox ? raw(` data-outbox-item data-keys="${x.outbox.keys.join(',')}"`) : ''}>
-          <span class="dic dic--${(TAG_ICON[x.tag] || ['alert', 'soz'])[1]}" aria-hidden="true">${icon((TAG_ICON[x.tag] || ['alert'])[0])}</span>
+          ${/^\/admin\/ciftler\//.test(x.href || '') || x.outbox?.coupleId ? h`<span class="av av--${(TAG_ICON[x.tag] || ['', 'soz'])[1]}${x.level >= 3 ? ' av--late' : ''}" aria-hidden="true">${initials(x.name)}</span>` : h`<span class="dic dic--${(TAG_ICON[x.tag] || ['alert', 'soz'])[1]}" aria-hidden="true">${icon((TAG_ICON[x.tag] || ['alert'])[0])}</span>`}
           <span class="todo__main">
             <span class="todo__tag">${x.tag}</span>
             ${x.href ? h`<a class="todo__name" href="${x.href}">${x.name}</a>` : h`<span class="todo__name">${x.name}</span>`}
@@ -391,8 +407,16 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       <p class="sec-empty" data-todo-empty hidden>Bekleyen iş kalmadı.</p>
     </section>
 
-    <div class="dash-one">${programBlock(c, upcoming, tomorrowDue, reminders)}</div>
-    ${prebookBlock(prebookings)}
+    <aside class="dgrid__side">
+      ${programBlock(c, upcoming, tomorrowDue, reminders)}
+      <div class="dmini">
+        <a href="/admin/on-randevu"><b>${prebookings.length}</b>Ön randevu</a>
+        <a href="/admin/hatirlatma/yeni"><b>${reminders.length}</b>Hatırlatma</a>
+        <a href="#cards-title"><b>${couples.filter((k) => k.stage < c.stages.length - 1).length}</b>Aktif çift</a>
+      </div>
+    </aside>
+    </div>
+    ${prebookings.length ? prebookBlock(prebookings) : ''}
 
     <section class="couples" aria-labelledby="cards-title">
       <header class="sec-head cards-head">
@@ -794,7 +818,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=61"></head>
+  <link rel="stylesheet" href="/css/style.css?v=64"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
