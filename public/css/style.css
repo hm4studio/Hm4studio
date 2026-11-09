@@ -2667,3 +2667,17 @@ html { overflow-x: clip; }
 .chero:not(.chero--plain)::after { background: linear-gradient(180deg, rgba(14, 17, 23, .1) 20%, rgba(14, 17, 23, .72)), linear-gradient(90deg, rgba(14, 17, 23, .35), rgba(14, 17, 23, 0) 60%); }
 .chero__name, .chero__meta, .chero__eyebrow { text-shadow: 0 1px 14px rgba(0, 0, 0, .25); }
 @media (min-width: 900px) { .cstrip__ph { aspect-ratio: 1 / 1; } }
+
+/* Panel v3: tüm sayfalarda başlık ve rakamlar klasik yazıyla */
+.pui .page-title, .pui .cd-title, .pui .panel-title-row .page-title { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; font-size: clamp(2.2rem, 4.5vw, 2.8rem); letter-spacing: -.005em; color: var(--navy); font-variant-numeric: lining-nums; }
+.pui.is-admin .panel-section__title, .pui .card__title, .pui .sec-title { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; font-size: 1.55rem; letter-spacing: 0; color: var(--navy); }
+.pui .stat__num, .pui .pay-sum__num, .pui .cd-facts dd, .pui .disk__nums { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; font-variant-numeric: lining-nums; color: var(--navy); }
+.pui .stat__num { font-size: 2.2rem; line-height: 1.1; }
+.pui .pay-sum__num { font-size: 1.6rem; }
+.pui .stats { gap: 0; background: var(--off); border: 1px solid #e9e3d7; border-radius: 18px; padding: 4px 0; }
+.pui .stats .stat { border: 0; padding: 14px 20px; position: relative; }
+.pui .stats .stat + .stat::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 1px; background: #e9e3d7; }
+.pui .stat__label { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--pencil); }
+.pui .tabs .tab.is-active, .pui .cd-tabs a[aria-current], .pui .cd-tab.is-on { border-bottom-color: var(--gold); }
+.pui .set-links { border-top-color: #e9e3d7; }
+.pui .set-links a:hover .set-links__title { color: var(--gold-d); }
