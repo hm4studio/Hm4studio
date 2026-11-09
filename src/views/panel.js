@@ -242,7 +242,7 @@ function aiBot(c) {
 }
 
 function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
-  const nav = h`<div class="panel-nav"><span class="panel-nav__who">${couple.name}</span>${config.demoMode ? h`<a class="panel-nav__link" href="/gorus?alan=${encodeURIComponent('Çift paneli')}">${icon('star')}<span>Görüş bildir</span></a>` : ''}${logoutForm(csrf)}</div>`;
+  const nav = h`<div class="panel-nav">${pagesFor(couple).map((p) => h`<a class="panel-nav__link panel-nav__page" href="${p.href}"${p.key === page ? raw(' aria-current="page"') : ''}><span>${p.label}</span></a>`)}<span class="panel-nav__who">${couple.name}</span>${config.demoMode ? h`<a class="panel-nav__link" href="/gorus?alan=${encodeURIComponent('Çift paneli')}">${icon('star')}<span>Görüş bildir</span></a>` : ''}${logoutForm(csrf)}</div>`;
   const content = h`
   <div class="container">
     <nav class="cpages" aria-label="Panel sayfaları">
@@ -282,7 +282,7 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
 }
 
 // Durum: sıradaki adım, iş durumu, randevular, ödeme; en altta bildirim ayarları ve çıkış
-function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favCount = 0, editedCount = 0, videoCount = 0, gifts = null, deliveries = [], reviewLink = '', csrf, flash: f }) {
+function couplePanel(c, { couple, cover = null, strip = [], card = null, events = [], totalCount = 0, favCount = 0, editedCount = 0, videoCount = 0, gifts = null, deliveries = [], reviewLink = '', csrf, flash: f }) {
   const journey = require('./journey');
   const step = nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages: c.stages, keepUntil: journey.keepUntil(c, couple) });
   const road = journey.forCouple(c, { couple, events, totalCount, favCount });
@@ -294,22 +294,35 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
     ...(events.length ? [{ title: 'Randevu belgesi', sub: 'Etkinlikler ve paketler', href: '/panel/belge', ic: 'calendar', k: 'cek' }] : []),
   ];
   const pushbox = h`<div class="pushbox" data-push data-push-quiet data-off-text="Fotoğraflarınız ve videonuz hazır olunca telefonunuza haber verelim." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>`;
+  const evDates = events.map((e) => e.event_date).filter(Boolean).sort();
+  const mainEv = events.find((e) => /düğün/i.test(e.event_type || '')) || events.find((e) => e.event_date === evDates[0]) || null;
+  const place = mainEv ? (mainEv.city || mainEv.venue || '') : '';
+  const [n1, n2] = String(couple.name).split('&').map((x) => x.trim());
   const body = h`
+    <section class="chero${cover ? '' : ' chero--plain'}" aria-label="Hoş geldiniz">
+      ${cover ? h`<img class="chero__img" src="/m/${cover.id}/display" alt="" decoding="async" fetchpriority="high">` : ''}
+      <div class="chero__t">
+        <p class="chero__eyebrow">Hoş geldiniz</p>
+        <p class="chero__name">${n2 ? h`${n1} <em>&amp;</em> ${n2}` : couple.name}</p>
+        ${mainEv ? h`<p class="chero__meta"><b>${formatDate(mainEv.event_date)}</b>${place ? ` · ${place}` : ''}${couple.delivered_at ? ' · Teslim edildi' : ''}</p>` : ''}
+      </div>
+    </section>
     <section class="now${step.href || step.done ? ' now--todo' : ''}" aria-labelledby="now-title">
-      <div class="now__row"><div class="now__body">
-      <p class="now__eyebrow">${step.eyebrow || (step.href ? 'Sıradaki adım' : 'Durum')}</p>
-      <h1 class="now__title" id="now-title">${step.title}</h1>
-      <p class="now__text">${step.text}</p>
-      </div>${step.ring ? (() => {
+      ${step.ring ? (() => {
         const [n, of] = step.ring;
         const C = 201.06;
         return h`<div class="ring" role="img" aria-label="${n} / ${of} kare seçildi"><svg viewBox="0 0 74 74" aria-hidden="true"><circle class="ring__bg" cx="37" cy="37" r="32"/><circle class="ring__fg" cx="37" cy="37" r="32" stroke-dasharray="${C}" stroke-dashoffset="${(C * (1 - Math.min(n / (of || 1), 1))).toFixed(1)}"/></svg><b>${n}/${of}</b></div>`;
-      })() : ''}</div>
+      })() : h`<span class="now__ic" aria-hidden="true">${icon(step.done ? 'gift' : step.href ? 'right' : 'check')}</span>`}
+      <div class="now__body">
+        <p class="now__eyebrow">${step.eyebrow || (step.href ? 'Sıradaki adım' : 'Durum')}</p>
+        <h1 class="now__title" id="now-title">${step.title}</h1>
+        <p class="now__text">${step.text}</p>
+      </div>
       ${step.href ? h`<a class="btn btn--primary" href="${step.href}"${step.download ? raw(' download') : ''}>${step.download ? icon('download') : ''}${step.btn}${step.download ? '' : icon('right')}</a>` : ''}
     </section>
 
     <section class="panel-section croad" id="durum" aria-labelledby="road-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="road-title">${road.finished ? 'Tamamlandı' : 'İşinizin yolu'}</h2></div>
+      <div class="panel-section__head"><h2 class="panel-section__title" id="road-title">${road.finished ? 'Tamamlandı' : 'Yolculuğunuz'}</h2>${road.finished ? '' : h`<span class="panel-section__note">${road.list.filter((x) => x.state === 'done').length} / ${road.list.length} adım tamam</span>`}</div>
       ${journey.road(road, { title: 'İşinizin yolu' })}
       ${(couple.video_status && !road.finished) || couple.due_date || couple.stage_note ? h`<p class="croad__note">${[
         couple.video_status && !road.finished ? h`Video: <strong>${couple.video_status}</strong>` : '',
@@ -317,18 +330,24 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
       ].filter(Boolean).map((x, i) => h`${i ? ' · ' : ''}${x}`)}${couple.stage_note ? h`<span class="croad__msg">${couple.stage_note}</span>` : ''}</p>` : ''}
     </section>
 
-    ${totalCount || editedCount || videoCount ? h`<div class="cquick">
-      ${editedCount ? h`<a class="cquick__item cq--tes" href="/panel/fotograflar?g=duzenli"><span class="ic">${icon('image')}</span><span class="cquick__num">${editedCount}</span><span>düzenlenmiş fotoğraf</span></a>` : ''}
-      ${totalCount ? h`<a class="cquick__item cq--cek" href="/panel/fotograflar?g=secim"><span class="ic">${icon('image')}</span><span class="cquick__num">${totalCount}</span><span>seçim fotoğrafı</span></a>` : ''}
-      ${totalCount ? h`<a class="cquick__item cq--sec" href="/panel/fotograflar?g=fav"><span class="ic">${icon('heart')}</span><span class="cquick__num">${favCount}</span><span>albüme seçildi</span></a>` : ''}
-      ${videoCount ? h`<a class="cquick__item cq--vid" href="/panel/video"><span class="ic">${icon('play')}</span><span class="cquick__num">${videoCount}</span><span>video</span></a>` : ''}
-    </div>` : ''}
+    ${totalCount || editedCount ? h`<section class="panel-section cstrip" aria-labelledby="ph-title">
+      <div class="panel-section__head"><h2 class="panel-section__title" id="ph-title">Fotoğraflarınız</h2></div>
+      ${strip.length ? h`<a class="cstrip__row" href="/panel/fotograflar">${strip.map((id, i) => h`<span class="cstrip__ph"><img src="/m/${id}/thumb" alt="" loading="lazy" decoding="async">${i === strip.length - 1 && (editedCount || totalCount) > strip.length + 1 ? h`<b>+${(editedCount || totalCount) - strip.length - 1}</b>` : ''}</span>`)}</a>` : ''}
+      <div class="cstrip__foot">
+        ${editedCount ? h`<a class="cstrip__n" href="/panel/fotograflar?g=duzenli"><b>${editedCount}</b>düzenlenmiş</a>` : ''}
+        ${totalCount ? h`<a class="cstrip__n" href="/panel/fotograflar?g=secim"><b>${totalCount}</b>seçim fotoğrafı</a>` : ''}
+        ${totalCount ? h`<a class="cstrip__n" href="/panel/fotograflar?g=fav"><b>${favCount}</b>albüme seçildi</a>` : ''}
+        ${videoCount ? h`<a class="cstrip__n" href="/panel/video"><b>${videoCount}</b>video</a>` : ''}
+        <a class="cstrip__go" href="/panel/fotograflar">Galeriyi aç${icon('right')}</a>
+      </div>
+    </section>` : videoCount ? h`<div class="cquick"><a class="cquick__item cq--vid" href="/panel/video"><span class="ic">${icon('play')}</span><span class="cquick__num">${videoCount}</span><span>video</span></a></div>` : ''}
 
+    <div class="ctwo">
     ${events.length ? h`<section class="panel-section" id="randevular" aria-labelledby="ev-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="ev-title">${icon('calendar')}Randevularınız</h2></div>
+      <div class="panel-section__head"><h2 class="panel-section__title" id="ev-title">Randevularınız</h2></div>
       <ul class="jobs">${events.map((e) => {
         const dt = e.event_date ? new Date(`${e.event_date}T12:00:00`) : null;
-        return h`<li class="job">
+        return h`<li class="job${e.event_date && e.event_date < new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10) ? ' is-past' : ''}">
           <div class="job__date" aria-hidden="true">${dt ? h`<span class="job__day">${dt.getDate()}</span><span class="job__mon">${dt.toLocaleDateString('tr-TR', { month: 'short' })}</span>` : h`<span class="job__day">—</span>`}</div>
           <div class="job__main"><strong>${e.event_type || 'Etkinlik'}${e.start_time ? ` · ${e.start_time}` : ''}</strong>
             <span class="muted">${[e.venue, e.city].filter(Boolean).join(', ')}</span></div>
@@ -350,13 +369,16 @@ function couplePanel(c, { couple, card = null, events = [], totalCount = 0, favC
     })() : ''}
 
     ${docs.length ? h`<section class="panel-section" id="belgeler" aria-labelledby="docs-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="docs-title">${icon('folder')}Belgelerim</h2></div>
+      <div class="panel-section__head"><h2 class="panel-section__title" id="docs-title">Belgeleriniz</h2></div>
       <ul class="docs">${docs.map((d) => h`<li>
         <span class="dic dic--${d.k}">${icon(d.ic)}</span>
         <span class="docs__main"><strong>${d.title}</strong><span class="${d.ok ? 'docs__ok' : 'muted'}">${d.sub}</span></span>
         <a class="btn btn--outline btn--sm" href="${d.href}">${d.btn || h`${icon('download')}İndir`}</a>
       </li>`)}</ul>
     </section>` : ''}
+    </div>
+
+    ${c.contact?.whatsapp && String(c.contact.whatsapp).replace(/\D/g, '').length > 9 ? h`<section class="chelp"><div><b>Bir sorunuz mu var?</b><span>Stüdyoya doğrudan yazabilirsiniz.</span></div><a class="btn" href="https://wa.me/${String(c.contact.whatsapp).replace(/\D/g, '')}?text=${encodeURIComponent(`Merhaba, ben ${couple.name}. `)}" target="_blank" rel="noopener">${icon('whatsapp')}WhatsApp'tan yazın</a></section>` : ''}
 
     ${gifts ? h`<section class="panel-section gift-share" id="hediye" aria-labelledby="gift-title">
       <div class="panel-section__head"><h2 class="panel-section__title" id="gift-title">Sevdiklerinize hediyeniz</h2></div>

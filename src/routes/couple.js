@@ -123,8 +123,14 @@ function register(router) {
     const couple = me(req);
     const c = getContent();
     const sel = db.listPhotos(couple.id, 'secim');
+    const edited = db.listPhotos(couple.id, 'duzenli');
+    // Kapak ve fotoğraf şeridi: stüdyonun seçtiği kapak, yoksa yatay bir kare
+    const pool = edited.length ? edited : sel;
+    const cover = [...edited, ...sel].find((p) => p.id === couple.cover_photo_id) || pool.find((p) => p.w && p.h && p.w > p.h * 1.15) || pool[0] || null;
     html(res, views.couplePanel(c, {
       couple,
+      cover,
+      strip: pool.filter((p) => !cover || p.id !== cover.id).slice(0, 4).map((p) => p.id),
       card: c.couplePanel?.showPayments ? db.getCoupleCard(couple.id) : null,
       events: db.listEvents(couple.id),
       totalCount: sel.length,
