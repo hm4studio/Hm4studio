@@ -124,11 +124,22 @@
     const n = Number(raw.replace(/[^\d,.]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
     return Math.round(/%/.test(raw) ? (gross * Math.min(n, 100)) / 100 : n);
   }
+  const barT = form.querySelector('[data-bar-total]');
+  const barR = form.querySelector('[data-bar-rest]');
+  const barRk = form.querySelector('[data-bar-rest-k]');
+  function bar(total, rest) {
+    if (!barT) return;
+    barT.textContent = total ? tl(total) : '—';
+    const show = Boolean(total && rest !== null && rest !== total);
+    barR.hidden = !show; barRk.hidden = !show;
+    if (show) barR.textContent = tl(rest);
+  }
   function updateSum() {
     const gross = [...evList.querySelectorAll('[data-ev-price]')].reduce((s, el) => s + num(el.value), 0);
     const off = discountOf(gross);
     const total = Math.max(gross - off, 0);
     const d = dep ? num(dep.value) : 0;
+    bar(gross ? total : 0, dep ? Math.max(total - d, 0) : null);
     if (!gross) { sum.textContent = 'Etkinliklere tutar girdikçe toplam burada hesaplanır.'; sum.className = 'appt-sum muted'; return; }
     const head = off ? `Ara toplam ${tl(gross)} · İndirim −${tl(off)} · Toplam ${tl(total)}` : `Toplam ${tl(total)}`;
     if (off > gross) { sum.textContent = `${head} · indirim toplamdan büyük olamaz.`; sum.className = 'appt-sum is-error'; return; }

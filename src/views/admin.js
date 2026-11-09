@@ -385,7 +385,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=10', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=11', '/js/outbox.js?v=2'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -396,14 +396,14 @@ function eventBlock(c, values, i, n, team = [], packages = []) {
   return h`
   <div class="ev-block" data-ev data-ev-index="${i}">
     <div class="ev-block__head">
-      <h3 class="ev-block__title"><span data-ev-num>${n}</span>. etkinlik <span class="ev-block__same" data-ev-same hidden>· aynı gün</span></h3>
+      <h3 class="ev-block__title">${icon('calendar')}<span><span data-ev-num>${n}</span>. tarih</span> <span class="ev-block__same" data-ev-same hidden>· aynı gün</span></h3>
       <div class="ev-block__tools">
         <button type="button" class="btn btn--text btn--sm" data-ev-sameday title="Bu günün tarih, şehir ve mekânıyla yeni bir hizmet ekler">${icon('plus')}Aynı güne hizmet ekle</button>
         <button type="button" class="btn btn--text btn--sm btn--danger-text" data-ev-remove>${icon('trash')}Kaldır</button>
       </div>
     </div>
     <input type="hidden" name="${id('id')}" value="${v('id')}">
-    <div class="appt-row">
+    <div class="appt-row ev-row1">
       <div class="field"><label for="${id('type')}">Etkinlik türü</label><select id="${id('type')}" name="${id('type')}"><option value="">Seçin</option>${(o.eventTypes || []).map((x) => h`<option${x === v('type') ? raw(' selected') : ''}>${x}</option>`)}</select></div>
       <div class="field"><label for="${id('date')}">Tarih</label><input id="${id('date')}" name="${id('date')}" type="date" value="${v('date')}" data-ev-date></div>
       <div class="field"><label for="${id('time')}">Başlangıç saati</label><input id="${id('time')}" name="${id('time')}" type="time" value="${v('time')}"></div>
@@ -471,7 +471,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       <datalist id="pkg-list">${packages.map((x) => h`<option value="${x.name}">${x.price ? tl(x.price) : ''}</option>`)}</datalist>
 
       <fieldset class="appt-group">
-        <legend>Kişi</legend>
+        <legend class="appt-head"><span class="appt-head__n appt-head__n--1">1</span>${icon('users')}<span class="appt-head__t">Çift</span></legend>
         <div class="appt-row">
           <div class="field"><label for="fullName">Ad soyad</label><input id="fullName" name="fullName" type="text" required maxlength="80" value="${v('fullName')}" autocomplete="off"></div>
           <div class="field"><label for="partnerName">Eş adı</label><input id="partnerName" name="partnerName" type="text" maxlength="80" value="${v('partnerName')}" autocomplete="off"></div>
@@ -483,7 +483,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </fieldset>
 
       <fieldset class="appt-group">
-        <legend>Etkinlikler</legend>
+        <legend class="appt-head"><span class="appt-head__n appt-head__n--2">2</span>${icon('camera')}<span class="appt-head__t">Çekimler</span></legend>
         <p class="muted appt-help">Her hizmeti ayrı etkinlik olarak girin; her birinin kendi paketi, tutarı ve ekibi olur. Aynı gün birden fazla hizmet varsa (örn. dış çekim + düğün) “Aynı güne hizmet ekle”ye dokunun: tarih, şehir ve mekân kopyalanır.</p>
         <div class="ev-list" data-ev-list>
           ${idx.map((i, n) => eventBlock(c, values, i, n + 1, team, packages))}
@@ -493,7 +493,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </fieldset>
 
       <fieldset class="appt-group">
-        <legend>Ödeme</legend>
+        <legend class="appt-head"><span class="appt-head__n appt-head__n--3">3</span>${icon('lira')}<span class="appt-head__t">Ödeme</span></legend>
         <div class="appt-row">
           <div class="field"><label for="discount">İndirim <span class="muted">(₺ ya da %, isteğe bağlı)</span></label><input id="discount" name="discount" type="text" inputmode="decimal" placeholder="Örn. 2.000 ya da %10" value="${v('discount')}" data-discount></div>
         </div>
@@ -505,7 +505,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </fieldset>
 
       <fieldset class="appt-group">
-        <legend>Teslim</legend>
+        <legend class="appt-head"><span class="appt-head__n appt-head__n--4">4</span>${icon('book')}<span class="appt-head__t">Teslim ve ek</span><span class="appt-head__s">isteğe bağlı</span></legend>
         <div class="appt-row">
           ${isNew ? '' : h`<div class="field"><label for="dueDate">Teslim tarihi <span class="muted">(boş bırakın: son çekimden ${o.defaultDeliveryDays || 45} gün sonra)</span></label><input id="dueDate" name="dueDate" type="date" value="${v('dueDate')}"></div>`}
           <div class="field"><label for="albumLimit">Albüm kare sayısı</label><input id="albumLimit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${v('albumLimit') || 35}"></div>
@@ -513,25 +513,18 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
         ${isNew ? h`<p class="muted appt-help">Teslim tarihi çekimden sonra kendiliğinden belirlenir: son çekimden ${o.defaultDeliveryDays || 45} gün sonra. Gerekirse çekimden sonra kişi kartından değiştirebilirsiniz.</p>` : ''}
         ${isNew ? '' : h`<div class="appt-checks">${chk('photoReady', 'Fotoğraflar hazır')}${chk('videoReady', 'Video hazır')}${chk('albumReady', 'Albüm hazır')}</div>`}
         ${chk('waOptin', 'WhatsApp bildirimleri gönderilsin')}
-      </fieldset>
-
-      ${isNew ? h`<fieldset class="appt-group">
-        <legend>Hediye kuponu</legend>
-        <div class="field"><label for="hediye">Kupon kodu <span class="muted">(bir çiftin hediye kuponuyla geldiyse)</span></label><input id="hediye" name="hediye" maxlength="40" placeholder="ör. ELIF-BURAK-7K2" value="${v('hediye')}" autocapitalize="characters"></div>
-      </fieldset>` : ''}
-
-      <fieldset class="appt-group">
-        <legend>Notlar</legend>
-        <div class="field"><label for="notes" class="sr-only">Notlar</label><textarea id="notes" name="notes" rows="4" maxlength="3000" placeholder="Yalnızca siz görürsünüz.">${v('notes')}</textarea></div>
+        ${isNew ? h`<div class="field"><label for="hediye">Hediye kuponu <span class="muted">(bir çiftin kuponuyla geldiyse)</span></label><input id="hediye" name="hediye" type="text" maxlength="40" placeholder="ör. ELIF-BURAK-7K2" value="${v('hediye')}" autocapitalize="characters"></div>` : ''}
+        <div class="field"><label for="notes">Notlar <span class="muted">(yalnızca siz görürsünüz)</span></label><textarea id="notes" name="notes" rows="3" maxlength="3000">${v('notes')}</textarea></div>
       </fieldset>
 
       <div class="appt-actions">
-        <button class="btn btn--primary" type="submit">${submitLabel}</button>
+        <div class="appt-bar" data-bar aria-live="polite"><span class="appt-bar__k">Toplam</span><b data-bar-total>—</b><span class="appt-bar__k" data-bar-rest-k hidden>Kalan</span><b data-bar-rest hidden></b></div>
         <a class="btn btn--text" href="${back}">Vazgeç</a>
+        <button class="btn btn--primary" type="submit">${submitLabel}</button>
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=10', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=11', '/js/outbox.js?v=2'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -752,7 +745,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=54"></head>
+  <link rel="stylesheet" href="/css/style.css?v=57"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1905,7 +1898,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=10', '/js/outbox.js?v=2'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=11', '/js/outbox.js?v=2'] });
 }
 
 module.exports = {
