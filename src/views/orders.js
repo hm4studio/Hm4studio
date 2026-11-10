@@ -41,6 +41,7 @@ function listPage(c, { rows, csrf, flash: f, demoAdmin }) {
   <div class="container">
     ${seg('orders')}
     <div class="panel-title-row"><h1 class="page-title">Albüm siparişleri</h1><a class="btn btn--text btn--sm" href="/admin/album-secenekleri">${icon('settings')}Seçenekler</a></div>
+    ${require('./guide').hint('orders')}
     ${admin.flashBlock(f)}
     <div class="ostats">
       <div><b>${n('tamamla') + n('degisiklik')}</b><span>Tamamlanacak</span></div>
@@ -183,7 +184,7 @@ function doc(c, { couple, order, back }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Albüm siparişi ${orders.orderNo(order)} — ${couple.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=73">
+<link rel="stylesheet" href="/css/style.css?v=74">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>

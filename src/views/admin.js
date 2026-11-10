@@ -20,10 +20,11 @@ function adminNav(active, csrf, demoAdmin = false) {
     { href: '/admin/gorevler', label: 'Görevler', key: 'tasks', icon: 'tasks' },
     { href: '/admin/rapor', label: 'Rapor', key: 'report', icon: 'chart' },
     { href: '/admin/hesap', label: 'Ayarlar', key: 'settings', icon: 'settings' },
+    { href: '/admin/rehber', label: 'Panel rehberi', key: 'help', icon: 'help' },
   ];
   const cur = SETTINGS_KEYS.includes(active) ? 'settings' : active;
   return h`<nav class="panel-nav" aria-label="Yönetim menüsü">
-    ${items.map((i) => h`<a class="panel-nav__link${i.key === 'settings' ? ' panel-nav__link--keep' : ''}" href="${i.href}"${i.key === cur ? raw(' aria-current="page"') : ''}>${icon(i.icon)}<span>${i.label}</span></a>`)}
+    ${items.map((i) => h`<a class="panel-nav__link${i.key === 'settings' || i.key === 'help' ? ' panel-nav__link--keep' : ''}${i.key === 'help' ? ' panel-nav__link--icon' : ''}" href="${i.href}"${i.key === cur ? raw(' aria-current="page"') : ''}>${icon(i.icon)}<span>${i.label}</span></a>`)}
     ${logoutForm(csrf)}
   </nav>`;
 }
@@ -346,6 +347,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
     ${flashBlock(f)}
     ${require('./orders').seg('list')}
     <div class="panel-title-row"><h1 class="page-title">Çiftler</h1><a class="btn btn--primary btn--sm" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a></div>
+    ${require('./guide').hint('list')}
     <section class="couples" aria-labelledby="cards-title">
       <header class="sec-head cards-head">
         <h2 class="sec-title" id="cards-title">Tümü <span class="sec-count" data-card-count>${couples.length}</span></h2>
@@ -850,7 +852,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=73"></head>
+  <link rel="stylesheet" href="/css/style.css?v=74"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1224,6 +1226,7 @@ function calendar(c, { couples, monthEvents = [], ym = today().slice(0, 7), csrf
   const body = h`
   <div class="container">
     <div class="panel-title-row"><h1 class="page-title">Takvim</h1><a class="btn btn--primary btn--sm" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a></div>
+    ${require('./guide').hint('calendar')}
     ${monthCalendar(monthEvents, ym)}
     <div class="stats stats--4">
       <div class="stat"><span class="stat__num">${count('late')}</span><span class="stat__label">Geciken teslim</span></div>
@@ -1549,6 +1552,7 @@ function tasksPage(c, { tasks, done, team, couples, who = 0, csrf, flash: f, dem
         </form>
       </details>
     </div>
+    ${require('./guide').hint('tasks')}
     ${flashBlock(f)}
     <nav class="tgf tasks__who" aria-label="Kişiye göre">
       <a class="tgf__c${who ? '' : ' is-on'}" href="/admin/gorevler">Tümü <b>${tasks.length}</b></a>

@@ -141,6 +141,7 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin, quotes = [], loose = [
   <div class="container">
     <div class="panel-title-row"><div><h1 class="page-title">Talepler</h1><p class="muted">Site formu, WhatsApp, Düğün.com ve hediye kuponuyla gelenler</p></div>
       <a class="btn btn--outline btn--sm" href="/admin/teklif/yeni">${icon('plus')}Yeni teklif</a></div>
+    ${require('./guide').hint('leads')}
     ${f ? flash(f.message, f.type) : ''}
     <nav class="ltabs" aria-label="Talep durumları">
       ${TABS.map(([k, label]) => h`<a class="ltabs__tab" href="/admin/talepler?sekme=${k}"${k === tab ? raw(' aria-current="page"') : ''}>${label}<span class="ltabs__n">${counts[k]}</span></a>`)}

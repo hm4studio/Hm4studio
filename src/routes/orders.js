@@ -85,6 +85,12 @@ function register(router) {
     html(res, views.doc(getContent(), { couple, order: o, back: `/admin/ciftler/${couple.id}/siparis` }));
   });
 
+  // Panel rehberi
+  router.get('/admin/rehber', (req, res, { query }) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, require('../views/guide').page(getContent(), { step: Number(query.get('adim')) || 1, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
   // Ayarlar › Albüm seçenekleri
   router.get('/admin/album-secenekleri', (req, res) => {
     if (!requireAdmin(req, res)) return;
