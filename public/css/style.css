@@ -2862,3 +2862,15 @@ fieldset > legend.sr-only { left: 0; top: 0; }
 .pui .osheet__t { font-size: 2.2rem; }
 .oopts__f label .muted { display: block; font-weight: 400; font-size: .78rem; margin-top: 2px; }
 .ct-table th[scope="row"] { border-bottom: 1px solid #e6e1d7; width: 40%; }
+/* Bekleyen ödeme: göz düğmesi */
+.dstat--money .dstat__cover { position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+.dstat__eye { position: absolute; top: 10px; right: 12px; z-index: 2; width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: var(--pencil); cursor: pointer; }
+.dstat__eye:hover { background: rgba(31, 42, 58, .06); color: var(--navy); }
+.dstat__eye .icon { width: 19px; height: 19px; }
+.dstat__eye .icon + .icon { display: none; }
+.dstat--money.is-hidden .dstat__eye .icon { display: none; }
+.dstat--money.is-hidden .dstat__eye .icon + .icon { display: block; }
+.dstat__mask { display: none; letter-spacing: .08em; }
+.dstat--money.is-hidden .dstat__real { display: none; }
+.dstat--money.is-hidden .dstat__mask { display: inline; }
+@media (max-width: 599px) { .dstat__eye { top: auto; bottom: 8px; right: 6px; } }

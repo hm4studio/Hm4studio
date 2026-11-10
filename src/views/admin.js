@@ -375,7 +375,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=14'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=15'] });
 }
 
 function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], orderPrompts = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
@@ -413,7 +413,8 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
 
     <div class="dstats">
       <a class="dstat" href="/admin/takvim"><span class="dstat__k">${MONTHS[Number(ym.slice(5)) - 1]} çekimleri</span><b class="dstat__v">${monthEvents.length}</b><span class="dstat__n">${(() => { const nx = upcoming[0]; return nx ? `Sıradaki ${new Date(`${nx.event_date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}` : 'Yaklaşan çekim yok'; })()}</span></a>
-      <a class="dstat" href="/admin/rapor"><span class="dstat__k">Bekleyen ödeme</span><b class="dstat__v">${tl(balance).replace(/\s?₺$/, '')}<small>₺</small></b><span class="dstat__n">${couples.filter((k) => payment(k)[2] > 0).length} çiftte</span></a>
+      <div class="dstat dstat--money is-hidden" data-money><a class="dstat__cover" href="/admin/rapor" aria-label="Bekleyen ödemeler raporu"></a><span class="dstat__k">Bekleyen ödeme</span><b class="dstat__v"><span class="dstat__real">${tl(balance).replace(/\s?₺$/, '')}</span><span class="dstat__mask" aria-hidden="true">•••••</span><small>₺</small></b><span class="dstat__n">${couples.filter((k) => payment(k)[2] > 0).length} çiftte</span>
+        <button type="button" class="dstat__eye" data-money-toggle aria-pressed="false" aria-label="Tutarı göster">${icon('eye')}${icon('eyeOff')}</button></div>
       <a class="dstat" href="/admin/talepler"><span class="dstat__k">Yeni talep</span><b class="dstat__v">${newLeads}</b><span class="dstat__n">${newLeads ? 'Yanıt bekliyor' : 'Hepsi yanıtlandı'}</span></a>
       <a class="dstat${late ? ' dstat--late' : ''}" href="/admin/takvim#teslimler"><span class="dstat__k">Geciken teslim</span><b class="dstat__v">${late}</b><span class="dstat__n">${late ? `En eskisi ${Math.max(...couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').map((k) => daysBetween(k.due_date, t)))} gün` : 'Hepsi zamanında'}</span></a>
     </div>
@@ -470,7 +471,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=14', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=15', '/js/outbox.js?v=3'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -620,7 +621,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=14', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=15', '/js/outbox.js?v=3'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -849,7 +850,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=72"></head>
+  <link rel="stylesheet" href="/css/style.css?v=73"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -2117,7 +2118,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=14', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=15', '/js/outbox.js?v=3'] });
 }
 
 module.exports = {

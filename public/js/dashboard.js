@@ -269,3 +269,23 @@
     el.addEventListener('change', () => show(el));
   });
 })();
+
+// Bugün: bekleyen ödeme tutarı göz düğmesiyle açılıp kapanır; seçim bu cihazda hatırlanır (varsayılan gizli)
+(function () {
+  const box = document.querySelector('[data-money]');
+  if (!box) return;
+  const btn = box.querySelector('[data-money-toggle]');
+  const set = (show) => {
+    box.classList.toggle('is-hidden', !show);
+    btn.setAttribute('aria-pressed', show ? 'true' : 'false');
+    btn.setAttribute('aria-label', show ? 'Tutarı gizle' : 'Tutarı göster');
+  };
+  let show = false;
+  try { show = localStorage.getItem('hm4-money') === '1'; } catch { /* gizli kalır */ }
+  set(show);
+  btn.addEventListener('click', () => {
+    show = !show;
+    set(show);
+    try { localStorage.setItem('hm4-money', show ? '1' : '0'); } catch { /* yok say */ }
+  });
+})();
