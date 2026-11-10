@@ -110,7 +110,18 @@ CREATE TABLE IF NOT EXISTS tasks (
   done_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-CREATE INDEX IF NOT EXISTS tasks_open ON tasks(done_at, due_date);`);
+CREATE INDEX IF NOT EXISTS tasks_open ON tasks(done_at, due_date);
+-- Albüm siparişi: randevuda bilinenler (state ''), tasarım onayından sonra form, çiftin onayı
+CREATE TABLE IF NOT EXISTS album_orders (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL UNIQUE REFERENCES couples(id) ON DELETE CASCADE,
+  paket TEXT NOT NULL DEFAULT '', boyut TEXT NOT NULL DEFAULT '', sayfa TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL DEFAULT '', renk TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '', plan_note TEXT NOT NULL DEFAULT '',
+  state TEXT NOT NULL DEFAULT '', round INTEGER NOT NULL DEFAULT 0, change_note TEXT NOT NULL DEFAULT '',
+  sent_at TEXT, approved_at TEXT, lab_at TEXT, arrived_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);`);
 // Çiftin birden çok galerisi (ör. "Sokak çekimi", "Plato"); albüm seçimi (favoriler) hepsinde ortaktır
 db.exec(`CREATE TABLE IF NOT EXISTS galleries (
   id INTEGER PRIMARY KEY,
@@ -572,6 +583,17 @@ module.exports = {
   getCheck: (id) => q('SELECT * FROM checks WHERE id = ?').get(id),
   resolveCheck: (id, state) => q("UPDATE checks SET state = ?, resolved_at = datetime('now') WHERE id = ?").run(state, id),
   snoozeCheck: (id, until) => q('UPDATE checks SET snooze_until = ? WHERE id = ?').run(until, id),
+  // Albüm siparişi
+  getOrder: (coupleId) => q('SELECT * FROM album_orders WHERE couple_id = ?').get(coupleId) || null,
+  listOrders: () => q(`SELECT o.*, c.name AS couple_name, c.album_design_state, c.album_design_at, c.event_date FROM album_orders o JOIN couples c ON c.id = o.couple_id`).all(),
+  saveOrder: (coupleId, x) => {
+    q('INSERT OR IGNORE INTO album_orders(couple_id) VALUES(?)').run(coupleId);
+    const keys = ['paket', 'boyut', 'sayfa', 'model', 'renk', 'note', 'plan_note', 'state', 'change_note'].filter((k) => x[k] !== undefined);
+    if (keys.length) q(`UPDATE album_orders SET ${keys.map((k) => `${k} = ?`).join(', ')}, updated_at = datetime('now') WHERE couple_id = ?`).run(...keys.map((k) => String(x[k])), coupleId);
+  },
+  sendOrder: (coupleId) => q("UPDATE album_orders SET state = 'onay', round = round + 1, sent_at = datetime('now'), change_note = '', updated_at = datetime('now') WHERE couple_id = ?").run(coupleId),
+  approveOrder: (coupleId) => q("UPDATE album_orders SET state = 'onaylandi', approved_at = datetime('now'), updated_at = datetime('now') WHERE couple_id = ?").run(coupleId),
+  setOrderStamp: (coupleId, col, on) => { if (['lab_at', 'arrived_at'].includes(col)) q(`UPDATE album_orders SET ${col} = ${on ? "datetime('now')" : 'NULL'} WHERE couple_id = ?`).run(coupleId); },
   addTask: (x) => Number(q('INSERT INTO tasks(couple_id, check_id, title, member_id, due_date) VALUES(?, ?, ?, ?, ?)').run(x.coupleId || null, x.checkId || null, x.title, x.memberId || null, x.dueDate).lastInsertRowid),
   getTask: (id) => q('SELECT * FROM tasks WHERE id = ?').get(id),
   openTasks: () => q(`SELECT k.*, c.name AS couple_name, t.name AS member_name, t.phone AS member_phone, t.active AS member_active, t.wa_optin AS member_optin

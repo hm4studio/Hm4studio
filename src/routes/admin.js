@@ -114,7 +114,7 @@ function register(router) {
     const outbox = wa.autoSend() ? [] : require('../outbox').list();
     const quotes = db.listQuotes().filter((q) => q.status === 'kabul' && !q.couple_id);
     const newLeads = db.listLeads().filter((l) => l.status === 'yeni').length;
-    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, reminders: db.openReminders(), prebookings: db.openPrebookings(), signed: db.unseenSignedContracts(), checks: require('../production').dueChecks(), tasks: db.openTasks(), team: db.listTeam().filter((m) => m.active), adminName: (() => { const u = db.getAdmin(req.session.userId)?.username || ''; return /^(admin|yonetici|demo)/i.test(u) || /\d/.test(u) ? '' : u.charAt(0).toLocaleUpperCase('tr-TR') + u.slice(1); })(), disk: require('../reminders').diskUsage(), couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, reminders: db.openReminders(), prebookings: db.openPrebookings(), signed: db.unseenSignedContracts(), checks: require('../production').dueChecks(), orderPrompts: require('./orders').prompts(), tasks: db.openTasks(), team: db.listTeam().filter((m) => m.active), adminName: (() => { const u = db.getAdmin(req.session.userId)?.username || ''; return /^(admin|yonetici|demo)/i.test(u) || /\d/.test(u) ? '' : u.charAt(0).toLocaleUpperCase('tr-TR') + u.slice(1); })(), disk: require('../reminders').diskUsage(), couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.get('/admin/ciftler', (req, res) => {
@@ -210,6 +210,16 @@ function register(router) {
     return out.length ? `Dikkat, aynı gün başka çekim var: ${[...new Set(out)].join(' · ')}` : '';
   }
 
+  // Randevu formundaki isteğe bağlı albüm siparişi (sipariş çifte gönderildiyse dokunulmaz)
+  function savePlannedOrder(coupleId, form) {
+    const orders = require('../orders');
+    const cur = db.getOrder(coupleId);
+    if (cur && ['onay', 'onaylandi', 'degisiklik'].includes(cur.state)) return;
+    const x = { ...orders.read(form, 'al_'), plan_note: orders.area(form.al_note, 600) };
+    if (!cur && !orders.filled(x) && !x.plan_note) return;
+    db.saveOrder(coupleId, x);
+  }
+
   router.post('/admin/ciftler', async (req, res) => {
     const form = await formGuard(req, res);
     if (!form) return;
@@ -229,6 +239,7 @@ function register(router) {
     db.updateCard(id, a);
     db.setDiscount(id, a.discount);
     const assigned = saveEvents(id, list);
+    savePlannedOrder(id, form);
     if (a.deposit > 0 && a.depositLater) setDepositPromise(id, a.name, a.deposit, a.depositDate > today() ? a.depositDate : addDays(today(), 7));
     else if (a.deposit > 0) db.addPayment(id, { amount: a.deposit, paidOn: a.depositDate || today(), note: 'Kapora' });
     const first = list.map((e) => e.eventDate).filter(Boolean).sort()[0];
@@ -278,6 +289,7 @@ function register(router) {
     db.updateCard(couple.id, a);
     db.setDiscount(couple.id, a.discount);
     const assigned = saveEvents(couple.id, list);
+    savePlannedOrder(couple.id, form);
     if (!couple.ref_no) db.setRefNo(couple.id, db.nextRefNo(today().slice(0, 4)));
     const warn = conflictText(couple.id, list);
     setFlash(req, { message: `Kaydedildi.${assigned ? ` ${assigned} yeni ekip görevi${wa.autoSend() ? ', WhatsApp mesajı gönderildi' : ' (mesajı Panel › Gönderilecek mesajlar listesinden gönderebilirsiniz)'}.` : ''}${warn ? ' ' + warn : ''}`, type: warn ? 'error' : 'success' });

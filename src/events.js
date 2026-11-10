@@ -184,6 +184,19 @@ function albumDesignReviewed(coupleId, approved, changes) {
     : { title: 'Albümde değişiklik istendi', body: `${c.name} ${changes} sayfada değişiklik istedi.`, url: `/admin/ciftler/${c.id}#album`, tag: `ad-${c.id}` }));
 }
 
+// Albüm siparişi çifte onaya gönderildi / çift karar verdi
+function albumOrderSent(coupleId) {
+  safePush(() => push.toCouple(coupleId, { title: 'Albüm siparişiniz hazır', body: 'Baskıya göndermeden önce panelinizden kontrol edip onaylayın.', url: '/panel/siparis', tag: 'album-siparis' }));
+}
+function albumOrderReviewed(coupleId, approved, note) {
+  const c = db.getCouple(coupleId);
+  const url = `/admin/ciftler/${c.id}/siparis`;
+  safePush(() => push.toAdmin(approved
+    ? { title: 'Albüm siparişi onaylandı', body: `${c.name} albüm siparişini onayladı. Laba gönderebilirsiniz.`, url, tag: `as-${c.id}` }
+    : { title: 'Siparişte değişiklik istendi', body: `${c.name}: ${note || 'değişiklik istedi'}`, url, tag: `as-${c.id}` }));
+  safePush(() => require('./telegram').notifyAll(approved ? `🧾 Albüm siparişi onaylandı\n${c.name} siparişi onayladı.\n${config.siteUrl}${url}` : `✏️ Albüm siparişinde değişiklik\n${c.name}: ${note || '-'}\n${config.siteUrl}${url}`));
+}
+
 function videoAdded(coupleId, title) {
   safePush(() => push.toCouple(coupleId, { title: 'Videonuz teslim edildi', body: title ? `“${title}” panelinize eklendi. İzleyebilir ve indirebilirsiniz.` : 'Yeni videonuz panelinize eklendi. İzleyebilir ve indirebilirsiniz.', url: '/panel/video', tag: 'video' }));
 }
@@ -192,4 +205,4 @@ function videoStatusChanged(coupleId, status) {
   safePush(() => push.toCouple(coupleId, { title: 'Video çalışmanız güncellendi', body: `Güncel durum: ${status}.`, url: '/panel/video', tag: 'video-durum' }));
 }
 
-module.exports = { albumDesignReady, albumDesignReviewed, appointmentVars, appointmentCreated, contractSent, videoAdded, videoStatusChanged, contractSigned, teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };
+module.exports = { albumOrderSent, albumOrderReviewed, albumDesignReady, albumDesignReviewed, appointmentVars, appointmentCreated, contractSent, videoAdded, videoStatusChanged, contractSigned, teamAssigned, post, stageChanged, photosUploaded, albumLocked, planSaved, newLead, canMessage, flushPhotoTimers };

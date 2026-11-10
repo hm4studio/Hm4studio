@@ -107,6 +107,14 @@
       ],
       "metin": "Merhaba {ad}, {etkinlik} için hazırladığımız fiyat teklifini buradan inceleyebilirsiniz: {link}\n\nUygun bulursanız sayfadaki \"Kabul ediyorum\" düğmesiyle bize iletebilirsiniz.\n\nHM4 Studio"
     },
+    "albumSiparis": {
+      "ad": "hm4_album_siparis",
+      "degiskenler": [
+        "ad",
+        "link"
+      ],
+      "metin": "Merhaba {ad}, albüm siparişiniz hazır. Baskıya göndermeden önce panelinizden kontrol edip onaylayabilirsiniz: {link}\n\nHM4 Studio"
+    },
     "albumTasarim": {
       "ad": "hm4_album_tasarim",
       "degiskenler": [

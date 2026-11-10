@@ -61,7 +61,7 @@ function contractDoc(c, { k, data, back }) {
   ${body(k, data)}
   ${k ? auditBlock(k) : ''}
 </main>
-<script src="/js/dashboard.js?v=12" defer></script>
+<script src="/js/dashboard.js?v=14" defer></script>
 </body></html>`);
 }
 
@@ -195,7 +195,7 @@ function settingsPage(c, { adminNav, adminTabs, flashBlock, csrf, flash, demoAdm
       </form>
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Sözleşme ve KVKK', csrf, nav: adminNav('contract', csrf, demoAdmin), home: '/admin', tabs: adminTabs('contract', demoAdmin), body: page, scripts: ['/js/dashboard.js?v=12', '/js/contract.js?v=2'] });
+  return panelLayout(c, { title: 'Sözleşme ve KVKK', csrf, nav: adminNav('contract', csrf, demoAdmin), home: '/admin', tabs: adminTabs('contract', demoAdmin), body: page, scripts: ['/js/dashboard.js?v=14', '/js/contract.js?v=2'] });
 }
 
 module.exports = { contractDoc, signPage, adminSection, settingsPage, trTime };

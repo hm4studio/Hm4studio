@@ -253,3 +253,19 @@
   renumber();
   updateSum();
 })();
+
+// Albüm sipariş formu: seçimler sağdaki önizlemede anında görünür
+(function () {
+  const box = document.querySelector('[data-order-form]');
+  if (!box) return;
+  const show = (el) => {
+    const out = box.querySelector(`[data-pv-out="${el.dataset.pv}"]`);
+    if (!out) return;
+    const v = el.value.trim();
+    out.textContent = v ? (el.dataset.pv === 'sayfa' ? `${v} sayfa` : v) : '—';
+  };
+  box.querySelectorAll('[data-pv]').forEach((el) => {
+    el.addEventListener('input', () => show(el));
+    el.addEventListener('change', () => show(el));
+  });
+})();

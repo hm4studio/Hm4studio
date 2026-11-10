@@ -277,6 +277,8 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
   if (couple.contract_state === 'bekliyor') return { title: 'Sözleşmenizi onaylayın', text: 'Okuyup birkaç dakikada onaylayabilirsiniz.', href: '/panel/sozlesme', btn: 'Sözleşmeyi aç' };
   if (upcoming && !parsePlan(couple).saved) return { title: 'Çekim günü planınızı doldurun', text: 'Saatleri ve adresleri yazın; ekibimiz hazırlığını bu plana göre yapar.', href: '/panel/plan', btn: 'Planı doldur' };
   if (totalCount && !couple.album_locked) return { title: 'Albüm fotoğraflarınızı seçin', text: favCount ? `${favCount} / ${limit} kare seçtiniz. Bitirince “Seçimi tamamladım”a basın.` : `Albümünüz için ${limit} kare seçin: beğendiğiniz fotoğrafın kalbine dokunun.`, href: '/panel/fotograflar?g=secim', btn: favCount ? 'Seçime devam et' : 'Seçime başla', ring: [favCount, limit] };
+  const ao = couple.album_design_state ? require('../db').getOrder(couple.id) : null;
+  if (ao && ao.state === 'onay') return { title: 'Albüm siparişinizi onaylayın', text: 'Paket, boyut, sayfa, model ve rengi kontrol edin; onayınızdan sonra albümünüz baskıya gider.', href: '/panel/siparis', btn: 'Siparişi aç' };
   if (couple.album_design_state === 'hazir') return { title: 'Albüm tasarımınızı inceleyin', text: 'Sayfaları tek tek görüp beğendiklerinizi onaylayın, değişiklik istediğiniz sayfaya not bırakın.', href: '/panel/album', btn: 'Albümü aç' };
   if (editedCount) return { title: 'Fotoğraflarınız teslim edildi', text: `${editedCount} düzenlenmiş fotoğrafınızı görüntüleyip indirebilirsiniz.`, href: '/panel/fotograflar?g=duzenli', btn: 'Fotoğraflara git' };
   if (videoCount) return { title: 'Videonuz hazır', text: 'İzleyip indirebilirsiniz.', href: '/panel/video', btn: 'Videoyu aç' };
@@ -297,6 +299,11 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
   const docs = [
     ...deliveries.map((d) => ({ title: 'Teslim tutanağı', sub: `İmzalandı · ${dt(d.created_at)}`, ok: true, href: `/panel/teslim/${d.id}`, ic: 'gift', k: 'tes' })),
     ...(ct ? [{ title: 'Sözleşme', sub: ct.signed_at ? `Onaylandı · ${dt(ct.signed_at)}` : 'Onayınızı bekliyor', ok: Boolean(ct.signed_at), href: '/panel/sozlesme', btn: ct.signed_at ? 'Aç' : 'Onayla', ic: 'sign', k: 'soz' }] : []),
+    ...((() => {
+      const ao = couple.album_design_state ? require('../db').getOrder(couple.id) : null;
+      if (!ao || !['onay', 'onaylandi', 'degisiklik'].includes(ao.state)) return [];
+      return [{ title: 'Albüm siparişi', sub: ao.state === 'onaylandi' ? `Onaylandı · ${dt(ao.approved_at)}` : ao.state === 'onay' ? 'Onayınızı bekliyor' : 'Değişiklik isteğiniz iletildi', ok: ao.state === 'onaylandi', href: '/panel/siparis', btn: ao.state === 'onay' ? 'Onayla' : 'Aç', ic: 'book', k: 'alb' }];
+    })()),
     ...(events.length ? [{ title: 'Randevu belgesi', sub: 'Etkinlikler ve paketler', href: '/panel/belge', ic: 'calendar', k: 'cek' }] : []),
   ];
   const pushbox = h`<div class="pushbox" data-push data-push-quiet data-off-text="Fotoğraflarınız ve videonuz hazır olunca telefonunuza haber verelim." hidden><span class="pushbox__icon" aria-hidden="true">${icon('bell')}</span><p class="pushbox__text" data-push-text></p><button type="button" class="btn btn--primary btn--sm" data-push-btn hidden></button></div>`;

@@ -16,6 +16,7 @@ function adminNav(active, csrf, demoAdmin = false) {
     { href: '/admin/talepler', label: 'Talepler', key: 'leads', icon: 'whatsapp' },
     { href: '/admin/takvim', label: 'Takvim', key: 'calendar', icon: 'clock' },
     { href: '/admin/ciftler', label: 'Çiftler', key: 'list', icon: 'heart' },
+    { href: '/admin/siparisler', label: 'Siparişler', key: 'orders', icon: 'book' },
     { href: '/admin/gorevler', label: 'Görevler', key: 'tasks', icon: 'tasks' },
     { href: '/admin/rapor', label: 'Rapor', key: 'report', icon: 'chart' },
     { href: '/admin/hesap', label: 'Ayarlar', key: 'settings', icon: 'settings' },
@@ -195,7 +196,6 @@ function attentionItems(c, couples) {
     if (k.contract_status === 'bekliyor') items.push({ k, level: k.next_date && daysBetween(t, k.next_date) <= 14 ? 2 : 1, text: 'Sözleşme onayı bekleniyor', tag: 'Sözleşme' });
     if (k.deposit_promise > 0 && k.deposit_promise_on && k.deposit_promise_on <= t) items.push({ k, level: k.deposit_promise_on < t ? 3 : 2, text: k.deposit_promise_on < t ? `Kapora sözü geçti: ${tl(k.deposit_promise)} (${formatDate(k.deposit_promise_on)})` : `Kapora günü bugün: ${tl(k.deposit_promise)}`, tag: 'Ödeme' });
     if (k.album_design_state === 'degisiklik') items.push({ k, level: 2, text: 'Albüm tasarımında değişiklik istendi', tag: 'Albüm' });
-    if (k.album_design_state === 'onaylandi' && k.album_design_at && daysBetween(k.album_design_at.slice(0, 10), t) <= 3) items.push({ k, level: 1, text: 'Albüm tasarımı onaylandı, baskıya hazır', tag: 'Albüm' });
     if (k.photo_count > 0 && !k.album_locked && k.stage < last) items.push({ k, level: 1, text: `Albüm seçimi bekleniyor (${k.fav_count}/${k.album_limit})`, tag: 'Albüm' });
     if (!k.last_seen_at && k.stage < last && k.created_at && daysBetween([k.created_at.slice(0, 10), SEEN_SINCE].sort().pop(), t) >= 3) items.push({ k, level: 1, text: 'Panele hiç girmedi; giriş bilgilerini yeniden gönderin', tag: 'Panel' });
     const until = journey.keepUntil(c, k);
@@ -344,6 +344,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
   const body = h`
   <div class="container">
     ${flashBlock(f)}
+    ${require('./orders').seg('list')}
     <div class="panel-title-row"><h1 class="page-title">Çiftler</h1><a class="btn btn--primary btn--sm" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a></div>
     <section class="couples" aria-labelledby="cards-title">
       <header class="sec-head cards-head">
@@ -374,10 +375,10 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=13'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=14'] });
 }
 
-function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], orderPrompts = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
@@ -417,6 +418,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       <a class="dstat${late ? ' dstat--late' : ''}" href="/admin/takvim#teslimler"><span class="dstat__k">Geciken teslim</span><b class="dstat__v">${late}</b><span class="dstat__n">${late ? `En eskisi ${Math.max(...couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').map((k) => daysBetween(k.due_date, t)))} gün` : 'Hepsi zamanında'}</span></a>
     </div>
 
+    ${require('./orders').promptsBlock(orderPrompts)}
     ${checksBlock(checks, team, csrf)}
     <div class="dgrid">
     <section class="todo" id="yapilacaklar" aria-labelledby="todo-title" data-outbox>
@@ -468,7 +470,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=13', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=14', '/js/outbox.js?v=3'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -596,6 +598,14 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
           ${isNew ? '' : h`<div class="field"><label for="dueDate">Teslim tarihi <span class="muted">(boş bırakın: son çekimden ${o.defaultDeliveryDays || 45} gün sonra)</span></label><input id="dueDate" name="dueDate" type="date" value="${v('dueDate')}"></div>`}
           <div class="field"><label for="albumLimit">Albüm kare sayısı</label><input id="albumLimit" name="albumLimit" type="number" min="1" max="1000" inputmode="numeric" value="${v('albumLimit') || 35}"></div>
         </div>
+        ${(() => {
+          const ov = require('./orders');
+          const ord = coupleId ? require('../db').getOrder(Number(coupleId)) : null;
+          const had = Object.keys(values).some((k) => k.startsWith('al_'));
+          const vals = had || !ord ? { ...values } : { ...values, ...Object.fromEntries(require('../orders').FIELDS.map(([k]) => [`al_${k}`, ord[k]])), al_note: ord.plan_note };
+          vals.__coupleId = coupleId;
+          return ov.planFields(vals, require('../orders').options(), ord);
+        })()}
         ${isNew ? h`<p class="muted appt-help">Teslim tarihi çekimden sonra kendiliğinden belirlenir: son çekimden ${o.defaultDeliveryDays || 45} gün sonra. Gerekirse çekimden sonra kişi kartından değiştirebilirsiniz.</p>` : ''}
         ${isNew ? '' : h`<div class="appt-checks">${chk('photoReady', 'Fotoğraflar hazır')}${chk('videoReady', 'Video hazır')}${chk('albumReady', 'Albüm hazır')}</div>`}
         ${chk('waOptin', 'WhatsApp bildirimleri gönderilsin')}
@@ -610,7 +620,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=13', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=14', '/js/outbox.js?v=3'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -839,7 +849,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=71"></head>
+  <link rel="stylesheet" href="/css/style.css?v=72"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -885,6 +895,19 @@ function giftSettingsPage(c, { gs, stats, csrf, flash: f, demoAdmin }) {
 // Albüm tasarım onayı: sayfaları yükle, çifte gönder, çiftin notlarını gör
 const ALBUM_STATE = { '': 'Henüz gönderilmedi', hazir: 'Çiftin incelemesinde', degisiklik: 'Çift değişiklik istedi', onaylandi: 'Çift onayladı' };
 const PAGE_STATE = { bekliyor: ['İncelenmedi', 'upcoming'], onay: ['Beğendi', 'ok'], degisiklik: ['Değişiklik istiyor', 'soon'] };
+// Kişi kartında albüm siparişi satırı (sipariş ya da randevu notu varsa ya da tasarım onaylandıysa)
+function orderRow(couple, always = false) {
+  const orders = require('../orders');
+  const o = require('../db').getOrder(couple.id);
+  const st = orders.stage(o, couple);
+  if (!always && !o && st.key !== 'tamamla') return '';
+  return h`<a class="orowcard" href="/admin/ciftler/${couple.id}/siparis">
+    <span class="dic dic--alb">${icon('book')}</span>
+    <span class="orowcard__m"><b>Albüm siparişi</b><span>${orders.summary(o) || (o && o.plan_note) || 'Paket, boyut, sayfa, model, renk'}</span></span>
+    <span class="otag otag--${st.tone}">${st.label}</span>${icon('right')}
+  </a>`;
+}
+
 function albumDesignSection(couple, pages, base, csrf) {
   const st = couple.album_design_state || '';
   const n = (k) => pages.filter((p) => p.status === k).length;
@@ -949,6 +972,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
     </nav>
 
     <div class="cd-pane" data-pane="ozet">
+    ${orderRow(couple)}
     ${appointmentSummary(c, card, evs, payments, csrf)}
 
     <div id="plan">${planView(couple)}</div>
@@ -1084,6 +1108,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
       ${totalCount ? '' : h`<p class="sec-empty">Henüz seçim fotoğrafı yüklenmedi.</p>`}
     </section>
     ${albumDesignSection(couple, albumPages, base, csrf)}
+    ${orderRow(couple, true)}
     </div>
 
     <div class="cd-pane" data-pane="video">
@@ -1370,6 +1395,7 @@ const MESSAGE_INFO = [
   ['yorum', 'Yorum isteği', 'Teslimden 7 gün sonra.', ['ad', 'link']],
   ['teklif', 'Fiyat teklifi', 'Teklif sayfasından “WhatsApp’tan gönder” ya da “Mesajı kopyala” ile.', ['ad', 'etkinlik', 'link']],
   ['albumTasarim', 'Albüm tasarımı hazır', 'Albüm sayfalarını çifte gönderdiğinizde.', ['ad', 'link']],
+  ['albumSiparis', 'Albüm siparişi onayı', 'Albüm sipariş formunu çifte onaya gönderdiğinizde.', ['ad', 'link']],
   ['yildonumu', 'Yıl dönümü kutlaması', 'Düğünden bir yıl (ve her yıl) sonra.', ['ad', 'yil', 'link']],
   ['gorev', 'Ekip görevi ve hatırlatması', 'Ekipten biri etkinliğe atanınca ve çekimden 3 gün önce.', ['ad', 'etkinlik', 'cift', 'tarih', 'saat', 'yer', 'not']],
 ];
@@ -1796,6 +1822,7 @@ function account(c, { admin, csrf, flash: f, demoAdmin }) {
       { href: '/admin/ekip', title: 'Ekip', text: 'Personel ve iletişim' },
       { href: '/admin/kaynaklar', title: 'Müşteri kaynakları', text: 'Instagram, Düğün.com, tavsiye… randevu formundaki seçenekler' },
       { href: '/admin/sozlesme', title: 'Sözleşme ve KVKK', text: 'Sözleşme metni, firma bilgileri ve KVKK' },
+      { href: '/admin/album-secenekleri', title: 'Albüm seçenekleri', text: 'Sipariş formundaki paket, boyut, sayfa, model ve renk listeleri' },
       { href: '/admin/teslim-ayarlari', title: 'Teslim', text: 'Tutanak, dosya saklama süresi, çekim sonrası kontrol günü' },
     ] },
     { title: 'Müşteriyle iletişim', links: [
@@ -2090,7 +2117,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=13', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=14', '/js/outbox.js?v=3'] });
 }
 
 module.exports = {
@@ -2101,4 +2128,5 @@ module.exports = {
   seoTitlesPage,
   seoPages,
   reminderForm,
+  initials, csrfField,
   deliverySettingsPage, giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, couplesPage, coupleDetail, portfolioAdmin, account };
