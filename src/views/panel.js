@@ -217,6 +217,7 @@ const COUPLE_PAGES = [
 function pagesFor(couple) {
   const ct = { key: 'sozlesme', href: '/panel/sozlesme', label: 'Sözleşme', icon: 'check' };
   const base = COUPLE_PAGES.filter((p) => (p.key !== 'plan' || couple.show_plan !== false) && (p.key !== 'video' || couple.show_video !== false) && (p.key !== 'album' || Boolean(couple.album_design_state)));
+  if (couple.delivery_only) return base;
   if (couple.contract_state === 'bekliyor') return [base[0], ct, ...base.slice(1)];
   if (couple.contract_state === 'imzali') return [...base, ct];
   return base;
@@ -274,6 +275,7 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
   }
   const upcoming = events.filter((e) => e.event_date && e.event_date >= day).sort((x, y) => x.event_date.localeCompare(y.event_date))[0];
   const limit = couple.album_limit || 35;
+  if (couple.delivery_only && !totalCount && !editedCount && !videoCount) return { title: 'Fotoğraflarınız hazırlanıyor', text: 'Yüklendiğinde size haber vereceğiz; buradan görüp albüm karelerinizi seçebileceksiniz.' };
   if (couple.contract_state === 'bekliyor') return { title: 'Sözleşmenizi onaylayın', text: 'Okuyup birkaç dakikada onaylayabilirsiniz.', href: '/panel/sozlesme', btn: 'Sözleşmeyi aç' };
   if (upcoming && !parsePlan(couple).saved) return { title: 'Çekim günü planınızı doldurun', text: 'Saatleri ve adresleri yazın; ekibimiz hazırlığını bu plana göre yapar.', href: '/panel/plan', btn: 'Planı doldur' };
   if (totalCount && !couple.album_locked) return { title: 'Albüm fotoğraflarınızı seçin', text: favCount ? `${favCount} / ${limit} kare seçtiniz. Bitirince “Seçimi tamamladım”a basın.` : `Albümünüz için ${limit} kare seçin: beğendiğiniz fotoğrafın kalbine dokunun.`, href: '/panel/fotograflar?g=secim', btn: favCount ? 'Seçime devam et' : 'Seçime başla', ring: [favCount, limit] };
@@ -291,6 +293,7 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
 
 // Durum: sıradaki adım, iş durumu, randevular, ödeme; en altta bildirim ayarları ve çıkış
 function couplePanel(c, { couple, cover = null, strip = [], card = null, events = [], totalCount = 0, favCount = 0, editedCount = 0, videoCount = 0, gifts = null, deliveries = [], reviewLink = '', csrf, flash: f }) {
+  if (couple.delivery_only) events = [];
   const journey = require('./journey');
   const step = nextStep(couple, { events, totalCount, favCount, editedCount, videoCount, stages: c.stages, keepUntil: journey.keepUntil(c, couple) });
   const road = journey.forCouple(c, { couple, events, totalCount, favCount });
@@ -317,7 +320,7 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
       <div class="chero__t">
         <p class="chero__eyebrow">Hoş geldiniz</p>
         <p class="chero__name">${n2 ? h`${n1} <em>&amp;</em> ${n2}` : couple.name}</p>
-        ${mainEv ? h`<p class="chero__meta"><b>${formatDate(mainEv.event_date)}</b>${place ? ` · ${place}` : ''}${couple.delivered_at ? ' · Teslim edildi' : ''}</p>` : ''}
+        ${couple.delivery_only ? ([couple.event_type, couple.season].filter(Boolean).length || couple.delivered_at ? h`<p class="chero__meta"><b>${[couple.event_type, couple.season].filter(Boolean).join(' · ')}</b>${couple.delivered_at ? ' · Teslim edildi' : ''}</p>` : '') : mainEv ? h`<p class="chero__meta"><b>${formatDate(mainEv.event_date)}</b>${place ? ` · ${place}` : ''}${couple.delivered_at ? ' · Teslim edildi' : ''}</p>` : ''}
       </div>
     </section>
     <section class="now${step.href || step.done ? ' now--todo' : ''}" aria-labelledby="now-title">

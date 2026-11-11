@@ -266,6 +266,52 @@ function register(router) {
     redirect(res, `/admin/ciftler/${id}`);
   });
 
+  // Yalnız teslim: çekimi önceden yapılmış çift (sözleşme, tarih, ödeme yok)
+  const dlvValues = (f) => {
+    const seasons = Array.from({ length: 4 }, (_, i) => String(Number(today().slice(0, 4)) - i));
+    const limit = Math.min(Math.max(Number(f.limit) || 0, 0), 500);
+    return {
+      name: String(f.name || '').replace(/\s+/g, ' ').trim().slice(0, 120), phone: wa.normalizePhone(f.phone || '') || '',
+      eventType: String(f.eventType || '').trim().slice(0, 40), season: seasons.includes(String(f.season)) ? String(f.season) : '',
+      limit: f.secim ? (limit || 35) : 0, video: Boolean(f.video), secim: Boolean(f.secim),
+    };
+  };
+  router.get('/admin/teslim-cift/yeni', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, views.deliveryOnlyPage(getContent(), { values: { secim: true, limit: 35, season: String(Number(today().slice(0, 4)) - 1) }, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/teslim-cift', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const x = dlvValues(form);
+    if (!x.name) return html(res, views.deliveryOnlyPage(getContent(), { values: form, errors: ['Çiftin adını yazın.'], csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }), 400);
+    const code = uniqueAccessCode(x.name, x.season || today().slice(0, 4), (k) => db.getCoupleByCode(k) || db.findAdminLogin(k));
+    const password = auth.memorablePassword();
+    const hash = auth.hashPassword(password);
+    const id = db.createCouple({ name: x.name, accessCode: code, hash, eventDate: null });
+    if (x.phone) db.setCouplePhone(id, x.phone);
+    db.setDeliveryOnly(id, { on: true, season: x.season, eventType: x.eventType, video: x.video, limit: x.limit || 35 });
+    db.setRefNo(id, db.nextRefNo((x.season || today()).slice(0, 4)));
+    const link = auth.loginLink(id, hash);
+    setFlash(req, {
+      message: `${x.name} yalnız teslim çifti olarak eklendi. Sözleşme, tarih ve ödeme adımları bu çiftte yok.`,
+      type: 'success',
+      credentials: { url: `${config.siteUrl}/uygulama`, link, sent: false, text: wa.templateText('panelTeslim', { ad: x.name, link, kod: code, sifre: password }), code, password, phone: x.phone, name: x.name },
+    });
+    redirect(res, `/admin/ciftler/${id}#foto`);
+  });
+  // Var olan çifti yalnız teslime al / geri çevir
+  router.post('/admin/ciftler/:id/yalniz-teslim', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    const x = dlvValues({ ...form, name: couple.name, secim: true, limit: couple.album_limit });
+    const on = form.on === '1';
+    db.setDeliveryOnly(couple.id, { on, season: x.season, eventType: x.eventType || couple.event_type, video: on ? x.video : couple.dlv_video, limit: couple.album_limit || 35 });
+    setFlash(req, { message: on ? 'Çift yalnız teslim olarak işaretlendi: sözleşme, tarih ve ödeme adımları gizlendi.' : 'Çift normal randevu akışına döndü.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}#ayar`);
+  });
+
   // Kişi kartını ve etkinliklerini düzenle
   router.get('/admin/ciftler/:id/duzenle', (req, res, { params }) => {
     if (!requireAdmin(req, res)) return;

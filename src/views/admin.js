@@ -229,22 +229,23 @@ function coupleCard(c, k) {
   const pay = payment(k);
   const t = today();
   const shown = k.next_date || k.event_date;
-  const search = [k.name, k.full_name, k.partner_name, k.ref_no, k.phone, k.types].join(' ').toLocaleLowerCase('tr-TR');
+  const dlv = Boolean(k.delivery_only);
+  const search = [k.name, k.full_name, k.partner_name, k.ref_no, k.phone, k.types, dlv ? 'yalnız teslim' : ''].join(' ').toLocaleLowerCase('tr-TR');
   const done = k.stage >= c.stages.length - 1;
   // Sıralama: önce yaklaşanlar (en yakın üstte), sonra geçmiş etkinlikler (en yeni üstte)
   const sortKey = k.next_date ? `0${k.next_date}` : shown ? `1${99999999 - Number(shown.replace(/-/g, ''))}` : '2';
   const urgent = pay[2] > 0 && k.next_date && daysBetween(t, k.next_date) <= 14;
   return h`<li class="crow${done ? ' is-done' : ''}" data-card data-search="${search}" data-stage="${k.stage}" data-type="${k.types || ''}" data-pay="${pay[0]}" data-date="${sortKey}">
     <a class="crow__link" href="/admin/ciftler/${k.id}">
-      <span class="crow__who"><span class="crow__name">${k.name}</span><span class="crow__sub">${k.types || 'Etkinlik yok'}</span></span>
-      <span class="crow__date">${shown ? h`<span>${shortDate(shown)}</span><span class="crow__sub">${k.next_date ? relDays(daysBetween(t, shown)) : 'tamamlandı'}</span>` : h`<span class="crow__sub">Tarih yok</span>`}</span>
+      <span class="crow__who"><span class="crow__name">${k.name}</span><span class="crow__sub">${dlv ? [k.event_type, k.season ? `${k.season} sezonu` : ''].filter(Boolean).join(' · ') || 'Önceki sezon' : k.types || 'Etkinlik yok'}</span></span>
+      <span class="crow__date">${dlv ? h`<span class="otag otag--dlv">Yalnız teslim</span>` : shown ? h`<span>${shortDate(shown)}</span><span class="crow__sub">${k.next_date ? relDays(daysBetween(t, shown)) : 'tamamlandı'}</span>` : h`<span class="crow__sub">Tarih yok</span>`}</span>
       <span class="crow__stage">
         <span class="steps" aria-hidden="true">${c.stages.map((s, i) => h`<i class="${i < k.stage ? 'is-done' : i === k.stage ? 'is-now' : ''}"></i>`)}</span>
         <span class="crow__sub">${c.stages[k.stage] || c.stages[0]}${k.video_status ? ` · Video: ${k.video_status.toLocaleLowerCase('tr-TR')}` : ''}</span>
       </span>
-      <span class="crow__pay${urgent ? ' is-urgent' : ''}">${pay[0] === 'paid' ? h`<span class="crow__sub">Ödendi</span>` : pay[0] === 'none' ? h`<span class="crow__sub">Tutar yok</span>` : h`<span>${tl(pay[2])}</span><span class="crow__sub">kalan</span>`}</span>
+      <span class="crow__pay${urgent ? ' is-urgent' : ''}">${dlv ? h`<span class="crow__sub">—</span>` : pay[0] === 'paid' ? h`<span class="crow__sub">Ödendi</span>` : pay[0] === 'none' ? h`<span class="crow__sub">Tutar yok</span>` : h`<span>${tl(pay[2])}</span><span class="crow__sub">kalan</span>`}</span>
       <span class="crow__ready" aria-label="Hazır olanlar">
-        <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span><span class="${k.contract_status === 'imzali' ? 'is-on' : ''}" title="${k.contract_status === 'imzali' ? 'Sözleşme onaylandı' : k.contract_status ? 'Sözleşme onay bekliyor' : 'Sözleşme gönderilmedi'}">S</span><span class="${k.last_seen_at ? 'is-on' : ''}" title="${panelSeen(k)}">P</span>
+        <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span>${dlv ? '' : h`<span class="${k.contract_status === 'imzali' ? 'is-on' : ''}" title="${k.contract_status === 'imzali' ? 'Sözleşme onaylandı' : k.contract_status ? 'Sözleşme onay bekliyor' : 'Sözleşme gönderilmedi'}">S</span>`}<span class="${k.last_seen_at ? 'is-on' : ''}" title="${panelSeen(k)}">P</span>
       </span>
     </a>
   </li>`;
@@ -377,7 +378,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=15'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=16'] });
 }
 
 function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], orderPrompts = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
@@ -473,7 +474,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=15', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=16', '/js/outbox.js?v=3'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -538,6 +539,51 @@ function eventBlock(c, values, i, n, team = [], packages = []) {
 }
 
 // Kişi kartı formu (yeni ve düzenleme ortak)
+// Yeni çift: Randevu | Yalnız teslim
+function newKindSeg(on) {
+  return h`<nav class="oseg oseg--kind" aria-label="Çift türü"><a href="/admin/randevu/yeni"${on === 'randevu' ? raw(' aria-current="page"') : ''}>Randevu</a><a href="/admin/teslim-cift/yeni"${on === 'teslim' ? raw(' aria-current="page"') : ''}>Yalnız teslim</a></nav>`;
+}
+
+// Yalnız teslim çifti: çekimi önceden yapılmış; panel yalnızca fotoğraf, video ve albüm için
+function deliveryOnlyPage(c, { values = {}, errors = [], csrf, demoAdmin }) {
+  const v = (k) => values[k] ?? '';
+  const on = (k) => values[k] && values[k] !== '0';
+  const year = Number(new Date().toISOString().slice(0, 4));
+  const types = c.appointments?.eventTypes || ['Düğün', 'Nişan', 'Dış çekim', 'Kına', 'Söz'];
+  const body = h`
+  <div class="container container--form">
+    <a class="back-link" href="/admin/ciftler">${icon('left')}Çiftler</a>
+    <div class="panel-title-row"><h1 class="page-title">Yeni çift</h1>${newKindSeg('teslim')}</div>
+    <p class="muted">Çekimi daha önce yapılmış; panel yalnızca fotoğraf, video ve albüm için kullanılacak.</p>
+    ${errors.length ? h`<div class="flash flash--error" role="alert">${errors.map((e) => h`<div>${e}</div>`)}</div>` : ''}
+    <form class="form appt-form dlv-form" method="post" action="/admin/teslim-cift">
+      ${csrfField(csrf)}
+      <div class="appt-group">
+        <div class="appt-row">
+          <div class="field"><label for="d-name">Çiftin adı</label><input id="d-name" name="name" required maxlength="120" value="${v('name')}" placeholder="Selin &amp; Emre"></div>
+          <div class="field"><label for="d-phone">Telefon <span class="muted">(giriş bilgisi için)</span></label><input id="d-phone" name="phone" type="tel" inputmode="tel" value="${v('phone')}" placeholder="0532 000 00 00"></div>
+        </div>
+        <div class="appt-row">
+          <div class="field"><label for="d-type">Çekim türü <span class="muted">(isteğe bağlı)</span></label><select id="d-type" name="eventType"><option value="">Seçin</option>${types.map((t) => h`<option${t === v('eventType') ? raw(' selected') : ''}>${t}</option>`)}</select></div>
+          <div class="field"><label for="d-season">Sezon <span class="muted">(isteğe bağlı)</span></label><select id="d-season" name="season"><option value="">Seçin</option>${[0, 1, 2, 3].map((i) => String(year - i)).map((y) => h`<option${y === String(v('season')) ? raw(' selected') : ''}>${y}</option>`)}</select></div>
+        </div>
+        <fieldset class="field dlv-on"><legend>Panelde açık olacaklar</legend>
+          <div class="dlv-chips">
+            <label class="dlv-chip is-fixed"><input type="checkbox" checked disabled><span>${icon('check')}Fotoğraflar</span></label>
+            <label class="dlv-chip"><input type="checkbox" name="secim" value="1"${on('secim') ? raw(' checked') : ''}><span>${icon('check')}Albüm seçimi</span></label>
+            <label class="dlv-chip"><input type="checkbox" name="video" value="1"${on('video') ? raw(' checked') : ''}><span>${icon('check')}Video</span></label>
+          </div>
+          <p class="muted dlv-help">Albüm tasarımı ve albüm siparişi, tasarımı yüklediğinizde kendiliğinden açılır.</p>
+        </fieldset>
+        <div class="appt-row"><div class="field"><label for="d-limit">Albüm için seçilecek kare</label><input id="d-limit" name="limit" type="number" min="1" max="500" value="${v('limit') || 35}"></div><div class="field"></div></div>
+        <p class="pre-note">${icon('alert')}<span>Bu çiftte <b>sözleşme, tarih, ödeme ve çekim hatırlatmaları olmaz.</b> Takvimde ve bekleyen ödemelerde görünmez.</span></p>
+      </div>
+      <div class="form__actions"><button class="btn btn--primary" type="submit">Kaydet ve giriş bilgilerini hazırla</button><a class="btn btn--outline" href="/admin/ciftler">Vazgeç</a></div>
+    </form>
+  </div>`;
+  return panelLayout(c, { title: 'Yalnız teslim çifti', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body });
+}
+
 function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, errors = [], talepId, teklifId, back, demoAdmin, isNew, team = [], packages = [] }) {
   const o = c.appointments || {};
   const v = (k) => values[k] ?? '';
@@ -548,7 +594,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
   const body = h`
   <div class="container container--form">
     <a class="back-link" href="${back}">${icon('left')}Geri</a>
-    <h1 class="page-title">${title}</h1>
+    ${isNew && !values.on && !talepId && !teklifId ? h`<div class="panel-title-row"><h1 class="page-title">${title}</h1>${newKindSeg('randevu')}</div>` : h`<h1 class="page-title">${title}</h1>`}
     ${values.on ? h`<p class="pre-note">${icon('calendar')}<span>Ön randevudan geldi. Kesin tarihi girip kaydedin.</span></p>` : isNew ? h`<p class="pre-note">${icon('calendar')}<span>Tarih henüz belli değil mi? <a href="/admin/on-randevu/yeni">Ön randevu olarak kaydedin</a></span></p>` : ''}
     ${errors.length ? h`<div class="flash flash--error" role="alert">${errors.map((e) => h`<div>${e}</div>`)}</div>` : ''}
     <form class="form appt-form" method="post" action="${action}" data-appt-form data-couple="${coupleId}" data-packages="${JSON.stringify(packages.map((x) => ({ n: x.name, p: x.price, d: x.detail, t: x.event_type })))}">
@@ -623,7 +669,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=15', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=16', '/js/outbox.js?v=3'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -852,7 +898,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=74"></head>
+  <link rel="stylesheet" href="/css/style.css?v=76"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -961,6 +1007,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
         <p class="muted">${(() => {
           const pay = payment(card);
           const first = evs.map((e) => e.event_date).filter(Boolean).sort()[0];
+          if (couple.delivery_only) return ['Yalnız teslim', [couple.event_type, couple.season].filter(Boolean).join(' '), panelSeen(couple)].filter(Boolean).join(' · ');
           return [couple.ref_no, first ? `${card.types ? card.types.split(', ')[0] + ' ' : ''}${formatDate(card.next_date || first)}` : card.types, card.total ? (pay[2] ? `Kalan ödeme ${tl(pay[2])}` : 'Ödendi') : '', panelSeen(couple)].filter(Boolean).join(' · ');
         })()}</p>
       </div>
@@ -970,15 +1017,15 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
     ${journey.adminBlock(c, { couple, card, contract: ct, events: evs, totalCount, favCount })}
 
     <nav class="cd-tabs" data-cd-tabs aria-label="Çift sayfası bölümleri" hidden>
-      ${[['ozet', 'Özet'], ['odeme', 'Sözleşme ve ödeme'], ['foto', `Fotoğraflar${totalCount + edited.length ? ` ${totalCount + edited.length}` : ''}`], ['album', 'Albüm'], ['video', `Video${videos.length ? ` ${videos.length}` : ''}`], ['teslim', 'Teslim'], ['ayar', 'Ayarlar']]
+      ${[['ozet', 'Özet'], ...(couple.delivery_only ? [] : [['odeme', 'Sözleşme ve ödeme']]), ['foto', `Fotoğraflar${totalCount + edited.length ? ` ${totalCount + edited.length}` : ''}`], ['album', 'Albüm'], ['video', `Video${videos.length ? ` ${videos.length}` : ''}`], ['teslim', 'Teslim'], ['ayar', 'Ayarlar']]
         .map(([k, l]) => h`<a href="#${k}" data-tab="${k}">${l}</a>`)}
     </nav>
 
     <div class="cd-pane" data-pane="ozet">
     ${orderRow(couple)}
-    ${appointmentSummary(c, card, evs, payments, csrf)}
+    ${couple.delivery_only ? '' : appointmentSummary(c, card, evs, payments, csrf)}
 
-    <div id="plan">${planView(couple)}</div>
+    ${couple.delivery_only ? '' : h`<div id="plan">${planView(couple)}</div>`}
 
     <div>
       <section class="panel-section cd-stage" aria-labelledby="stage-title">
@@ -1012,10 +1059,10 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
 
     </div>
 
-    <div class="cd-pane" data-pane="odeme">
+    ${couple.delivery_only ? '' : h`<div class="cd-pane" data-pane="odeme">
     ${paymentsSection(c, card, payments, csrf)}
     ${require('./contract').adminSection({ coupleId: couple.id, k: ct, csrf, phone: couple.phone, loginUrl, coupleName: couple.name })}
-    </div>
+    </div>`}
 
     <div class="cd-pane" data-pane="foto">
 
@@ -1165,6 +1212,22 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
     </div>
 
     <div class="cd-pane" data-pane="ayar">
+      <section class="panel-section" aria-labelledby="dlv-title">
+        <div class="panel-section__head"><h2 class="panel-section__title" id="dlv-title">Yalnız teslim</h2>
+          <p class="muted">Çekimi önceden yapılmış çiftler için: sözleşme, tarih, ödeme ve plan gizlenir; panel yalnızca fotoğraf, video ve albüm için kullanılır.</p></div>
+        <form class="form" method="post" action="${base}/yalniz-teslim">
+          ${csrfField(csrf)}
+          ${couple.delivery_only ? h`<input type="hidden" name="on" value="0">
+            <p>Bu çift <b>yalnız teslim</b>${[couple.event_type, couple.season].filter(Boolean).length ? ` (${[couple.event_type, couple.season].filter(Boolean).join(' · ')})` : ''}.</p>
+            <button class="btn btn--outline btn--sm" type="submit">Normal randevuya çevir</button>`
+          : h`<input type="hidden" name="on" value="1">
+            <div class="field-row">
+              <div class="field"><label for="dl-season">Sezon <span class="muted">(isteğe bağlı)</span></label><select id="dl-season" name="season"><option value="">Seçin</option>${[0, 1, 2, 3].map((i) => String(Number(new Date().toISOString().slice(0, 4)) - i)).map((y) => h`<option>${y}</option>`)}</select></div>
+              <div class="field"><label class="check" style="margin-top:30px"><input type="checkbox" name="video" value="1"${couple.video_status || couple.dlv_video ? raw(' checked') : ''}><span>Video da teslim edilecek</span></label></div>
+            </div>
+            <button class="btn btn--outline btn--sm" type="submit">Yalnız teslime çevir</button>`}
+        </form>
+      </section>
           <section class="panel-section" aria-labelledby="access-title">
         <div class="panel-section__head"><h2 class="panel-section__title" id="access-title">Giriş bilgileri</h2></div>
         <p class="muted">Giriş adresi: <code>${loginUrl}</code></p>
@@ -1399,6 +1462,7 @@ const MESSAGE_INFO = [
   ['yorum', 'Yorum isteği', 'Teslimden 7 gün sonra.', ['ad', 'link']],
   ['teklif', 'Fiyat teklifi', 'Teklif sayfasından “WhatsApp’tan gönder” ya da “Mesajı kopyala” ile.', ['ad', 'etkinlik', 'link']],
   ['albumTasarim', 'Albüm tasarımı hazır', 'Albüm sayfalarını çifte gönderdiğinizde.', ['ad', 'link']],
+  ['panelTeslim', 'Panel giriş bilgisi (yalnız teslim)', 'Yalnız teslim çiftini eklediğinizde giriş bilgileri.', ['ad', 'link', 'kod', 'sifre']],
   ['albumSiparis', 'Albüm siparişi onayı', 'Albüm sipariş formunu çifte onaya gönderdiğinizde.', ['ad', 'link']],
   ['yildonumu', 'Yıl dönümü kutlaması', 'Düğünden bir yıl (ve her yıl) sonra.', ['ad', 'yil', 'link']],
   ['gorev', 'Ekip görevi ve hatırlatması', 'Ekipten biri etkinliğe atanınca ve çekimden 3 gün önce.', ['ad', 'etkinlik', 'cift', 'tarih', 'saat', 'yer', 'not']],
@@ -2122,7 +2186,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=15', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=16', '/js/outbox.js?v=3'] });
 }
 
 module.exports = {
@@ -2134,4 +2198,4 @@ module.exports = {
   seoPages,
   reminderForm,
   initials, csrfField,
-  deliverySettingsPage, giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, couplesPage, coupleDetail, portfolioAdmin, account };
+  deliverySettingsPage, giftCards, giftSettingsPage, citiesPage, messagesPage, MESSAGE_INFO, flashBlock, dataPage, sitePage, packagesPage, teamPage, appointmentPage, appointmentDoc, report, calendar, adminNav, adminTabs, dashboard, couplesPage, deliveryOnlyPage, coupleDetail, portfolioAdmin, account };

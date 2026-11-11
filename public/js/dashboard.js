@@ -272,9 +272,9 @@
 
 // Bugün: bekleyen ödeme tutarı göz düğmesiyle açılıp kapanır; seçim bu cihazda hatırlanır (varsayılan gizli)
 (function () {
-  const box = document.querySelector('[data-money]');
+  const btn = document.querySelector('[data-money-toggle]');
+  const box = btn && btn.closest('[data-money]');
   if (!box) return;
-  const btn = box.querySelector('[data-money-toggle]');
   const set = (show) => {
     box.classList.toggle('is-hidden', !show);
     btn.setAttribute('aria-pressed', show ? 'true' : 'false');

@@ -242,6 +242,10 @@ for (const [col, def] of [
   ['album_info_sent_at', 'TEXT'],
   ['cover_photo_id', 'INTEGER'], ['album_cover_id', 'INTEGER'], ['deposit_promise', 'INTEGER NOT NULL DEFAULT 0'], ['deposit_promise_on', 'TEXT'], ['deposit_reminder_id', 'INTEGER'], ['first_seen_at', 'TEXT'], ['last_seen_at', 'TEXT'], ['visit_count', 'INTEGER NOT NULL DEFAULT 0'],
 ]) addColumn('couples', col, def);
+// Yalnız teslim: çekimi önceden yapılmış çift; panel yalnızca fotoğraf, video ve albüm için (sözleşme, tarih, ödeme yok)
+addColumn('couples', 'delivery_only', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('couples', 'season', "TEXT NOT NULL DEFAULT ''");
+addColumn('couples', 'dlv_video', 'INTEGER NOT NULL DEFAULT 0');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS leads (
@@ -594,6 +598,8 @@ module.exports = {
   sendOrder: (coupleId) => q("UPDATE album_orders SET state = 'onay', round = round + 1, sent_at = datetime('now'), change_note = '', updated_at = datetime('now') WHERE couple_id = ?").run(coupleId),
   approveOrder: (coupleId) => q("UPDATE album_orders SET state = 'onaylandi', approved_at = datetime('now'), updated_at = datetime('now') WHERE couple_id = ?").run(coupleId),
   setOrderStamp: (coupleId, col, on) => { if (['lab_at', 'arrived_at'].includes(col)) q(`UPDATE album_orders SET ${col} = ${on ? "datetime('now')" : 'NULL'} WHERE couple_id = ?`).run(coupleId); },
+  setCouplePhone: (id, phone) => q('UPDATE couples SET phone = ? WHERE id = ?').run(phone || null, id),
+  setDeliveryOnly: (id, x) => q('UPDATE couples SET delivery_only = ?, season = ?, event_type = ?, dlv_video = ?, album_limit = ? WHERE id = ?').run(x.on ? 1 : 0, x.season || '', x.eventType || '', x.video ? 1 : 0, x.limit, id),
   addTask: (x) => Number(q('INSERT INTO tasks(couple_id, check_id, title, member_id, due_date) VALUES(?, ?, ?, ?, ?)').run(x.coupleId || null, x.checkId || null, x.title, x.memberId || null, x.dueDate).lastInsertRowid),
   getTask: (id) => q('SELECT * FROM tasks WHERE id = ?').get(id),
   openTasks: () => q(`SELECT k.*, c.name AS couple_name, t.name AS member_name, t.phone AS member_phone, t.active AS member_active, t.wa_optin AS member_optin

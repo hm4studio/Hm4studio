@@ -26,8 +26,8 @@ function register(router) {
       ...c,
       contract_state: k ? (k.signed_at ? 'imzali' : 'bekliyor') : '',
       // Menüde yalnızca işe yarayan sayfalar: plan çekimler bitene kadar, video yalnızca video işi varsa
-      show_plan: !dates.length || dates.some((d) => d >= today()),
-      show_video: Boolean(c.video_status) || db.videoCount(c.id) > 0 || evs.some((e) => /video|klip|film|reels/i.test(`${e.package || ''} ${e.package_detail || ''}`)),
+      show_plan: !c.delivery_only && (!dates.length || dates.some((d) => d >= today())),
+      show_video: Boolean(c.dlv_video) || Boolean(c.video_status) || db.videoCount(c.id) > 0 || evs.some((e) => /video|klip|film|reels/i.test(`${e.package || ''} ${e.package_detail || ''}`)),
     };
   };
 

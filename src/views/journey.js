@@ -19,25 +19,29 @@ function steps(x) {
   const next = dates.find((d) => d >= t);
   const shot = dates.length > 0 && !next;
   const finished = Boolean(x.delivered || x.finished);
-  const list = [
+  const list = x.dlv ? [
+    { key: 'foto', label: 'Fotoğraflar', done: x.photoCount > 0, sub: x.photoCount ? `${x.photoCount} kare` : 'hazırlanıyor' },
+  ] : [
     { key: 'sozlesme', label: 'Sözleşme', done: x.contract === 'imzali' || (!x.contract && shot),
       sub: x.contract === 'imzali' ? 'imzalandı' : x.contract === 'bekliyor' ? 'onay bekliyor' : shot ? '—' : 'gönderilmedi' },
     { key: 'cekim', label: 'Çekim', done: shot, sub: next ? dm(next) : dates.length ? dm(dates[dates.length - 1]) : 'tarih yok' },
+  ];
+  list.push(
     { key: 'secim', label: 'Seçim', done: Boolean(x.locked), sub: x.photoCount ? `${x.favCount}/${x.limit}${x.locked ? ' seçildi' : ''}` : 'fotoğraf yok' },
     { key: 'album', label: 'Albüm', done: x.design === 'onaylandi',
       sub: { hazir: 'incelemede', degisiklik: 'değişiklik', onaylandi: 'onaylandı' }[x.design] || 'tasarım' },
     { key: 'teslim', label: 'Teslim', done: finished, sub: x.delivered ? dm(day(x.delivered)) : 'tutanak' },
-  ];
+  );
   if (finished) list.forEach((s) => { s.done = true; });
   const cur = list.findIndex((s) => !s.done);
   list.forEach((s, i) => { s.state = s.done ? 'done' : i === cur ? 'now' : 'todo'; });
   return { list, current: cur === -1 ? null : list[cur], next, finished };
 }
 
-const STEP_ICON = { sozlesme: 'sign', cekim: 'camera', secim: 'heart', album: 'book', teslim: 'gift' };
+const STEP_ICON = { foto: 'image', sozlesme: 'sign', cekim: 'camera', secim: 'heart', album: 'book', teslim: 'gift' };
 function road(st, { subs = true, title = '' } = {}) {
   const at = st.list.filter((s) => s.done).length; // çizginin dolacağı yer
-  return h`<ol class="road" data-at="${Math.min(at, 4)}" aria-label="${title || 'İşin yolu'}">${st.list.map((s) => h`
+  return h`<ol class="road${st.list.length === 4 ? ' road--4' : ''}" data-at="${Math.min(at, st.list.length - 1)}" aria-label="${title || 'İşin yolu'}">${st.list.map((s) => h`
     <li class="road__step road__step--${s.key} is-${s.state}"${s.state === 'now' ? raw(' aria-current="step"') : ''}>
       <span class="road__dot">${icon(STEP_ICON[s.key])}${s.state === 'done' ? h`<span class="sr-only">tamamlandı</span>` : ''}</span>
       <span class="road__label">${s.label}</span>
@@ -49,7 +53,7 @@ function road(st, { subs = true, title = '' } = {}) {
 function forAdmin(c, { couple, card, contract: ct, events, totalCount, favCount }) {
   const last = (c.stages || []).length - 1;
   const st = steps({
-    contract: ct ? (ct.signed_at ? 'imzali' : 'bekliyor') : '', events, photoCount: totalCount, favCount,
+    dlv: Boolean(couple.delivery_only), contract: ct ? (ct.signed_at ? 'imzali' : 'bekliyor') : '', events, photoCount: totalCount, favCount,
     limit: couple.album_limit || 35, locked: couple.album_locked, design: couple.album_design_state,
     delivered: couple.delivered_at, finished: couple.stage >= last,
   });
@@ -57,6 +61,7 @@ function forAdmin(c, { couple, card, contract: ct, events, totalCount, favCount 
   try { plan = JSON.parse(couple.plan_json || '{}') || {}; } catch { /* boş */ }
   const k = st.current?.key;
   const todo = !k ? { text: couple.delivered_at ? `Teslim edildi (${dm(day(couple.delivered_at))}). İş tamamlandı.` : 'İş tamamlandı.', tab: 'teslim', btn: 'Teslim' }
+    : k === 'foto' ? { text: 'Fotoğrafları yükleyin; çift panelinden görüp albüm karelerini seçsin.', tab: 'foto', btn: 'Fotoğraf yükle' }
     : k === 'sozlesme' ? (ct ? { text: 'Sözleşme çiftin onayını bekliyor. Gerekirse hatırlatın.', tab: 'odeme', btn: 'Sözleşmeye geç' } : { text: 'Sözleşmeyi hazırlayıp çifte gönderin.', tab: 'odeme', btn: 'Sözleşmeye geç' })
     : k === 'cekim' ? { text: `Çekim ${st.next ? dm(st.next) : 'tarihi girilmedi'}.${st.next ? (plan.saved ? ' Gün planı dolduruldu.' : ' Gün planı henüz doldurulmadı.') : ''}`, tab: 'ozet', btn: 'Etkinlikler' }
     : k === 'secim' ? (totalCount ? { text: `Çift albüm seçimi yapıyor (${favCount}/${couple.album_limit || 35}).`, tab: 'album', btn: 'Seçime bak' } : { text: 'Seçim fotoğraflarını yükleyin; çift albüm karelerini seçsin.', tab: 'foto', btn: 'Fotoğraf yükle' })
@@ -83,7 +88,7 @@ function adminBlock(c, args) {
 function forCouple(c, { couple, events, totalCount, favCount }) {
   const last = (c.stages || []).length - 1;
   return steps({
-    contract: couple.contract_state || '', events, photoCount: totalCount, favCount,
+    dlv: Boolean(couple.delivery_only), contract: couple.contract_state || '', events, photoCount: totalCount, favCount,
     limit: couple.album_limit || 35, locked: couple.album_locked, design: couple.album_design_state,
     delivered: couple.delivered_at, finished: couple.stage >= last,
   });

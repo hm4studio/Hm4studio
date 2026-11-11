@@ -107,6 +107,16 @@
       ],
       "metin": "Merhaba {ad}, {etkinlik} için hazırladığımız fiyat teklifini buradan inceleyebilirsiniz: {link}\n\nUygun bulursanız sayfadaki \"Kabul ediyorum\" düğmesiyle bize iletebilirsiniz.\n\nHM4 Studio"
     },
+    "panelTeslim": {
+      "ad": "hm4_panel_teslim",
+      "degiskenler": [
+        "ad",
+        "link",
+        "kod",
+        "sifre"
+      ],
+      "metin": "Merhaba {ad}, HM4 Studio paneliniz hazır. Fotoğraflarınızı görebilir, albüm karelerinizi seçebilir ve albümünüzü buradan takip edebilirsiniz.\n\nPanelinize girmek için: {link}\n\nUygulamayı ana ekrana eklerseniz giriş bilgileriniz:\nErişim kodu: {kod}\nŞifre: {sifre}\n\nHM4 Studio"
+    },
     "albumSiparis": {
       "ad": "hm4_album_siparis",
       "degiskenler": [
