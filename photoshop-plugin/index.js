@@ -97,10 +97,12 @@ function render() {
     if (j.state === 'open' || (j.state === 'done' && docForJob(j))) {
       const acts = el('div', 'acts');
       const chip = (label, cls, fn) => { const c = el('span', `chip${cls ? ` ${cls}` : ''}`, label); c.addEventListener('click', fn); acts.appendChild(c); };
-      chip('Cilt · Hafif', autoRun === 'cilt:hafif' ? 'auto' : '', () => skinSmooth(j, 'hafif'));
-      chip('Orta', autoRun === 'cilt:orta' ? 'auto' : '', () => skinSmooth(j, 'orta'));
-      chip('Güçlü', autoRun === 'cilt:guclu' ? 'auto' : '', () => skinSmooth(j, 'guclu'));
-      favActs.forEach((id) => chip(id.split('\u241f')[1], autoRun === id ? 'auto' : '', () => runAction(j, id)));
+      chip('Gelinlik beyazı', isAuto('beyaz') ? 'auto' : '', () => whiteFix(j));
+      chip('Kızarıklık', isAuto('kizariklik') ? 'auto' : '', () => redFix(j));
+      chip('Cilt · Hafif', isAuto('cilt:hafif') ? 'auto' : '', () => skinSmooth(j, 'hafif'));
+      chip('Orta', isAuto('cilt:orta') ? 'auto' : '', () => skinSmooth(j, 'orta'));
+      chip('Güçlü', isAuto('cilt:guclu') ? 'auto' : '', () => skinSmooth(j, 'guclu'));
+      favActs.forEach((id) => chip(id.split('\u241f')[1], isAuto(id) ? 'auto' : '', () => runAction(j, id)));
       tx.appendChild(acts);
       const send = el('div', 'btn solid', 'Siteye gönder');
       send.addEventListener('click', () => { const d = docForJob(j); if (d) upload(j, d); });
@@ -254,10 +256,82 @@ async function skinSmooth(j, level) {
   return prev;
 }
 
+// Ortak: belgede, tek geri alma adımı olarak çalıştır
+async function asStep(j, name, fn) {
+  const doc = docForJob(j); if (!doc) { j.msg = 'Belge açık değil'; render(); return null; }
+  let out = null;
+  await core.executeAsModal(async (ctx) => {
+    app.activeDocument = doc;
+    const hist = await ctx.hostControl.suspendHistory({ documentID: doc.id, name });
+    try { out = await fn(doc); } finally { await ctx.hostControl.resumeHistory(hist); }
+  }, { commandName: name });
+  return out;
+}
+const selFront = () => bp([{ _obj: 'select', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'front' }], makeVisible: false }]);
+const selBack = () => bp([{ _obj: 'select', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'back' }], makeVisible: false }]);
+const deselect = () => bp([{ _obj: 'set', _target: [{ _ref: 'channel', _property: 'selection' }], to: { _enum: 'ordinal', _value: 'none' } }]);
+const renameActive = (name) => bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', name } }]);
+
+// Gelinlik beyazı: parlak ve renksiz bölgelerin ortalama rengi ölçülür; Seçici Renk (yalnızca Beyazlar) ile nötr beyaza çekilir
+async function whiteFix(j) {
+  j.msg = 'Beyazlar ölçülüyor…'; render();
+  try {
+    const res = await asStep(j, 'HM4 gelinlik beyazı', async (doc) => {
+      const k = Math.min(1, 500 / Math.max(doc.width, doc.height));
+      const px = await imaging.getPixels({ documentID: doc.id, targetSize: { width: Math.max(1, Math.round(doc.width * k)), height: Math.max(1, Math.round(doc.height * k)) }, componentSize: 8, colorSpace: 'RGB' });
+      const data = await px.imageData.getData(); const n = px.imageData.components || 3;
+      let R = 0, G = 0, B = 0, c = 0;
+      for (let i = 0; i < data.length; i += n) {
+        const r = data[i], g = data[i + 1], b = data[i + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        if (mx > 175 && mx < 252 && (mx - mn) < 40) { R += r; G += g; B += b; c++; }
+      }
+      px.imageData.dispose();
+      if (c < 200) return { none: true };
+      R /= c; G /= c; B /= c; const m = (R + G + B) / 3;
+      const pct = (v) => Math.max(-15, Math.min(15, Math.round((v - m) / 255 * 100 * 2.2)));
+      const cy = pct(R), mg = pct(G), ye = pct(B);
+      const bl = m < 225 ? -Math.min(8, Math.round((225 - m) / 6)) : 0;
+      await selFront();
+      await bp([{ _obj: 'make', _target: [{ _ref: 'adjustmentLayer' }], using: { _obj: 'adjustmentLayer', name: 'Gelinlik beyazı (HM4)', type: { _obj: 'selectiveColor', presetKind: { _enum: 'presetKindType', _value: 'presetKindCustom' }, method: { _enum: 'correctionMethod', _value: 'absolute' }, colorCorrection: [{ _obj: 'colorCorrection', colors: { _enum: 'colors', _value: 'whites' }, cyan: { _unit: 'percentUnit', _value: cy }, magenta: { _unit: 'percentUnit', _value: mg }, yellowColor: { _unit: 'percentUnit', _value: ye }, black: { _unit: 'percentUnit', _value: bl } }] } } }]);
+      return { cy, mg, ye, bl };
+    });
+    if (!res) return;
+    j.msg = res.none ? 'Fotoğrafta düzeltilecek beyaz bulunamadı' : (res.cy || res.mg || res.ye || res.bl ? 'Gelinlik beyazı düzeltildi · etkiyi katman opaklığıyla ayarlayın' : 'Beyazlar zaten temiz');
+  } catch (e) { j.msg = `Beyaz düzeltilemedi: ${e.message || e}`; }
+  render();
+}
+
+// Kızarıklık azalt: ten seçimi maskesiyle Ton/Doygunluk (yalnızca Kırmızılar)
+async function redFix(j) {
+  j.msg = 'Kızarıklık azaltılıyor…'; render();
+  try {
+    let skin = true;
+    await asStep(j, 'HM4 kızarıklık azalt', async () => {
+      await selBack();
+      try { await bp([{ _obj: 'colorRange', colors: { _enum: 'colors', _value: 'skinTone' }, UseFacesKey: true, skinToneFuzziness: 40 }]); } catch (e) { skin = false; }
+      if (!skin) return; // ten yoksa bütün fotoğrafın kırmızılarına dokunma
+      await selFront();
+      await bp([{ _obj: 'make', _target: [{ _ref: 'adjustmentLayer' }], using: { _obj: 'adjustmentLayer', name: 'Kızarıklık azalt (HM4)', type: { _obj: 'hueSaturation', presetKind: { _enum: 'presetKindType', _value: 'presetKindCustom' }, colorize: false, adjustment: [{ _obj: 'hueSatAdjustmentV2', localRange: 1, beginRamp: 315, beginSustain: 345, endSustain: 15, endRamp: 45, hue: 4, saturation: -16, lightness: 2 }] } } }]);
+      await deselect();
+    });
+    j.msg = skin ? 'Kızarıklık azaltıldı (yalnızca ten)' : 'Ten bulunamadı; kızarıklık düzeltmesi yapılmadı';
+  } catch (e) { j.msg = `Kızarıklık azaltılamadı: ${e.message || e}`; }
+  render();
+}
+
 // Photoshop'taki eylemler
 const ACT_KEY = 'hm4_actions', AUTO_KEY = 'hm4_auto';
-let favActs = []; let autoRun = '';
-try { favActs = JSON.parse(localStorage.getItem(ACT_KEY) || '[]'); autoRun = localStorage.getItem(AUTO_KEY) || ''; } catch (e) { favActs = []; }
+let favActs = []; let autos = [];
+try { favActs = JSON.parse(localStorage.getItem(ACT_KEY) || '[]'); const a = localStorage.getItem(AUTO_KEY) || ''; autos = a.startsWith('[') ? JSON.parse(a) : (a ? [a] : []); } catch (e) { favActs = []; autos = []; }
+const isAuto = (id) => autos.includes(id);
+// Hazır HM4 araçları
+const TOOLS = {
+  beyaz: { label: 'Gelinlik beyazı', run: (j) => whiteFix(j) },
+  kizariklik: { label: 'Kızarıklık azalt', run: (j) => redFix(j) },
+  'cilt:hafif': { label: 'Cilt · Hafif', run: (j) => skinSmooth(j, 'hafif') },
+  'cilt:orta': { label: 'Cilt · Orta', run: (j) => skinSmooth(j, 'orta') },
+  'cilt:guclu': { label: 'Cilt · Güçlü', run: (j) => skinSmooth(j, 'guclu') },
+};
 const actId = (set, name) => `${set}\u241f${name}`;
 function listActions() {
   try { return app.actionTree.map((st) => ({ set: st.name, actions: st.actions.map((a) => a.name) })); } catch (e) { return []; }
@@ -278,10 +352,11 @@ async function runAction(j, id) {
   } catch (e) { j.msg = `“${nm}” uygulanamadı: ${e.message || e}`; }
   render();
 }
+// Otomatikler sırayla: önce renk (beyaz, kızarıklık), sonra cilt, sonra kendi eylemleriniz
 async function runAuto(j) {
-  if (!autoRun) return;
-  if (autoRun.startsWith('cilt:')) await skinSmooth(j, autoRun.slice(5));
-  else await runAction(j, autoRun);
+  const order = ['beyaz', 'kizariklik', 'cilt:hafif', 'cilt:orta', 'cilt:guclu'];
+  for (const id of order) if (isAuto(id)) await TOOLS[id].run(j);
+  for (const id of autos) if (!TOOLS[id]) await runAction(j, id);
 }
 
 // Eylem seçme ekranı
@@ -294,18 +369,22 @@ function renderSettings() {
     const s = el('span', `star${star ? ' on' : ''}`, star ? '★ otomatik' : '☆'); s.addEventListener('click', onStar); r.appendChild(s);
     return r;
   };
-  const save = () => { try { localStorage.setItem(ACT_KEY, JSON.stringify(favActs)); localStorage.setItem(AUTO_KEY, autoRun); } catch (e) { /* saklanamadı */ } renderSettings(); render(); };
-  box.appendChild(el('div', 'grp', 'HM4 · Cilt yumuşatma'));
-  for (const k of Object.keys(STRENGTH)) box.appendChild(row(STRENGTH[k].label, true, autoRun === `cilt:${k}`, null, () => { autoRun = autoRun === `cilt:${k}` ? '' : `cilt:${k}`; save(); }));
+  const save = () => { try { localStorage.setItem(ACT_KEY, JSON.stringify(favActs)); localStorage.setItem(AUTO_KEY, JSON.stringify(autos)); } catch (e) { /* saklanamadı */ } renderSettings(); render(); };
+  const toggle = (id) => {
+    if (isAuto(id)) autos = autos.filter((x) => x !== id);
+    else { if (id.startsWith('cilt:')) autos = autos.filter((x) => !x.startsWith('cilt:')); autos.push(id); }
+  };
+  box.appendChild(el('div', 'grp', 'HM4 araçları'));
+  for (const id of Object.keys(TOOLS)) box.appendChild(row(TOOLS[id].label, true, isAuto(id), null, () => { toggle(id); save(); }));
   const tree = listActions();
   if (!tree.length) box.appendChild(el('div', 'hint', 'Photoshop’ta kayıtlı eylem bulunamadı (Pencere › Eylemler).'));
   for (const st of tree) {
     box.appendChild(el('div', 'grp', st.set));
     for (const nm of st.actions) {
       const id = actId(st.set, nm), on = favActs.includes(id);
-      box.appendChild(row(nm, on, autoRun === id,
+      box.appendChild(row(nm, on, isAuto(id),
         () => { favActs = on ? favActs.filter((x) => x !== id) : [...favActs, id]; save(); },
-        () => { autoRun = autoRun === id ? '' : id; if (autoRun && !favActs.includes(id)) favActs.push(id); save(); }));
+        () => { toggle(id); if (isAuto(id) && !favActs.includes(id)) favActs.push(id); save(); }));
     }
   }
 }
