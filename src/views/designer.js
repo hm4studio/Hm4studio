@@ -45,7 +45,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
         ${num('leaves', 'Yaprak sayısı (otomatik diz)', 10, { min: 1 })}
         <div class="field"><label for="perPage">Yaprak başına fotoğraf</label><select id="perPage" data-cfg><option value="mix">3–4 karışık</option><option value="3">3</option><option value="4">4</option></select></div>
         ${num('gapPx', 'Fotoğraf arası (px, 300 DPI)', 30)}
-        ${num('cut', 'Kesme payı (mm)', 5)}
+        ${num('cut', 'Kesme / taşma payı (mm)', 5)}
         ${num('safe', 'Güvenli alan (mm)', 15)}
         ${num('foldM', 'Katlama payı (mm)', 10)}
         <div class="field"><label for="sortMode">Otomatik sıralama</label><select id="sortMode" data-cfg><option value="time">Çekim saatine göre</option><option value="name">Dosya adına göre</option><option value="color">Renk ve tona göre</option></select></div>
@@ -108,7 +108,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
       </div>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=8'] });
+  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=9'] });
 }
 
 module.exports = { designerPage };

@@ -47,20 +47,36 @@
   function snapshot() {
     const v = {};
     CFG_IDS.forEach((id) => { const e = byId(id); v[id] = e.type === 'checkbox' ? e.checked : e.value; });
-    return { v: 2, set: S.set, cfg: v, pages: S.pages, tpl: S.tpl, crop: S.crop, sheet: S.sheet, sent: S.sent, extra: S.extra };
+    // varsayılan kadrajlar saklanmaz (taslak küçük kalsın)
+    const crop = {};
+    Object.entries(S.crop).forEach(([k, c2]) => { if (c2 && (Math.abs(c2.z - 1) > 0.001 || Math.abs(c2.ox) > 0.0005 || Math.abs(c2.oy) > 0.0005)) crop[k] = c2; });
+    return { v: 2, set: S.set, cfg: v, pages: S.pages, tpl: S.tpl, crop, sheet: S.sheet, sent: S.sent, sentV: 2, extra: S.extra };
   }
+  let dirty = false;
+  // Sayfadan çıkarken bekleyen kaydı hemen gönder (keepalive: sayfa kapansa da istek tamamlanır)
+  function flushOnLeave() {
+    if (local || !dirty) return;
+    clearTimeout(saveT); dirty = false;
+    const body = JSON.stringify(snapshot());
+    try { fetch(`${base}/tasarimci/taslak`, { method: 'POST', credentials: 'same-origin', keepalive: body.length < 60000, headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body }); } catch { /* yapılacak bir şey yok */ }
+  }
+  window.addEventListener('pagehide', flushOnLeave);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushOnLeave(); });
   async function saveNow() {
     if (local) return;
-    clearTimeout(saveT);
+    clearTimeout(saveT); dirty = false;
     try { await fetch(`${base}/tasarimci/taslak`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(snapshot()) }); } catch { /* bir sonraki kayıtta denenir */ }
   }
   function scheduleSave() {
     if (local) return;
     $('[data-save]').textContent = 'Kaydediliyor…';
+    dirty = true;
     clearTimeout(saveT);
     saveT = setTimeout(async () => {
       try {
+        dirty = false;
         const r = await fetch(`${base}/tasarimci/taslak`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(snapshot()) });
+        if (!r.ok) dirty = true;
         $('[data-save]').textContent = r.ok ? 'Kaydedildi' : 'Kaydedilemedi';
       } catch { $('[data-save]').textContent = 'Kaydedilemedi'; }
     }, 1200);
@@ -590,9 +606,10 @@
   // ── Revize: yaprak imzası, çiftin onay durumu ──
   const pageName = (num) => `Yaprak ${String(num).padStart(2, '0')}.jpg`;
   const leafNum = (i) => { let n = 0; for (let k = 0; k <= i; k++) if ((S.pages[k] || []).length) n++; return (S.pages[i] || []).length ? n : 0; };
-  function leafSig(i) {
+  // İmza: yerleşim + kadraj + fotoğrafın dosya sürümü (Photoshop rötuşu da "değişti" sayılır)
+  function leafSig(i, legacy) {
     const c = cfg();
-    const parts = computeLeaf(i, c).map(({ id, r }) => { const cr = cropOf(id); return `${id}:${[r.x, r.y, r.w, r.h].map((v) => v.toFixed(1)).join(',')}:${cr.z.toFixed(2)},${cr.ox.toFixed(3)},${cr.oy.toFixed(3)}`; });
+    const parts = computeLeaf(i, c).map(({ id, r }) => { const cr = cropOf(id); const p = photoById(id); return `${id}:${[r.x, r.y, r.w, r.h].map((v) => v.toFixed(1)).join(',')}:${cr.z.toFixed(2)},${cr.ox.toFixed(3)},${cr.oy.toFixed(3)}${legacy || !p ? '' : `:${p.src}`}`; });
     const str = `${cfgKey(c)}|${parts.join('|')}`;
     let h = 5381; for (let k = 0; k < str.length; k++) h = ((h * 33) ^ str.charCodeAt(k)) >>> 0;
     return h.toString(36);
@@ -720,22 +737,33 @@
     if (fullCache.has(p.id)) return fullCache.get(p.id);
     const pr = new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => { const f = new Image(); f.onload = () => res(f); f.onerror = rej; f.src = p.src; }; im.src = p.full; });
     fullCache.set(p.id, pr);
-    if (fullCache.size > 8) fullCache.delete(fullCache.keys().next().value);
+    if (fullCache.size > 2) fullCache.delete(fullCache.keys().next().value);
     return pr;
   }
-  async function renderLeaf(leaf, k) {
+  // Baskı dosyası (bleed: true): her kenarda kesme payı kadar taşma eklenir; kenara değen fotoğraflar taşma payına uzar.
+  // Çiftin onayına giden önizleme (bleed: false) kesim ölçüsündedir.
+  async function renderLeaf(leaf, k, bleed = false) {
     const c = cfg();
+    const b = bleed ? c.cut : 0;
     const cv = document.createElement('canvas');
-    cv.width = Math.round(2 * c.pw * k); cv.height = Math.round(c.ph * k);
+    cv.width = Math.round((2 * c.pw + 2 * b) * k); cv.height = Math.round((c.ph + 2 * b) * k);
     const ctx = cv.getContext('2d');
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
     ctx.imageSmoothingQuality = 'high';
-    for (const { id, r } of computeLeaf(leaf, c)) {
+    const E = 0.05;
+    for (const { id, r: r0 } of computeLeaf(leaf, c)) {
       const p = photoById(id); if (!p) continue;
+      const r = { ...r0 };
+      if (bleed) {
+        if (r.x <= E) { r.w += r.x + b; r.x = -b; }
+        if (r.y <= E) { r.h += r.y + b; r.y = -b; }
+        if (r.x + r.w >= 2 * c.pw - E) r.w = 2 * c.pw + b - r.x;
+        if (r.y + r.h >= c.ph - E) r.h = c.ph + b - r.y;
+      }
       const full = await loadFull(p);
       const dw = r.w * k, dh = r.h * k;
       const g = geom(full.naturalWidth, full.naturalHeight, dw, dh, { ...cropOf(id) });
-      ctx.drawImage(full, -g.left / g.s, -g.top / g.s, dw / g.s, dh / g.s, r.x * k, r.y * k, dw, dh);
+      ctx.drawImage(full, -g.left / g.s, -g.top / g.s, dw / g.s, dh / g.s, (r.x + b) * k, (r.y + b) * k, dw, dh);
     }
     return cv;
   }
@@ -743,7 +771,7 @@
   function printScale() {
     const c = cfg();
     let k = parseInt(byId('dpi').value, 10) / 25.4;
-    const px = (2 * c.pw * k) * (c.ph * k);
+    const px = ((2 * c.pw + 2 * c.cut) * k) * ((c.ph + 2 * c.cut) * k);
     if (px > 16e6) k *= Math.sqrt(16e6 / px);
     return k;
   }
@@ -763,12 +791,13 @@
     try {
       for (let n = 0; n < list.length; n++) {
         status(`Hazırlanıyor: ${n + 1} / ${list.length} yaprak (${dpi} DPI)…`);
-        const cv = await renderLeaf(list[n], k);
+        const cv = await renderLeaf(list[n], k, true);
         download(await toBlob(cv, 0.92), leafName(list[n]));
         cv.width = cv.height = 0;
         await new Promise((r) => setTimeout(r, 400));
       }
-      status(`${list.length} yaprak indirildi (${dpi} DPI${dpi < parseInt(byId('dpi').value, 10) ? ', tarayıcı sınırı nedeniyle düşürüldü' : ''}).`);
+      const c2 = cfg();
+      status(`${list.length} yaprak indirildi · ${((2 * c2.pw + 2 * c2.cut) / 10).toFixed(1)} × ${((c2.ph + 2 * c2.cut) / 10).toFixed(1)} cm (her kenarda ${c2.cut} mm taşma payı) · ${dpi} DPI${dpi < parseInt(byId('dpi').value, 10) ? ' (tarayıcı sınırı nedeniyle düşürüldü)' : ''}.`);
     } catch { status('Bir fotoğraf yüklenemedi; bağlantıyı kontrol edip yeniden deneyin.'); }
     busy(false);
   }
@@ -954,6 +983,7 @@
       const d0 = data.draft && (data.draft.set || 'secim') === data.set && !switching ? data.draft : null;
       S.extra = d0 && Array.isArray(d0.extra) ? d0.extra.filter((id) => S.pool.some((p) => p.id === id)) : [];
       S.sent = d0 && d0.sent ? d0.sent : {};
+      S.sentV = d0 && d0.sentV ? d0.sentV : 1;
       S.photos = [...data.photos, ...S.pool.filter((p) => S.extra.includes(p.id))]; indexPhotos();
       $('[data-set]').hidden = !(data.favCount && data.editedCount);
       $('[data-n="secim"]').textContent = data.favCount; $('[data-n="duzenli"]').textContent = data.editedCount;
@@ -969,6 +999,11 @@
         if (pg) byId('leaves').value = Math.max(1, Math.round(pg / 2));
       }
       render();
+      if (!switching && S.sentV !== 2) {
+        // eski imzalar: o zamandan beri değişmeyen yapraklar "aynı" kalsın (onay bozulmasın)
+        S.pages.forEach((l, i) => { const n = leafNum(i); if (n && S.sent[n] && S.sent[n] === leafSig(i, true)) S.sent[n] = leafSig(i); });
+        S.sentV = 2; saveNow(); render();
+      }
       if (switching) scheduleSave();
       const withTime = S.photos.filter((p) => p.shot).length;
       if (!S.photos.length) status('Bu çiftte gösterilecek fotoğraf yok.');

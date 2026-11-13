@@ -899,7 +899,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=83"></head>
+  <link rel="stylesheet" href="/css/style.css?v=84"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1251,7 +1251,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
           : h`<input type="hidden" name="on" value="1">
             <div class="field-row">
               <div class="field"><label for="dl-season">Sezon <span class="muted">(isteğe bağlı)</span></label><select id="dl-season" name="season"><option value="">Seçin</option>${[0, 1, 2, 3].map((i) => String(Number(new Date().toISOString().slice(0, 4)) - i)).map((y) => h`<option>${y}</option>`)}</select></div>
-              <div class="field"><label class="check" style="margin-top:30px"><input type="checkbox" name="video" value="1"${couple.video_status || couple.dlv_video ? raw(' checked') : ''}><span>Video da teslim edilecek</span></label></div>
+              <div class="field field--check-end"><label class="check"><input type="checkbox" name="video" value="1"${couple.video_status || couple.dlv_video ? raw(' checked') : ''}><span>Video da teslim edilecek</span></label></div>
             </div>
             <button class="btn btn--outline btn--sm" type="submit">Yalnız teslime çevir</button>`}
         </form>

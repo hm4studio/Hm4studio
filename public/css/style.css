@@ -3151,3 +3151,4 @@ body:has(.dz) { overflow-x: hidden; }
 .dlacc > span { flex: 1 1 260px; }
 .dlacc.is-open { background: var(--gold-bg); }
 .dlacc.is-open > .icon { color: var(--gold-d); }
+.field--check-end { display: flex; align-items: flex-end; padding-bottom: 10px; }
