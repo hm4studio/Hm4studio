@@ -17,6 +17,17 @@
     if (p === '/admin/giris') { location.replace('/uygulama'); return; }
   }
 
+  // Çift ana ekrandaki uygulamayı kullanıyor: stüdyo panelinde görünsün (oturum başına bir kez)
+  if (isStandalone && location.pathname.startsWith('/panel')) {
+    let sent = false;
+    try { sent = sessionStorage.getItem('hm4-app-ping') === '1'; } catch { /* yok say */ }
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (!sent && csrf) {
+      fetch('/panel/uygulama', { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': csrf } }).catch(() => {});
+      try { sessionStorage.setItem('hm4-app-ping', '1'); } catch { /* yok say */ }
+    }
+  }
+
   // Çevrimdışı sayfasındayken bağlantı gelince yenile
   if (location.pathname === '/offline.html') window.addEventListener('online', () => location.replace('/uygulama'));
 

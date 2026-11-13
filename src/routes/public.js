@@ -109,7 +109,7 @@ function register(router) {
 
   // ── Telefon uygulaması açılış ekranı: yalnızca çift / stüdyo girişi ──
   router.get('/uygulama', (req, res) => {
-    if (req.session?.kind === 'couple') return redirect(res, '/panel');
+    if (req.session?.kind === 'couple') { try { db.markAppOpen(req.session.userId); } catch { /* önemli değil */ } return redirect(res, '/panel'); }
     if (req.session?.kind === 'admin') return redirect(res, '/admin');
     const c = getContent();
     res.setHeader('Set-Cookie', `hm4_app=1; Path=/; Max-Age=31536000; SameSite=Lax${config.isProd ? '; Secure' : ''}`);

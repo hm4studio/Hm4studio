@@ -53,6 +53,14 @@ function register(router) {
   });
 
   // WhatsApp bildirim izni (KVKK açık rıza; her değişiklik tarihiyle kaydedilir)
+  // Ana ekrandaki uygulamadan açıldı (pwa.js, oturum başına bir kez)
+  router.post('/panel/uygulama', (req, res) => {
+    if (!requireCouple(req, res)) return;
+    checkCsrf(req);
+    db.markAppOpen(me(req).id);
+    json(res, { ok: true });
+  });
+
   router.post('/panel/whatsapp', async (req, res) => {
     if (!requireCouple(req, res)) return;
     const form = await readForm(req);

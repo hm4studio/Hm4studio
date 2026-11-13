@@ -182,6 +182,15 @@ function panelSeen(k) {
   return k.last_seen_at ? `Panele son giriş ${seenText(k.last_seen_at)}${k.visit_count > 1 ? ` · ${k.visit_count} kez girdi` : ''}` : 'Panele henüz girmedi';
 }
 
+// Ana ekrandaki uygulama ve bildirim durumu
+function appSeen(k, { push = null } = {}) {
+  const parts = [];
+  if (k.app_last_at) parts.push(`Uygulama telefonunda · son açılış ${seenText(k.app_last_at)}`);
+  else parts.push('Uygulamayı telefonuna eklemedi');
+  if (push != null) parts.push(push ? 'bildirimler açık' : 'bildirimler kapalı');
+  return parts.join(' · ');
+}
+
 function attentionItems(c, couples) {
   const t = today();
   const last = c.stages.length - 1;
@@ -246,7 +255,7 @@ function coupleCard(c, k) {
       </span>
       <span class="crow__pay${urgent ? ' is-urgent' : ''}">${dlv ? h`<span class="crow__sub">—</span>` : pay[0] === 'paid' ? h`<span class="crow__sub">Ödendi</span>` : pay[0] === 'none' ? h`<span class="crow__sub">Tutar yok</span>` : h`<span>${tl(pay[2])}</span><span class="crow__sub">kalan</span>`}</span>
       <span class="crow__ready" aria-label="Hazır olanlar">
-        <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span>${dlv ? '' : h`<span class="${k.contract_status === 'imzali' ? 'is-on' : ''}" title="${k.contract_status === 'imzali' ? 'Sözleşme onaylandı' : k.contract_status ? 'Sözleşme onay bekliyor' : 'Sözleşme gönderilmedi'}">S</span>`}<span class="${k.last_seen_at ? 'is-on' : ''}" title="${panelSeen(k)}">P</span>
+        <span class="${k.photo_ready ? 'is-on' : ''}" title="Fotoğraf">F</span><span class="${k.video_ready ? 'is-on' : ''}" title="Video">V</span><span class="${k.album_ready ? 'is-on' : ''}" title="Albüm">A</span>${dlv ? '' : h`<span class="${k.contract_status === 'imzali' ? 'is-on' : ''}" title="${k.contract_status === 'imzali' ? 'Sözleşme onaylandı' : k.contract_status ? 'Sözleşme onay bekliyor' : 'Sözleşme gönderilmedi'}">S</span>`}<span class="${k.last_seen_at ? 'is-on' : ''}" title="${panelSeen(k)}">P</span><span class="${k.app_last_at ? 'is-on' : ''}" title="${appSeen(k)}">U</span>
       </span>
     </a>
   </li>`;
@@ -899,7 +908,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=86"></head>
+  <link rel="stylesheet" href="/css/style.css?v=87"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1036,6 +1045,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
           if (couple.delivery_only) return ['Yalnız teslim', [couple.event_type, couple.season].filter(Boolean).join(' '), panelSeen(couple)].filter(Boolean).join(' · ');
           return [couple.ref_no, first ? `${card.types ? card.types.split(', ')[0] + ' ' : ''}${formatDate(card.next_date || first)}` : card.types, card.total ? (pay[2] ? `Kalan ödeme ${tl(pay[2])}` : 'Ödendi') : '', panelSeen(couple)].filter(Boolean).join(' · ');
         })()}</p>
+        <p class="cd-app${couple.app_last_at ? ' is-on' : ''}">${icon('phone')}<span>${appSeen(couple, { push: require('../db').listPushSubs('couple', couple.id).length > 0 })}</span></p>
       </div>
     </div>
     ${flashBlock(f)}

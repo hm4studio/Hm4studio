@@ -3181,3 +3181,6 @@ body:has(.dz) { overflow-x: hidden; }
 .isheet__ok { width: 100%; margin-top: 10px; justify-content: center; }
 body.is-sheet { overflow: hidden; }
 .isheet [hidden] { display: none !important; }
+.cd-app { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; font-size: .86rem; color: var(--pencil); }
+.cd-app .icon { width: 14px; height: 14px; }
+.cd-app.is-on { color: var(--c-tes); }

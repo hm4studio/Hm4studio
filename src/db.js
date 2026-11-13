@@ -250,6 +250,8 @@ addColumn('couples', 'album_draft', 'TEXT'); // albüm tasarımcısı taslağı 
 addColumn('photos', 'rev', 'INTEGER NOT NULL DEFAULT 0'); // dosya yenilendikçe artar (Photoshop rötuşu)
 addColumn('couples', 'dl_video_at', 'TEXT'); // çift videoyu ilk indirdiğinde
 addColumn('couples', 'dl_override', 'INTEGER NOT NULL DEFAULT 0'); // kalan ödeme olsa da indirme açık
+addColumn('couples', 'app_first_at', 'TEXT'); // çift ana ekrandaki uygulamayı ilk açtığında
+addColumn('couples', 'app_last_at', 'TEXT');
 // Çift fotoğrafları toplu indirince: orijinallerin silineceği gün (küçük haller kalır)
 db.exec(`CREATE TABLE IF NOT EXISTS orig_purge (
   couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
@@ -639,6 +641,7 @@ module.exports = {
       (SELECT MAX(p.created_at) FROM photos p WHERE p.couple_id = c.id AND p.kind = 'duzenli') AS edited_at
     FROM couples c WHERE EXISTS(SELECT 1 FROM photos p WHERE p.couple_id = c.id AND p.kind = 'duzenli')
     ORDER BY edited_at DESC`).all(),
+  markAppOpen: (id) => q("UPDATE couples SET app_first_at = COALESCE(app_first_at, datetime('now')), app_last_at = datetime('now') WHERE id = ?").run(id),
   setDownloadOverride: (id, on) => q('UPDATE couples SET dl_override = ? WHERE id = ?').run(on ? 1 : 0, id),
   setAlbumDraft: (id, json) => q('UPDATE couples SET album_draft = ? WHERE id = ?').run(json || null, id),
   setDeliveryOnly: (id, x) => q('UPDATE couples SET delivery_only = ?, season = ?, event_type = ?, dlv_video = ?, album_limit = ? WHERE id = ?').run(x.on ? 1 : 0, x.season || '', x.eventType || '', x.video ? 1 : 0, x.limit, id),
