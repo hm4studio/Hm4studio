@@ -662,20 +662,42 @@
     const L = -c.cut, R = 2 * c.pw + c.cut, T = -c.cut, B = c.ph + c.cut;
     let x0 = bb.x0, x1 = bb.x1, y0 = bb.y0, y1 = bb.y1;
     const hasW = /w/.test(hnd), hasE = /e/.test(hnd), hasN = /n/.test(hnd), hasS = /s/.test(hnd);
+    // Mıknatıs: hareket eden kenar, komşuya ayarlanan boşluk kadar mesafeye, komşunun kenar hizasına,
+    // güvenli alana ya da sayfa kenarına yaklaşınca oraya oturur (Alt/Option basılıyken kapalı)
+    const sn = snapTargets(rsz, c);
+    const thr = 9 / rsz.s;
+    rsz.lines = [];
+    const snap = (v, list, ax) => {
+      if (e.altKey) return v;
+      let best = null;
+      for (const t of list) { const d = Math.abs(v - t.v); if (d < thr && (!best || d < best.d)) best = { d, t }; }
+      if (!best) return v;
+      rsz.lines.push({ ax, at: best.t.line ?? best.t.v, gap: best.t.gap });
+      return best.t.v;
+    };
     if (hnd.length === 2) {
       // köşe: oranı koruyarak büyüt/küçült (karşı köşe sabit)
       const kx = mx.C ? ((W + (hasE ? dx : -dx)) - mx.G) / mx.C : 1, ky = my.C ? ((H + (hasS ? dy : -dy)) - my.G) / my.C : 1;
       let k = (kx + ky) / 2;
+      // köşede de mıknatıs: en yakın oturan eksene göre oranı ayarla
+      const cand = [];
+      const ex = hasE ? x0 + mx.G + mx.C * k : x1 - (mx.G + mx.C * k);
+      const ey = hasS ? y0 + my.G + my.C * k : y1 - (my.G + my.C * k);
+      const sxv = snap(ex, hasE ? sn.right : sn.left, 'x'); const lx = rsz.lines.length;
+      const syv = snap(ey, hasS ? sn.bottom : sn.top, 'y');
+      if (sxv !== ex && mx.C) cand.push({ d: Math.abs(sxv - ex), k: ((hasE ? sxv - x0 : x1 - sxv) - mx.G) / mx.C, keep: 'x' });
+      if (syv !== ey && my.C) cand.push({ d: Math.abs(syv - ey), k: ((hasS ? syv - y0 : y1 - syv) - my.G) / my.C, keep: 'y' });
+      if (cand.length) { cand.sort((a2, b2) => a2.d - b2.d); k = cand[0].k; rsz.lines = rsz.lines.filter((ln, ix) => (cand[0].keep === 'x' ? ix < lx : ix >= lx)); } else rsz.lines = [];
       k = Math.max(k, MIN_FRAME / minW, MIN_FRAME / minH);
       const nW = mx.G + mx.C * k, nH = my.G + my.C * k;
       if (hasE) x1 = x0 + nW; else x0 = x1 - nW;
       if (hasS) y1 = y0 + nH; else y0 = y1 - nH;
-      if (x0 < L || x1 > R || y0 < T || y1 > B) return; // sayfa dışına taşma
+      if (x0 < L - 0.01 || x1 > R + 0.01 || y0 < T - 0.01 || y1 > B + 0.01) return; // sayfa dışına taşma
     } else {
-      if (hasE) x1 = Math.min(R, Math.max(bb.x0 + mx.G + mx.C * (MIN_FRAME / minW), bb.x1 + dx));
-      if (hasW) x0 = Math.max(L, Math.min(bb.x1 - mx.G - mx.C * (MIN_FRAME / minW), bb.x0 + dx));
-      if (hasS) y1 = Math.min(B, Math.max(bb.y0 + my.G + my.C * (MIN_FRAME / minH), bb.y1 + dy));
-      if (hasN) y0 = Math.max(T, Math.min(bb.y1 - my.G - my.C * (MIN_FRAME / minH), bb.y0 + dy));
+      if (hasE) x1 = Math.min(R, Math.max(bb.x0 + mx.G + mx.C * (MIN_FRAME / minW), snap(bb.x1 + dx, sn.right, 'x')));
+      if (hasW) x0 = Math.max(L, Math.min(bb.x1 - mx.G - mx.C * (MIN_FRAME / minW), snap(bb.x0 + dx, sn.left, 'x')));
+      if (hasS) y1 = Math.min(B, Math.max(bb.y0 + my.G + my.C * (MIN_FRAME / minH), snap(bb.y1 + dy, sn.bottom, 'y')));
+      if (hasN) y0 = Math.max(T, Math.min(bb.y1 - my.G - my.C * (MIN_FRAME / minH), snap(bb.y0 + dy, sn.top, 'y')));
     }
     const fx = axisMap(sel, 'x', 'w', bb.x0, bb.x1, x0, x1).f, fy = axisMap(sel, 'y', 'h', bb.y0, bb.y1, y0, y1).f;
     rsz.a.rects = base.map((r) => ({ ...r }));
@@ -685,6 +707,26 @@
       rsz.a.rects[k] = { x: nx, y: ny, w: nx2 - nx, h: ny2 - ny };
     });
     if (!rsz.raf) rsz.raf = requestAnimationFrame(() => { if (rsz) { rsz.raf = 0; renderSpread(cfg()); } });
+  }
+  // Mıknatıs hedefleri (seçili olmayan fotoğraflar, güvenli alan, sayfa ve katlama kenarları)
+  function snapTargets(r, c) {
+    if (r.sn) return r.sn;
+    const cl = leafCfg(S.sheet, c), g = cl.gap;
+    const others = r.base.filter((_, k) => !r.idx.includes(k));
+    const m = c.cut + c.safe, fm = c.foldM;
+    const sn = { right: [], left: [], bottom: [], top: [] };
+    for (const o of others) {
+      sn.right.push({ v: o.x - g, line: o.x - g / 2, gap: true }, { v: o.x + o.w }, { v: o.x });
+      sn.left.push({ v: o.x + o.w + g, line: o.x + o.w + g / 2, gap: true }, { v: o.x }, { v: o.x + o.w });
+      sn.bottom.push({ v: o.y - g, line: o.y - g / 2, gap: true }, { v: o.y + o.h }, { v: o.y });
+      sn.top.push({ v: o.y + o.h + g, line: o.y + o.h + g / 2, gap: true }, { v: o.y }, { v: o.y + o.h });
+    }
+    sn.right.push({ v: 2 * c.pw - m }, { v: c.pw - fm }, { v: 2 * c.pw }, { v: 2 * c.pw + c.cut });
+    sn.left.push({ v: m }, { v: c.pw + fm }, { v: 0 }, { v: -c.cut });
+    sn.bottom.push({ v: c.ph - m }, { v: c.ph }, { v: c.ph + c.cut });
+    sn.top.push({ v: m }, { v: 0 }, { v: -c.cut });
+    r.sn = sn;
+    return sn;
   }
   function endResize() {
     window.removeEventListener('pointermove', onResize);
@@ -791,6 +833,14 @@
         });
         sp.appendChild(box);
       }
+    }
+    // mıknatıs çizgileri (boyutlandırırken)
+    if (rsz && rsz.lines) {
+      rsz.lines.forEach((ln) => {
+        const d = el('div', `dz-snap dz-snap--${ln.ax}${ln.gap ? ' is-gap' : ''}`);
+        if (ln.ax === 'x') d.style.left = `${ln.at * s}px`; else d.style.top = `${ln.at * s}px`;
+        sp.appendChild(d);
+      });
     }
     // çerçeve tutamaçları
     if (!S.cropMode && !S.edit) {

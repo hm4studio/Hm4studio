@@ -3199,3 +3199,7 @@ body.is-sheet { overflow: hidden; }
 .dz-h--n, .dz-h--s, .dz-h--e, .dz-h--w { border-radius: 50%; }
 @media (pointer: coarse) { .dz-h { width: 22px; height: 22px; margin: -11px 0 0 -11px; } }
 .dz-tool[data-select-all][aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.dz-snap { position: absolute; z-index: 6; pointer-events: none; }
+.dz-snap--x { top: 0; bottom: 0; width: 0; border-left: 1px solid #e2508a; }
+.dz-snap--y { left: 0; right: 0; height: 0; border-top: 1px solid #e2508a; }
+.dz-snap.is-gap { border-color: #2f9d6a; border-style: dashed; }
