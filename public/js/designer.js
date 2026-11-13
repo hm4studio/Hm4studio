@@ -252,12 +252,18 @@
 
   // ── Sürükle-bırak (dokunmatik + fare) ──
   let drag = null;
+  // Dokunmatikte: şerit kaydırılabilsin diye sürükleme ancak parmak yaprağa doğru (şeride dik) hareket edince başlar;
+  // tarayıcı kaydırmayı üstlenirse (pointercancel) sürükleme iptal edilir. Tek parmak; kalan hayalet görüntüler temizlenir.
+  function clearGhosts() { document.querySelectorAll('.dz-ghost').forEach((g) => g.remove()); }
   function startDrag(e, src) {
-    e.preventDefault();
+    if (!e.isPrimary || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (drag) endDrag();
+    clearGhosts();
+    if (e.pointerType === 'mouse' || src.type === 'cell') e.preventDefault();
     const ghost = document.createElement('img');
     ghost.className = 'dz-ghost'; ghost.src = photoById(src.id).thumb; ghost.alt = '';
     document.body.appendChild(ghost);
-    drag = { src, ghost, sx: e.clientX, sy: e.clientY, moved: false };
+    drag = { src, ghost, pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
     placeGhost(e);
     window.addEventListener('pointermove', onMove, { passive: false });
     window.addEventListener('pointerup', onUp);
@@ -265,7 +271,7 @@
   }
   function placeGhost(e) { drag.ghost.style.left = `${e.clientX}px`; drag.ghost.style.top = `${e.clientY}px`; drag.ghost.hidden = !drag.moved; }
   function onMove(e) {
-    if (!drag) return;
+    if (!drag || e.pointerId !== drag.pid) return;
     e.preventDefault();
     if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 8) drag.moved = true;
     placeGhost(e);
@@ -280,10 +286,11 @@
     window.removeEventListener('pointercancel', endDrag);
     $$('.is-over').forEach((x) => x.classList.remove('is-over'));
     const d = drag; drag = null;
-    if (d) d.ghost.remove();
+    clearGhosts();
     return d;
   }
   function onUp(e) {
+    if (drag && e.pointerId !== drag.pid) return;
     const d = endDrag();
     if (!d) return;
     if (!d.moved) {
@@ -600,6 +607,8 @@
   const fileInput = $('[data-files]');
   if (fileInput) fileInput.addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
   window.addEventListener('beforeunload', (e) => { if (local && S.photos.length) { e.preventDefault(); e.returnValue = ''; } });
+  window.addEventListener('blur', () => { endDrag(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) endDrag(); });
   let rz = null;
   window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 120); });
 

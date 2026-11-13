@@ -2983,7 +2983,7 @@ fieldset > legend.sr-only { left: 0; top: 0; }
 .dz-tray__hint { font-size: .76rem; line-height: 1.4; margin: 6px 0 10px; }
 .dz-thumbs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; overflow-y: auto; min-height: 80px; border-radius: 10px; padding: 2px; }
 .dz-thumbs.is-over { outline: 2px dashed var(--gold); outline-offset: 2px; }
-.dz-thumb { position: relative; touch-action: none; cursor: grab; border-radius: 8px; overflow: hidden; background: #e9e5dc; }
+.dz-thumb { position: relative; touch-action: pan-y; -webkit-touch-callout: none; cursor: grab; border-radius: 8px; overflow: hidden; background: #e9e5dc; }
 .dz-thumb img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; pointer-events: none; }
 .dz-thumb.is-used img { opacity: .32; }
 .dz-badge { position: absolute; top: 5px; right: 5px; font-size: .62rem; font-weight: 600; line-height: 1; padding: 4px 5px; border-radius: 6px; background: rgba(31,42,58,.82); color: #fff; }
@@ -3016,7 +3016,7 @@ fieldset > legend.sr-only { left: 0; top: 0; }
 .dz-strip { display: flex; gap: 10px; overflow-x: auto; padding: 14px 2px 6px; margin-top: 8px; scroll-snap-type: x proximity; }
 .dz-leaf { flex: 0 0 132px; scroll-snap-align: start; cursor: pointer; text-align: center; }
 .dz-leaf__mini { position: relative; background: #fff; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
-.dz-leaf__mini img { position: absolute; object-fit: cover; touch-action: none; }
+.dz-leaf__mini img { position: absolute; object-fit: cover; touch-action: pan-x; -webkit-touch-callout: none; }
 .dz-leaf.is-cur .dz-leaf__mini { box-shadow: 0 0 0 2px var(--navy); }
 .dz-leaf.is-over .dz-leaf__mini { box-shadow: 0 0 0 2px var(--gold); }
 .dz-leaf span { display: block; margin-top: 5px; font-size: .74rem; color: var(--pencil); font-variant-numeric: lining-nums; }
@@ -3030,6 +3030,7 @@ fieldset > legend.sr-only { left: 0; top: 0; }
   .dz-work { grid-template-columns: minmax(0, 1fr); }
   .dz-tray { min-width: 0; }
   .dz-tray { position: static; max-height: none; }
+  .dz-thumb { touch-action: pan-x; }
   .dz-thumbs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 76px; overflow-x: auto; overflow-y: hidden; }
 }
 .ad-designer { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; margin: 14px 0; background: var(--gold-bg); border-radius: 14px; }
@@ -3048,3 +3049,7 @@ fieldset > legend.sr-only { left: 0; top: 0; }
 .dz-set button[aria-pressed="true"] { background: var(--navy); color: #fff; }
 .dz-files { position: relative; cursor: pointer; }
 .dz-files input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+body:has(.dz) { overflow-x: hidden; }
+.dz, .dz-ghost { touch-action: manipulation; }
+.dz-cell, .dz-spread { touch-action: none; }
+.dz img { -webkit-user-drag: none; -webkit-touch-callout: none; }
