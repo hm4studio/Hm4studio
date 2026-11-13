@@ -83,7 +83,10 @@ async function openJob(j, again) {
     j.state = 'opening'; j.msg = 'Açılıyor…'; render();
     if (!j.entry || again) {
       const r = await api(`/api/ps/isler/${j.id}/dosya`);
+      const size = Number(r.headers.get('content-length')) || 0;
+      j.msg = size ? `İndiriliyor… (${(size / 1048576).toFixed(1)} MB)` : 'İndiriliyor…'; render();
       const buf = await r.arrayBuffer();
+      j.msg = 'Açılıyor…'; render();
       const folder = await jobsFolder();
       const safe = j.name.replace(/[^\w.\-]+/g, '_');
       j.entry = await folder.createFile(`${j.id}-${safe}`, { overwrite: true });
@@ -149,6 +152,7 @@ async function upload(j, doc) {
       if (/\.jpe?g$/i.test(String(doc.path || '')) && samePath(doc.path, j.path)) original = new Uint8Array(await j.entry.read({ format: formats.binary }));
       else original = await enc(Math.max(W, H));
     }, { commandName: 'HM4: siteye hazırla' });
+    j.msg = `Siteye yükleniyor… (${((thumb.length + display.length + original.length) / 1048576).toFixed(1)} MB)`; render();
     const body = new Uint8Array(thumb.length + display.length + original.length);
     body.set(thumb, 0); body.set(display, thumb.length); body.set(original, thumb.length + display.length);
     await api(`/api/ps/isler/${j.id}/yukle`, {
@@ -195,5 +199,5 @@ $('reset').addEventListener('click', () => { $('setup').style.display = 'block';
   render();
   if (!TOKEN) { setConn('err', 'Bağlantı kodu girilmedi'); $('setup').style.display = 'block'; }
   poll();
-  pollTimer = setInterval(poll, 3000);
+  pollTimer = setInterval(poll, 1500);
 })();

@@ -32,9 +32,12 @@ function checkToken(req) {
 
 // ── İşler ──
 const STALE = "datetime('now', '-12 hours')";
+// Aynı fotoğraf zaten gönderilmiş/açıksa yeni iş açılmaz (iki kez basınca ilk açılan kaydedilemiyordu)
 function createJob(coupleId, photoId, filePhotoId) {
+  const cur = q(`SELECT * FROM ps_jobs WHERE couple_id = ? AND photo_id = ? AND status IN ('bekliyor', 'acik') AND created_at >= ${STALE} ORDER BY id DESC LIMIT 1`).get(coupleId, photoId);
+  if (cur && cur.file_photo_id === filePhotoId) return { id: cur.id, reused: true, status: cur.status };
   q(`UPDATE ps_jobs SET status = 'iptal', updated_at = datetime('now') WHERE couple_id = ? AND photo_id = ? AND status IN ('bekliyor', 'acik')`).run(coupleId, photoId);
-  return Number(q('INSERT INTO ps_jobs(couple_id, photo_id, file_photo_id) VALUES(?, ?, ?)').run(coupleId, photoId, filePhotoId).lastInsertRowid);
+  return { id: Number(q('INSERT INTO ps_jobs(couple_id, photo_id, file_photo_id) VALUES(?, ?, ?)').run(coupleId, photoId, filePhotoId).lastInsertRowid), reused: false };
 }
 const getJob = (id) => q('SELECT * FROM ps_jobs WHERE id = ?').get(id);
 const setStatus = (id, st, resultId = null) => q("UPDATE ps_jobs SET status = ?, result_photo_id = COALESCE(?, result_photo_id), updated_at = datetime('now') WHERE id = ?").run(st, resultId, id);
@@ -60,7 +63,9 @@ function jobFile(job) {
 
 // Yeni hali kaydet: düzenlenmiş fotoğrafın yerine geçer ya da yeni düzenlenmiş fotoğraf oluşturur
 function applyUpload(job, parts) {
-  const src = dbx.getPhoto(job.result_photo_id || job.file_photo_id); // ikinci kayıtta oluşan düzenlenmiş fotoğrafın üstüne yazar
+  // Bu fotoğraftan daha önce düzenlenmiş hal oluştuysa (bu ya da önceki iş) onun üstüne yazılır; kopya oluşmaz
+  const prev = job.result_photo_id || q("SELECT result_photo_id FROM ps_jobs WHERE photo_id = ? AND result_photo_id IS NOT NULL ORDER BY id DESC LIMIT 1").get(job.photo_id)?.result_photo_id;
+  const src = (prev && dbx.getPhoto(prev)) || dbx.getPhoto(job.file_photo_id);
   if (!src) throw new Error('Fotoğraf bulunamadı');
   const key = newKey();
   media.saveCouplePhoto(src.couple_id, key, parts);

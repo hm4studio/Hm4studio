@@ -1028,8 +1028,9 @@
       const r = await fetch(`${base}/ps-gonder`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ photoId: p.id, fileId: p.fileId || p.id }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'gönderilemedi');
-      psState.set(p.id, 'bekliyor');
-      status(d.connected ? `${p.name} Photoshop'a gönderildi. Eklenti açık değilse Photoshop'ta HM4 Albüm panelini açın.` : 'Gönderildi, ama Photoshop bağlantısı kurulmamış: üstteki "Photoshop bağlantısı"ndan kurun.');
+      psState.set(p.id, d.status || 'bekliyor');
+      if (d.reused) status(d.status === 'acik' ? `${p.name} zaten Photoshop'ta açık; düzenleyip ⌘S ile kaydedin.` : `${p.name} Photoshop'a gönderildi, eklentinin indirmesi bekleniyor (büyük dosyalar biraz sürebilir).`);
+      else status(d.connected ? `${p.name} Photoshop'a gönderildi. Eklenti açık değilse Photoshop'ta HM4 Albüm panelini açın.` : 'Gönderildi, ama Photoshop bağlantısı kurulmamış: üstteki "Photoshop bağlantısı"ndan kurun.');
       render(); psPoll();
     } catch { status("Photoshop'a gönderilemedi; yeniden deneyin."); }
   }

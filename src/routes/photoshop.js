@@ -26,8 +26,8 @@ function register(router) {
     const body = await readJson(req);
     const photo = db.getPhoto(toId(body.photoId)), file = db.getPhoto(toId(body.fileId));
     if (!photo || !file || photo.couple_id !== couple.id || file.couple_id !== couple.id) throw new HttpError(404, 'Fotoğraf bulunamadı');
-    const id = ps.createJob(couple.id, photo.id, file.id);
-    json(res, { ok: true, id, connected: ps.tokenInfo().has });
+    const job = ps.createJob(couple.id, photo.id, file.id);
+    json(res, { ok: true, id: job.id, reused: job.reused, status: job.status, connected: ps.tokenInfo().has });
   });
   router.get('/admin/ciftler/:id/ps-durum', (req, res, { params }) => {
     adminApi(req);
@@ -104,7 +104,8 @@ function register(router) {
   router.post('/api/ps/isler/:id/yukle', async (req, res, { params }) => {
     pluginApi(req);
     const job = ps.getJob(toId(params.id));
-    if (!job || job.status === 'iptal') throw new HttpError(404, 'İş bulunamadı ya da iptal edilmiş');
+    if (!job) throw new HttpError(404, 'İş bulunamadı');
+    // İptal edilmiş olsa da kaydedilen hal kabul edilir (Photoshop'ta açık kalan belge kaydedilince kaybolmasın)
     media.markUploadActivity();
     const body = await readBody(req, config.maxUploadBytes);
     const parts = media.splitParts(req, body);
