@@ -254,6 +254,7 @@ function register(router) {
     const v = db.getVideo(toId(params.id));
     const allowed = s && v && v.file_key && (s.kind === 'admin' || (s.kind === 'couple' && s.userId === v.couple_id));
     if (!allowed) throw new HttpError(404, 'Bulunamadı');
+    if (query.get('indir') && s.kind === 'couple') { try { require('../purge').markVideo(db.getCouple(v.couple_id)); } catch { /* önemli değil */ } }
     const name = query.get('indir') ? `${(v.title || v.kind || 'video').replace(/[\\/:*?"<>|]+/g, '-')}.${v.ext}` : undefined;
     if (!sendFile(req, res, media.videoDir(v.couple_id), `${v.file_key}.${v.ext}`, { cache: 'private, max-age=3600', download: name })) throw new HttpError(404, 'Bulunamadı');
   });
@@ -335,6 +336,7 @@ function register(router) {
     const photos = onlyFav ? (coverPh && coverPh.couple_id === couple.id && !favs.some((p) => p.id === coverPh.id) ? [coverPh, ...favs] : favs) : gal ? db.listPhotos(couple.id, 'secim').filter((p) => p.gallery_id === gal.id) : db.listPhotos(couple.id, g === 'duzenli' ? 'duzenli' : 'secim');
     const entries = require('../media').couplePhotoEntries(couple.id, photos, { coverId: onlyFav ? couple.album_cover_id : null });
     if (!entries.length) throw new HttpError(404, 'İndirilecek fotoğraf yok');
+    if (!onlyFav && !gal) { try { require('../purge').markDownload(couple, g === 'duzenli' ? 'duzenli' : 'secim'); } catch { /* indirme yine de sürer */ } }
     const name = `${couple.name}${onlyFav ? ' - Albüm seçimi' : gal ? ` - ${gal.name}` : g === 'duzenli' ? ' - Düzenlenmiş fotoğraflar' : ' - Fotoğraflar'}.zip`.replace(/[\\/:*?"<>|]+/g, '-');
     res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': `attachment; filename="fotograflar.zip"; filename*=UTF-8''${encodeURIComponent(name)}`, 'Cache-Control': 'no-store' });
     await require('../zip').streamZip(res, entries).catch(() => res.destroy());

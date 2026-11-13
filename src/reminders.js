@@ -63,6 +63,9 @@ function start() {
   setInterval(tick, 60 * 1000).unref();
   setTimeout(diskCheck, 60 * 1000).unref();
   setInterval(diskCheck, 60 * 60 * 1000).unref();
+  const purge = () => { try { require('./purge').run(); } catch (e) { console.error('Orijinal temizliği:', e.message); } };
+  setTimeout(purge, 2 * 60 * 1000).unref();
+  setInterval(purge, 60 * 60 * 1000).unref();
 }
 
 module.exports = { start, tick, nowHm, diskUsage, DISK_LIMIT };

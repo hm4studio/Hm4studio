@@ -248,6 +248,17 @@ addColumn('couples', 'season', "TEXT NOT NULL DEFAULT ''");
 addColumn('couples', 'dlv_video', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('couples', 'album_draft', 'TEXT'); // albüm tasarımcısı taslağı (JSON)
 addColumn('photos', 'rev', 'INTEGER NOT NULL DEFAULT 0'); // dosya yenilendikçe artar (Photoshop rötuşu)
+addColumn('couples', 'dl_video_at', 'TEXT'); // çift videoyu ilk indirdiğinde
+// Çift fotoğrafları toplu indirince: orijinallerin silineceği gün (küçük haller kalır)
+db.exec(`CREATE TABLE IF NOT EXISTS orig_purge (
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  downloaded_at TEXT NOT NULL,
+  due_on TEXT,
+  done_at TEXT,
+  freed INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (couple_id, kind)
+);`);
 db.exec(`CREATE TABLE IF NOT EXISTS ps_jobs (
   id INTEGER PRIMARY KEY,
   couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
@@ -786,7 +797,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM ps_jobs; DELETE FROM photo_versions; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
+    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM ps_jobs; DELETE FROM photo_versions; DELETE FROM orig_purge; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

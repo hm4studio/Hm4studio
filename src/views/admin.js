@@ -899,7 +899,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=81"></head>
+  <link rel="stylesheet" href="/css/style.css?v=82"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -998,6 +998,18 @@ function albumDesignSection(couple, pages, base, csrf) {
   </section>`;
 }
 
+// Çiftin indirmeleri ve orijinal temizliği (yöneticiye not)
+function downloadNotes(couple) {
+  const st = require('../purge').statusFor(couple);
+  const when = (iso) => new Date(`${String(iso).replace(' ', 'T')}Z`).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  const gb = (n) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : `${Math.max(1, Math.round(n / 1024 ** 2))} MB`);
+  const items = Object.values(st).map((r) => [r.label.replace(' fotoğraflar', ' fotoğraflar'), `indirildi · ${when(r.downloaded_at)}`,
+    r.done_at ? `orijinaller silindi${r.freed ? ` (${gb(r.freed)} açıldı)` : ''}` : r.waiting ? 'orijinaller albüm onayı için bekletiliyor' : r.due_on ? `orijinaller ${r.dueText} tarihinde silinecek` : 'orijinaller saklanıyor']);
+  if (couple.dl_video_at) items.push(['Video', `indirildi · ${when(couple.dl_video_at)}`, '']);
+  if (!items.length) return '';
+  return h`<ul class="dlnotes">${items.map(([a, b, c2]) => h`<li>${icon('download')}<span><strong>${a}</strong> ${b}${c2 ? h` · <span class="muted">${c2}</span>` : ''}</span></li>`)}</ul>`;
+}
+
 function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: ct = null, selection = [], videos = [], edited = [], albumPages = [], gift = null, deliveries = [], events: evs, payments, photos, totalCount, favCount, view, csrf, flash: f, loginUrl, demoAdmin }) {
   const base = `/admin/ciftler/${couple.id}`;
   const body = h`
@@ -1015,6 +1027,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
       </div>
     </div>
     ${flashBlock(f)}
+    ${downloadNotes(couple)}
 
     ${journey.adminBlock(c, { couple, card, contract: ct, events: evs, totalCount, favCount })}
 
@@ -1464,6 +1477,7 @@ const MESSAGE_INFO = [
   ['yorum', 'Yorum isteği', 'Teslimden 7 gün sonra.', ['ad', 'link']],
   ['teklif', 'Fiyat teklifi', 'Teklif sayfasından “WhatsApp’tan gönder” ya da “Mesajı kopyala” ile.', ['ad', 'etkinlik', 'link']],
   ['albumTasarim', 'Albüm tasarımı hazır', 'Albüm sayfalarını çifte gönderdiğinizde.', ['ad', 'link']],
+  ['indirildi', 'Fotoğraflar indirildi', 'Çift fotoğrafları toplu indirince; orijinallerin silineceği günle.', ['ad', 'tarih']],
   ['panelTeslim', 'Panel giriş bilgisi (yalnız teslim)', 'Yalnız teslim çiftini eklediğinizde giriş bilgileri.', ['ad', 'link', 'kod', 'sifre']],
   ['albumSiparis', 'Albüm siparişi onayı', 'Albüm sipariş formunu çifte onaya gönderdiğinizde.', ['ad', 'link']],
   ['yildonumu', 'Yıl dönümü kutlaması', 'Düğünden bir yıl (ve her yıl) sonra.', ['ad', 'yil', 'link']],
@@ -1831,6 +1845,11 @@ function deliverySettingsPage(c, { csrf, flash: f, demoAdmin }) {
         <div class="panel-section__head"><h2 class="panel-section__title">Dosyaların saklanma süresi</h2></div>
         <p class="muted">Teslimden sonra çifte “son indirme günü” olarak gösterilir. Süre dolunca Yapılacaklar’a hatırlatma düşer; dosyaları siz silersiniz.</p>
         <div class="field field--narrow"><label for="dl-keep">Gün</label><input id="dl-keep" name="keepDays" type="number" min="7" max="730" value="${d.keepDays || 90}"></div>
+      </section>
+      <section class="panel-section">
+        <div class="panel-section__head"><h2 class="panel-section__title">İndirmeden sonra orijinalleri sil</h2></div>
+        <p class="muted">Çift fotoğrafları toplu indirince sistem bunu not eder ve çifte “orijinaller şu gün silinecek” bildirimi gönderir. Süre dolunca orijinal boyuttaki dosyalar sunucudan silinir; panelde küçük halleri kalır. Albüm tasarımı onaylanmadıysa düzenlenmiş orijinaller baskı için onaylanana kadar beklenir. <strong>0</strong> yazarsanız silinmez.</p>
+        <div class="field field--narrow"><label for="dl-purge">Gün</label><input id="dl-purge" name="purgeDays" type="number" min="0" max="365" value="${d.purgeDays ?? 10}"></div>
       </section>
       <section class="panel-section">
         <div class="panel-section__head"><h2 class="panel-section__title">Çekim sonrası kontrol</h2></div>

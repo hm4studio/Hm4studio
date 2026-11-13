@@ -31,17 +31,27 @@
     },
     "kapora": {
       "ad": "hm4_kapora_hatirlatma",
-      "degiskenler": ["ad", "tutar", "tarih"],
+      "degiskenler": [
+        "ad",
+        "tutar",
+        "tarih"
+      ],
       "metin": "Merhaba {ad}, {tarih} tarihli çekiminiz için konuştuğumuz {tutar} kapora ödemesini nazikçe hatırlatmak isteriz. Ödemeyi yaptığınızda bize kısa bir mesaj atmanız yeterli. Teşekkür ederiz.\n\nHM4 Studio"
     },
     "gorevYarin": {
       "ad": "hm4_gorev_yarin",
-      "degiskenler": ["ad", "liste"],
+      "degiskenler": [
+        "ad",
+        "liste"
+      ],
       "metin": "Merhaba {ad}, yarınki görev listen:\n{liste}\n\nKolay gelsin.\nHM4 Studio"
     },
     "sozlesmeOnay": {
       "ad": "hm4_sozlesme_onaylandi",
-      "degiskenler": ["ad", "link"],
+      "degiskenler": [
+        "ad",
+        "link"
+      ],
       "metin": "Merhaba {ad}, sözleşmenizi onayladığınız için teşekkür ederiz. Kaydınız kesinleşti; onaylı sözleşmenize panelinizden her zaman ulaşabilirsiniz: {link}\n\nHM4 Studio"
     },
     "plan": {
@@ -141,6 +151,14 @@
         "link"
       ],
       "metin": "Merhaba {ad}, evliliğinizin {yil}. yılı kutlu olsun! O günü sizinle yaşamaktan mutluluk duymuştuk. Yıl dönümünüz için bir hatıra çekimi isterseniz size özel fiyatımızla buradayız: {link}\n\nHM4 Studio"
+    },
+    "indirildi": {
+      "ad": "hm4_indirildi",
+      "degiskenler": [
+        "ad",
+        "tarih"
+      ],
+      "metin": "Merhaba {ad}, fotoğraflarınızı panelinizden indirdiğinizi gördük, güzel günlerde kullanın!\n\nSunucumuzda yer açmak için orijinal boyuttaki dosyalar {tarih} tarihinde silinecek; panelinizde küçük halleri kalmaya devam edecek. İndirmenin tamamlandığından ve dosyaları yedeklediğinizden emin olun.\n\nHM4 Studio"
     }
   },
   "kurallar": {

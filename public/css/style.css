@@ -3140,3 +3140,8 @@ body:has(.dz) { overflow-x: hidden; }
 .ps-steps .btn { margin-left: 6px; vertical-align: middle; }
 .ps-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
 .ps-note { font-size: .82rem; margin-top: 10px; }
+.dl-note { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; padding: 10px 12px; background: var(--gold-bg); border-radius: 12px; font-size: .86rem; line-height: 1.45; color: var(--navy); }
+.dl-note .icon { flex: 0 0 auto; width: 16px; height: 16px; margin-top: 2px; color: var(--gold-d); }
+.dlnotes { list-style: none; margin: 4px 0 14px; padding: 0; display: grid; gap: 6px; }
+.dlnotes li { display: flex; gap: 8px; align-items: center; font-size: .88rem; padding: 8px 12px; background: var(--c-tes-bg); border-radius: 10px; color: var(--navy); }
+.dlnotes .icon { width: 15px; height: 15px; color: var(--c-tes); flex: 0 0 auto; }

@@ -628,7 +628,7 @@ function register(router) {
     const items = String(form.items || '').split(/\r?\n/).map((x) => x.replace(/\s+/g, ' ').trim().slice(0, 80)).filter(Boolean).slice(0, 12);
     const statement = String(form.statement || '').replace(/\r/g, '').trim().slice(0, 1500);
     const o = siteOver();
-    o.delivery = { ...(c.delivery || {}), items: items.length ? items : c.delivery?.items || [], statement: statement || c.delivery?.statement || '', keepDays: Math.min(Math.max(Number.parseInt(form.keepDays, 10) || 90, 7), 730) };
+    o.delivery = { ...(c.delivery || {}), items: items.length ? items : c.delivery?.items || [], statement: statement || c.delivery?.statement || '', keepDays: Math.min(Math.max(Number.parseInt(form.keepDays, 10) || 90, 7), 730), purgeDays: Math.min(Math.max(Number.parseInt(form.purgeDays, 10) || 0, 0), 365) };
     o.production = { ...(c.production || {}), checkDays: Math.min(Math.max(Number.parseInt(form.checkDays, 10) || 10, 1), 120) };
     saveOver(o);
     setFlash(req, { message: 'Teslim ayarları kaydedildi.', type: 'success' });

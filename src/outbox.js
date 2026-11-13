@@ -12,9 +12,9 @@ const { dueReminders } = require('./routes/api');
 const LABELS = {
   sozlesme: 'Sözleşme onaya sunuldu', sozlesmeOnay: 'Sözleşme onaylandı', gorevYarin: 'Yarınki görevler', kapora: 'Kapora hatırlatma', fotograflar: 'Seçim fotoğrafları hazır', teslim: 'Teslim edildi',
   plan: 'Çekim planı hatırlatması', yorum: 'Yorum isteği', gorev: 'Ekip görevi', ekip: 'Ekip hatırlatması',
-  albumTasarim: 'Albüm tasarımı hazır', albumSiparis: 'Albüm siparişi onayı', yildonumu: 'Yıl dönümü kutlaması',
+  indirildi: 'Fotoğraflar indirildi', albumTasarim: 'Albüm tasarımı hazır', albumSiparis: 'Albüm siparişi onayı', yildonumu: 'Yıl dönümü kutlaması',
 };
-const KEY_RE = /^(sozlesme|sozlesmeonay|kapora|gorevyarin|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|albumsiparis|yildonumu):\d+(:[\w-]+)*$/;
+const KEY_RE = /^(sozlesme|sozlesmeonay|kapora|gorevyarin|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|albumsiparis|yildonumu|indirildi):\d+(:[\w-]+)*$/;
 
 // Yıl dönümü için esas tarih: "Düğün" etkinliği, yoksa çiftin ana tarihi
 function anniversaryBase(c) {
@@ -59,6 +59,9 @@ function list() {
       if (years >= 1 && late >= 0 && late <= (Number(require('./content').getWhatsapp().kurallar?.yildonumuGunSonra) || 7)) {
         add('yildonumu', `yildonumu:${c.id}:${years}`, who, c.phone, 'yildonumu', { ad: c.name, yil: years, link: `${require('./config').siteUrl}/talep` });
       }
+    }
+    for (const r of Object.values(require('./purge').statusFor(c))) {
+      if (r.due_on && !r.done_at && recent(r.downloaded_at, 3)) add('indirildi', `indirildi:${c.id}:${r.kind}:${r.due_on.replace(/-/g, '')}`, who, c.phone, 'indirildi', { ad: c.name, tarih: r.dueText });
     }
     if (c.stage >= last && recent(c.stage_changed_at, 7)) add('teslim', `teslim:${c.id}`, who, c.phone, db.videoCount(c.id) > 0 ? 'teslimVideo' : 'teslim', { ad: c.name, link });
   }

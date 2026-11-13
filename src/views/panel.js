@@ -437,6 +437,14 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
 }
 
 // Fotoğraflar: galeri, albüm seçimi, indirme
+// İndirme sonrası orijinal silme notu (çifte)
+function purgeNote(couple, kind) {
+  const r = require('../purge').statusFor(couple)[kind];
+  if (!r || !r.due_on) return '';
+  if (r.done_at) return h`<p class="dl-note">${icon('alert')}<span>Orijinal boyuttaki dosyalar sunucudan silindi; indirmeler artık ekran boyutunda (en fazla 2400 px). Tam boy dosyalar için bize yazın.</span></p>`;
+  return h`<p class="dl-note">${icon('clock')}<span>İndirdiğiniz için teşekkürler. Orijinal boyuttaki dosyalar <strong>${r.dueText}</strong> tarihinde sunucudan silinecek; küçük halleri panelde kalır. İndirmenin tamamlandığından emin olun.</span></p>`;
+}
+
 function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount, view, cover = null, events = [], galleries = [], gal = null, csrf, flash: f }) {
   const multi = galleries.length > 1;
   const isEdited = view === 'edited';
@@ -461,6 +469,7 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
         <h${cover ? '2' : '1'} class="panel-section__title" id="gallery-title">Fotoğraflarınız</h${cover ? '2' : '1'}>
         <p class="muted">Renk ve ışık düzenlemesi yapılmış, teslim edilen fotoğraflarınız.</p>
         <div class="dl-row"><a class="btn btn--primary btn--sm" href="/panel/indir?g=duzenli" download>${icon('download')}Tümünü indir (${editedCount})</a></div>
+        ${purgeNote(couple, 'duzenli')}
       </div>
       ${sets}
       <ul class="tiles tiles--wall" data-gallery data-wall>
@@ -497,6 +506,7 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
           <a class="btn btn--text btn--sm" href="/panel/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>
           ${favCount ? h`<a class="btn btn--text btn--sm" href="/panel/indir?g=fav" download>${icon('download')}Seçimimi indir (${favCount})</a>` : ''}
         </div>
+        ${purgeNote(couple, 'secim')}
       </div>` : ''}
       ${totalCount && !couple.album_locked ? h`<div class="selpill" data-selpill hidden>
         <a class="selpill__count" href="/panel/fotograflar?g=fav"><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 35} seçildi</a>
