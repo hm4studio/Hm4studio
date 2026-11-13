@@ -246,6 +246,7 @@ for (const [col, def] of [
 addColumn('couples', 'delivery_only', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('couples', 'season', "TEXT NOT NULL DEFAULT ''");
 addColumn('couples', 'dlv_video', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('couples', 'album_draft', 'TEXT'); // albüm tasarımcısı taslağı (JSON)
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS leads (
@@ -599,6 +600,7 @@ module.exports = {
   approveOrder: (coupleId) => q("UPDATE album_orders SET state = 'onaylandi', approved_at = datetime('now'), updated_at = datetime('now') WHERE couple_id = ?").run(coupleId),
   setOrderStamp: (coupleId, col, on) => { if (['lab_at', 'arrived_at'].includes(col)) q(`UPDATE album_orders SET ${col} = ${on ? "datetime('now')" : 'NULL'} WHERE couple_id = ?`).run(coupleId); },
   setCouplePhone: (id, phone) => q('UPDATE couples SET phone = ? WHERE id = ?').run(phone || null, id),
+  setAlbumDraft: (id, json) => q('UPDATE couples SET album_draft = ? WHERE id = ?').run(json || null, id),
   setDeliveryOnly: (id, x) => q('UPDATE couples SET delivery_only = ?, season = ?, event_type = ?, dlv_video = ?, album_limit = ? WHERE id = ?').run(x.on ? 1 : 0, x.season || '', x.eventType || '', x.video ? 1 : 0, x.limit, id),
   addTask: (x) => Number(q('INSERT INTO tasks(couple_id, check_id, title, member_id, due_date) VALUES(?, ?, ?, ?, ?)').run(x.coupleId || null, x.checkId || null, x.title, x.memberId || null, x.dueDate).lastInsertRowid),
   getTask: (id) => q('SELECT * FROM tasks WHERE id = ?').get(id),

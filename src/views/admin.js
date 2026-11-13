@@ -967,6 +967,7 @@ function albumDesignSection(couple, pages, base, csrf) {
       <span class="state state--${st === 'onaylandi' ? 'ok' : st === 'degisiklik' ? 'soon' : 'upcoming'}">${ALBUM_STATE[st]}${couple.album_design_round > 1 ? ` · ${couple.album_design_round}. tur` : ''}</span>
     </div>
     <p class="muted">Tasarım sayfalarını (JPG) yükleyin ve “Çifte gönder”e basın. Çift her sayfayı “beğendim” ya da “değişiklik istiyorum + not” ile işaretler. Düzelttiğiniz sayfayı <strong>aynı dosya adıyla</strong> yüklerseniz eskisinin yerine geçer ve yeniden onaya düşer.</p>
+    <div class="ad-designer"><p><strong>Albüm tasarımcısı</strong><br><span class="muted">Seçilen kareleri yapraklara dizin; düzenlenmiş halleri kendiliğinden kullanılır.</span></p><a class="btn btn--primary btn--sm" href="${base}/tasarimci">${icon('grid')}Tasarımcıda aç</a></div>
     ${pages.length ? h`<p class="ad-sum">${pages.length} sayfa · <span class="is-ok">${n('onay')} beğenildi</span> · <span class="is-due">${n('degisiklik')} değişiklik</span> · ${n('bekliyor')} incelenmedi</p>` : ''}
     <form class="uploader" data-uploader data-endpoint="${base}/album-sayfa">
       <label class="uploader__drop">
