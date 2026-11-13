@@ -50,7 +50,7 @@ function contractDoc(c, { k, data, back }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${data.title} ${data.randevuNo || ''} — ${data.musteri}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=92">
+<link rel="stylesheet" href="/css/style.css?v=93">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>

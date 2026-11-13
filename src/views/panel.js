@@ -263,9 +263,16 @@ function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
     ${body}
   </div>
   ${config.openaiKey ? aiBot(c) : ''}`;
-  const tabs = pagesFor(couple).map((p) => ({ href: p.href, label: p.label, icon: p.icon, active: p.key === page }));
+  const tabs = pagesFor(couple).map((p) => ({ href: p.href, label: p.label === 'Durum' ? 'Ana sayfa' : p.label, icon: p.key === 'durum' ? 'home' : p.icon, active: p.key === page }));
   const title = (pagesFor(couple).find((p) => p.key === page) || {}).label || 'Panelim';
-  return panelLayout(c, { title, csrf, nav, body: content, scripts: config.openaiKey ? [...scripts, '/js/assistant.js?v=1'] : scripts, tabs, home: '/panel' });
+  // Bilgisayarda soldaki lacivert menü (telefonda alttaki menü)
+  const albumWait = couple.album_design_state === 'hazir';
+  const side = h`<aside class="cside" aria-label="Panel menüsü">
+    <a class="cside__brand" href="/panel">HM4 STUDIO</a>
+    <nav class="cside__nav">${tabs.map((t) => h`<a href="${t.href}"${t.active ? raw(' aria-current="page"') : ''}>${icon(t.icon)}<span>${t.label}</span>${t.href === '/panel/album' && albumWait ? h`<b class="cside__n">!</b>` : ''}</a>`)}</nav>
+    <div class="cside__me"><span class="cside__av">${String(couple.name).trim().charAt(0)}</span><span class="cside__who"><strong>${couple.name}</strong></span>${logoutForm(csrf, 'Çıkış')}</div>
+  </aside>`;
+  return panelLayout(c, { title, csrf, nav, body: content, scripts: config.openaiKey ? [...scripts, '/js/assistant.js?v=1'] : scripts, tabs, home: '/panel', side });
 }
 
 // Durum sayfasının en üstündeki "sıradaki adım" kartı: çiftin şu an yapması gereken tek şey
@@ -331,74 +338,84 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
         ${couple.delivery_only ? ([couple.event_type, couple.season].filter(Boolean).length || couple.delivered_at ? h`<p class="chero__meta"><b>${[couple.event_type, couple.season].filter(Boolean).join(' · ')}</b>${couple.delivered_at ? ' · Teslim edildi' : ''}</p>` : '') : mainEv ? h`<p class="chero__meta"><b>${formatDate(mainEv.event_date)}</b>${place ? ` · ${place}` : ''}${couple.delivered_at ? ' · Teslim edildi' : ''}</p>` : ''}
       </div>
     </section>
-    <section class="now${step.href || step.done ? ' now--todo' : ''}" aria-labelledby="now-title">
+    <div class="cgrid">
+    <section class="cnext${step.done ? ' is-done' : ''}" aria-labelledby="now-title">
+      <div class="cnext__body">
+        <p class="cnext__k">${step.eyebrow || (step.href ? 'Sıradaki adım' : 'Durum')}</p>
+        <h1 class="cnext__t" id="now-title">${step.title}</h1>
+        <p class="cnext__p">${step.text}</p>
+      </div>
       ${step.ring ? (() => {
         const [n, of] = step.ring;
         const C = 201.06;
-        return h`<div class="ring" role="img" aria-label="${n} / ${of} kare seçildi"><svg viewBox="0 0 74 74" aria-hidden="true"><circle class="ring__bg" cx="37" cy="37" r="32"/><circle class="ring__fg" cx="37" cy="37" r="32" stroke-dasharray="${C}" stroke-dashoffset="${(C * (1 - Math.min(n / (of || 1), 1))).toFixed(1)}"/></svg><b>${n}/${of}</b></div>`;
-      })() : h`<span class="now__ic" aria-hidden="true">${icon(step.done ? 'gift' : step.href ? 'right' : 'check')}</span>`}
-      <div class="now__body">
-        <p class="now__eyebrow">${step.eyebrow || (step.href ? 'Sıradaki adım' : 'Durum')}</p>
-        <h1 class="now__title" id="now-title">${step.title}</h1>
-        <p class="now__text">${step.text}</p>
-      </div>
-      ${step.href ? h`<a class="btn btn--primary" href="${step.href}"${step.download ? raw(' download') : ''}>${step.download ? icon('download') : ''}${step.btn}${step.download ? '' : icon('right')}</a>` : ''}
+        return h`<div class="ring cnext__ring" role="img" aria-label="${n} / ${of} kare seçildi"><svg viewBox="0 0 74 74" aria-hidden="true"><circle class="ring__bg" cx="37" cy="37" r="32"/><circle class="ring__fg" cx="37" cy="37" r="32" stroke-dasharray="${C}" stroke-dashoffset="${(C * (1 - Math.min(n / (of || 1), 1))).toFixed(1)}"/></svg><b>${n}/${of}</b></div>`;
+      })() : ''}
+      ${step.href ? h`<a class="cnext__btn" href="${step.href}"${step.download ? raw(' download') : ''}>${step.download ? icon('download') : ''}${step.btn}${step.download ? '' : icon('right')}</a>` : ''}
     </section>
 
-    <section class="panel-section croad" id="durum" aria-labelledby="road-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="road-title">${road.finished ? 'Tamamlandı' : 'Yolculuğunuz'}</h2>${road.finished ? '' : h`<span class="panel-section__note">${road.list.filter((x) => x.state === 'done').length} / ${road.list.length} adım tamam</span>`}</div>
-      ${journey.road(road, { title: 'İşinizin yolu' })}
-      ${(couple.video_status && !road.finished) || couple.due_date || couple.stage_note ? h`<p class="croad__note">${[
-        couple.video_status && !road.finished ? h`Video: <strong>${couple.video_status}</strong>` : '',
-        couple.due_date && !road.finished ? h`Tahmini teslim: <strong>${formatDate(couple.due_date)}</strong>` : '',
-      ].filter(Boolean).map((x, i) => h`${i ? ' · ' : ''}${x}`)}${couple.stage_note ? h`<span class="croad__msg">${couple.stage_note}</span>` : ''}</p>` : ''}
+    ${(() => {
+      // Hızlı geçiş kutuları: her biri o bölümün bir cümlelik durumunu gösterir
+      const limit = couple.album_limit || 35;
+      const tiles = [];
+      if (totalCount || editedCount || !couple.delivery_only) tiles.push({ href: '/panel/fotograflar', ic: 'image', t: 'Fotoğraflar', s: editedCount ? `${editedCount} düzenlenmiş fotoğraf` : totalCount ? `${totalCount} fotoğraf · ${favCount} seçili` : 'Çekimden sonra burada' });
+      if (!couple.delivery_only && (totalCount || couple.album_design_state)) {
+        const st = couple.album_design_state;
+        const rev = st === 'hazir' ? require('../db').revisedAlbumPages(couple.id).length : 0;
+        tiles.push({ href: st ? '/panel/album' : '/panel/fotograflar?g=fav', ic: 'book', t: 'Albüm', badge: st === 'hazir' ? (rev || '!') : '',
+          s: st === 'hazir' ? 'Onayınızı bekliyor' : st === 'degisiklik' ? 'Değişiklikler yapılıyor' : st === 'onaylandi' ? 'Tasarım onaylandı' : couple.album_locked ? 'Seçim tamam · tasarımda' : `${favCount} / ${limit} kare seçildi` });
+      }
+      if (couple.show_video !== false || videoCount) tiles.push({ href: '/panel/video', ic: 'play', t: 'Video', s: videoCount ? `${videoCount} video hazır` : couple.video_status ? `${couple.video_status}${couple.due_date ? ` · ${formatDate(couple.due_date)}` : ''}` : 'Hazırlanıyor' });
+      if (docs.length) { const wait = docs.filter((d) => d.btn === 'Onayla').length; tiles.push({ href: '#c-belgeler', ic: 'folder', t: 'Belgeler', badge: wait || '', s: wait ? 'Onayınızı bekleyen belge var' : docs.map((d) => d.title).slice(0, 2).join(', ') }); }
+      return h`<nav class="ctiles" aria-label="Bölümler">${tiles.map((x) => h`<a class="ctile" href="${x.href}">${x.badge ? h`<span class="ctile__b">${x.badge}</span>` : ''}<span class="ctile__i">${icon(x.ic)}</span><b>${x.t}</b><span>${x.s}</span></a>`)}</nav>`;
+    })()}
+
+    <section class="cjour" id="c-durum" aria-labelledby="road-title">
+      <div class="chd"><h2 id="road-title">${road.finished ? 'Tamamlandı' : 'Yolculuğunuz'}</h2>${road.finished ? '' : h`<span>${road.list.filter((x) => x.state === 'done').length} / ${road.list.length} adım</span>`}</div>
+      <div class="cbox cjour__box">
+        <ol class="cjour__bar" aria-label="İşinizin yolu">${road.list.map((x) => h`<li class="is-${x.state}" title="${x.label}"><span class="sr-only">${x.label}: ${x.state === 'done' ? 'tamamlandı' : x.state === 'now' ? 'şu an' : 'sırada'}</span></li>`)}</ol>
+        <ul class="cjour__steps">${road.list.map((x) => h`<li class="is-${x.state}"><b>${x.label}</b><span>${x.sub || ''}</span></li>`)}</ul>
+        ${(couple.video_status && !road.finished) || couple.due_date || couple.stage_note ? h`<p class="cjour__note">${[
+          couple.video_status && !road.finished ? h`Video: <strong>${couple.video_status}</strong>` : '',
+          couple.due_date && !road.finished ? h`Tahmini teslim: <strong>${formatDate(couple.due_date)}</strong>` : '',
+        ].filter(Boolean).map((x, i) => h`${i ? ' · ' : ''}${x}`)}${couple.stage_note ? h`<span class="cjour__msg">${couple.stage_note}</span>` : ''}</p>` : ''}
+      </div>
     </section>
 
-    ${totalCount || editedCount ? h`<section class="panel-section cstrip" aria-labelledby="ph-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="ph-title">Fotoğraflarınız</h2></div>
-      ${strip.length ? h`<a class="cstrip__row" href="/panel/fotograflar">${strip.map((id, i) => h`<span class="cstrip__ph"><img src="/m/${id}/thumb?v=${revOf(id)}" alt="" loading="lazy" decoding="async">${i === strip.length - 1 && (editedCount || totalCount) > strip.length + 1 ? h`<b>+${(editedCount || totalCount) - strip.length - 1}</b>` : ''}</span>`)}</a>` : ''}
-      <div class="cstrip__foot">
-        ${editedCount ? h`<a class="cstrip__n" href="/panel/fotograflar?g=duzenli"><b>${editedCount}</b>düzenlenmiş</a>` : ''}
-        ${totalCount ? h`<a class="cstrip__n" href="/panel/fotograflar?g=secim"><b>${totalCount}</b>seçim fotoğrafı</a>` : ''}
-        ${totalCount ? h`<a class="cstrip__n" href="/panel/fotograflar?g=fav"><b>${favCount}</b>albüme seçildi</a>` : ''}
-        ${videoCount ? h`<a class="cstrip__n" href="/panel/video"><b>${videoCount}</b>video</a>` : ''}
-        <a class="cstrip__go" href="/panel/fotograflar">Galeriyi aç${icon('right')}</a>
-      </div>
-    </section>` : videoCount ? h`<div class="cquick"><a class="cquick__item cq--vid" href="/panel/video"><span class="ic">${icon('play')}</span><span class="cquick__num">${videoCount}</span><span>video</span></a></div>` : ''}
-
-    <div class="ctwo">
-    ${events.length ? h`<section class="panel-section" id="randevular" aria-labelledby="ev-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="ev-title">Randevularınız</h2></div>
-      <ul class="jobs">${events.map((e) => {
+    ${events.length ? h`<section class="cev" id="c-randevu" aria-labelledby="ev-title">
+      <div class="chd"><h2 id="ev-title">Randevularınız</h2></div>
+      <ul class="cbox clist">${events.map((e) => {
         const dt = e.event_date ? new Date(`${e.event_date}T12:00:00`) : null;
-        return h`<li class="job${e.event_date && e.event_date < new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10) ? ' is-past' : ''}">
-          <div class="job__date" aria-hidden="true">${dt ? h`<span class="job__day">${dt.getDate()}</span><span class="job__mon">${dt.toLocaleDateString('tr-TR', { month: 'short' })}</span>` : h`<span class="job__day">—</span>`}</div>
-          <div class="job__main"><strong>${e.event_type || 'Etkinlik'}${e.start_time ? ` · ${e.start_time}` : ''}</strong>
-            <span class="muted">${[e.venue, e.city].filter(Boolean).join(', ')}</span></div>
+        const past = e.event_date && e.event_date < new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+        return h`<li class="citem${past ? ' is-past' : ''}">
+          <span class="citem__d" aria-hidden="true">${dt ? h`<b>${dt.getDate()}</b><small>${dt.toLocaleDateString('tr-TR', { month: 'short' })}</small>` : h`<b>—</b>`}</span>
+          <span class="citem__m"><strong>${e.event_type || 'Etkinlik'}${e.start_time ? ` · ${e.start_time}` : ''}</strong><span>${[e.venue, e.city].filter(Boolean).join(', ') || (past ? 'Tamamlandı' : '')}</span></span>
         </li>`;
       })}</ul>
     </section>` : ''}
+    </div>
 
+    <div class="cgrid cgrid--2">
     ${card && card.total ? (() => {
       const kalan = Math.max(card.total - card.paid, 0);
       const tl = (n) => `${Number(n || 0).toLocaleString('tr-TR')} ₺`;
-      return h`<section class="panel-section" id="odeme" aria-labelledby="pay-title">
-        <div class="panel-section__head"><h2 class="panel-section__title" id="pay-title">Ödeme</h2></div>
-        <dl class="cpay">
-          <div><dt>Toplam</dt><dd>${tl(card.total)}</dd></div>
-          <div><dt>Ödenen</dt><dd>${tl(card.paid)}</dd></div>
-          <div><dt>Kalan</dt><dd class="${kalan ? 'is-due' : 'is-done'}">${kalan ? tl(kalan) : 'Ödendi'}</dd></div>
-        </dl>
+      return h`<section id="c-odeme" aria-labelledby="pay-title">
+        <div class="chd"><h2 id="pay-title">Ödeme</h2></div>
+        <div class="cbox cpay2">
+          <p class="cpay2__k">${kalan ? 'Kalan ödeme' : 'Ödeme'}</p>
+          <p class="cpay2__big${kalan ? '' : ' is-done'}">${kalan ? tl(kalan) : 'Tamamlandı'}</p>
+          <p class="cpay2__s">Toplam ${tl(card.total)} · ödenen ${tl(card.paid)}</p>
+          <progress class="cpay2__bar" max="100" value="${Math.round(Math.min(card.paid / card.total, 1) * 100)}">%${Math.round(Math.min(card.paid / card.total, 1) * 100)}</progress>
+        </div>
       </section>`;
     })() : ''}
 
-    ${docs.length ? h`<section class="panel-section" id="belgeler" aria-labelledby="docs-title">
-      <div class="panel-section__head"><h2 class="panel-section__title" id="docs-title">Belgeleriniz</h2></div>
-      <ul class="docs">${docs.map((d) => h`<li>
-        <span class="dic dic--${d.k}">${icon(d.ic)}</span>
-        <span class="docs__main"><strong>${d.title}</strong><span class="${d.ok ? 'docs__ok' : 'muted'}">${d.sub}</span></span>
-        <a class="btn btn--outline btn--sm" href="${d.href}">${d.btn || h`${icon('download')}İndir`}</a>
-      </li>`)}</ul>
+    ${docs.length ? h`<section id="c-belgeler" aria-labelledby="docs-title">
+      <div class="chd"><h2 id="docs-title">Belgeleriniz</h2></div>
+      <ul class="cbox clist">${docs.map((d) => h`<li><a class="citem" href="${d.href}">
+        <span class="citem__i${d.ok ? ' is-ok' : d.btn === 'Onayla' ? ' is-wait' : ''}">${icon(d.ic)}</span>
+        <span class="citem__m"><strong>${d.title}</strong><span class="${d.btn === 'Onayla' ? 'is-wait' : ''}">${d.sub}</span></span>
+        ${d.btn === 'Onayla' ? h`<span class="citem__tag">Onayla</span>` : ''}${icon('right')}
+      </a></li>`)}</ul>
     </section>` : ''}
     </div>
 
