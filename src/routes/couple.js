@@ -236,6 +236,17 @@ function register(router) {
     const pages = db.listAlbumPages(couple.id);
     const changes = pages.filter((p) => p.status === 'degisiklik').length;
     const pending = pages.filter((p) => p.status === 'bekliyor').length;
+    // Düzeltme turu: düzeltilen sayfaları tek dokunuşla beğen ve albümü onayla (diğer sayfalar zaten beğenilmişse)
+    if (form.karar === 'duzeltme-onay') {
+      const rev = pages.filter((p) => p.version > 1 && p.status === 'bekliyor');
+      const others = pages.filter((p) => !rev.includes(p));
+      if (!rev.length || others.some((p) => p.status !== 'onay')) { setFlash(req, { message: 'Önce tüm sayfaları inceleyin.', type: 'error' }); return redirect(res, '/panel/album'); }
+      rev.forEach((p) => db.reviewAlbumPage(p.id, 'onay', p.note));
+      db.setAlbumDesign(couple.id, 'onaylandi');
+      events.albumDesignReviewed(couple.id, true, 0);
+      setFlash(req, { message: 'Albüm tasarımınızı onayladınız. Teşekkür ederiz!', type: 'success' });
+      return redirect(res, '/panel/album');
+    }
     if (form.karar === 'onay') {
       if (pending || changes) { setFlash(req, { message: 'Onaylamak için tüm sayfaları “Beğendim” olarak işaretleyin.', type: 'error' }); return redirect(res, '/panel/album'); }
       db.setAlbumDesign(couple.id, 'onaylandi');

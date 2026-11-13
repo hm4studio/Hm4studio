@@ -12,7 +12,7 @@ const { dueReminders } = require('./routes/api');
 const LABELS = {
   sozlesme: 'Sözleşme onaya sunuldu', sozlesmeOnay: 'Sözleşme onaylandı', gorevYarin: 'Yarınki görevler', kapora: 'Kapora hatırlatma', fotograflar: 'Seçim fotoğrafları hazır', teslim: 'Teslim edildi',
   plan: 'Çekim planı hatırlatması', yorum: 'Yorum isteği', gorev: 'Ekip görevi', ekip: 'Ekip hatırlatması',
-  indirildi: 'Fotoğraflar indirildi', albumTasarim: 'Albüm tasarımı hazır', albumSiparis: 'Albüm siparişi onayı', yildonumu: 'Yıl dönümü kutlaması',
+  indirildi: 'Fotoğraflar indirildi', albumTasarim: 'Albüm tasarımı hazır', albumRevize: 'Albüm değişiklikleri yapıldı', albumSiparis: 'Albüm siparişi onayı', yildonumu: 'Yıl dönümü kutlaması',
 };
 const KEY_RE = /^(sozlesme|sozlesmeonay|kapora|gorevyarin|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|albumsiparis|yildonumu|indirildi):\d+(:[\w-]+)*$/;
 
@@ -47,7 +47,10 @@ function list() {
     const sel = db.listPhotos(c.id, 'secim');
     const firstUp = sel.map((p) => p.uploaded_on).filter(Boolean).sort()[0];
     if (sel.length && !c.album_locked && recent(firstUp, 7)) add('fotograflar', `fotograflar:${c.id}`, who, c.phone, 'fotograflar', { ad: c.name, link });
-    if (c.album_design_state === 'hazir' && recent(c.album_design_at, 7)) add('albumTasarim', `albumtasarim:${c.id}:${c.album_design_round}`, who, c.phone, 'albumTasarim', { ad: c.name, link: `${link}` });
+    if (c.album_design_state === 'hazir' && recent(c.album_design_at, 7)) {
+      const rev = c.album_design_round > 1 && db.revisedAlbumPages(c.id).length;
+      add(rev ? 'albumRevize' : 'albumTasarim', `albumtasarim:${c.id}:${c.album_design_round}`, who, c.phone, rev ? 'albumRevize' : 'albumTasarim', { ad: c.name, link: `${link}` });
+    }
     const ao = c.album_design_state ? db.getOrder(c.id) : null;
     if (ao && ao.state === 'onay' && recent(ao.sent_at, 7)) add('albumSiparis', `albumsiparis:${c.id}:${ao.round}`, who, c.phone, 'albumSiparis', { ad: c.name, link });
     // Yıl dönümü: düğün tarihinden her yıl sonra, o günden itibaren bir hafta listede kalır

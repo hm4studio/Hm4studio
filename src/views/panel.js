@@ -286,6 +286,8 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
   if (totalCount && !couple.album_locked) return { title: 'Albüm fotoğraflarınızı seçin', text: favCount ? `${favCount} / ${limit} kare seçtiniz. Bitirince “Seçimi tamamladım”a basın.` : `Albümünüz için ${limit} kare seçin: beğendiğiniz fotoğrafın kalbine dokunun.`, href: '/panel/fotograflar?g=secim', btn: favCount ? 'Seçime devam et' : 'Seçime başla', ring: [favCount, limit] };
   const ao = couple.album_design_state ? require('../db').getOrder(couple.id) : null;
   if (ao && ao.state === 'onay') return { title: 'Albüm siparişinizi onaylayın', text: 'Paket, boyut, sayfa, model ve rengi kontrol edin; onayınızdan sonra albümünüz baskıya gider.', href: '/panel/siparis', btn: 'Siparişi aç' };
+  const revised = couple.album_design_state === 'hazir' ? require('../db').revisedAlbumPages(couple.id).length : 0;
+  if (revised) return { title: 'Albüm değişiklikleriniz yapıldı', text: `İstediğiniz değişiklikleri yaptık. Düzeltilen ${revised} sayfayı kontrol edin; beğendiyseniz albümünüzü onaylayın.`, href: '/panel/album#duzeltilen', btn: 'Düzeltilen sayfaları gör' };
   if (couple.album_design_state === 'hazir') return { title: 'Albüm tasarımınızı inceleyin', text: 'Sayfaları tek tek görüp beğendiklerinizi onaylayın, değişiklik istediğiniz sayfaya not bırakın.', href: '/panel/album', btn: 'Albümü aç' };
   const dlOk = require('../access').canDownload(couple);
   if (editedCount) return { title: 'Fotoğraflarınız teslim edildi', text: `${editedCount} düzenlenmiş fotoğrafınızı ${dlOk ? 'görüntüleyip indirebilirsiniz' : 'panelinizde görüntüleyebilirsiniz'}.`, href: '/panel/fotograflar?g=duzenli', btn: 'Fotoğraflara git' };
@@ -543,6 +545,10 @@ function coupleAlbum(c, { couple, pages, csrf, flash: f }) {
   const st = couple.album_design_state;
   const open = st === 'hazir';
   const reviewed = pages.filter((p) => p.status !== 'bekliyor').length;
+  const revised = open ? pages.filter((p) => p.version > 1 && p.status === 'bekliyor') : [];
+  // Düzeltilen sayfalar dışındakilerin hepsi zaten beğenildiyse tek dokunuşla onay verilebilir
+  const quick = revised.length && pages.every((p) => p.status === 'onay' || (p.version > 1 && p.status === 'bekliyor'));
+  const firstRev = revised[0] ? revised[0].id : 0;
   const head = {
     hazir: 'Her sayfayı inceleyin: beğendiyseniz “Beğendim”e, değiştirmek istediğiniz bir şey varsa “Değişiklik istiyorum”a basıp kısaca yazın. Bitince sayfanın altından onaylayın ya da değişiklikleri gönderin.',
     degisiklik: 'Değişiklik isteklerinizi aldık. Düzeltilmiş sayfalar hazır olunca size haber vereceğiz.',
@@ -552,11 +558,20 @@ function coupleAlbum(c, { couple, pages, csrf, flash: f }) {
     <section class="panel-section cpage" aria-labelledby="alb-title">
       <div class="panel-section__head">
         <h1 class="panel-section__title" id="alb-title">Albüm tasarımı</h1>
-        <p class="muted">${head}</p>
+        <p class="muted">${revised.length ? 'Düzeltilen sayfaları kontrol edin; diğer sayfaları daha önce beğenmiştiniz.' : head}</p>
       </div>
+      ${revised.length ? h`<div class="alb-rev">
+        <p class="alb-rev__title">${icon('check')}Değişiklikleriniz yapıldı</p>
+        <p>İstediğiniz değişikliklere göre <strong>${revised.length} sayfayı düzelttik</strong>. Aşağıda “Düzeltildi” etiketiyle işaretli. Kontrol edin; yine bir şey değişsin isterseniz o sayfada “Değişiklik istiyorum”a basın.</p>
+        ${quick ? h`<form method="post" action="/panel/album/gonder" data-confirm="Düzeltilen sayfaları beğendiniz ve albüm tasarımını onaylıyorsunuz. Onaydan sonra albümünüz baskıya hazırlanır. Onaylıyor musunuz?">
+          <input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="karar" value="duzeltme-onay">
+          <button class="btn btn--primary" type="submit">${icon('check')}Düzeltmeleri beğendim, albümü onaylıyorum</button>
+        </form>` : ''}
+        <a class="alb-rev__go" href="#duzeltilen">Düzeltilen sayfalara git ${icon('down')}</a>
+      </div>` : ''}
       ${open ? h`<p class="alb-progress" data-alb-progress>${reviewed} / ${pages.length} sayfa incelendi</p>` : ''}
       <ol class="alb-pages" data-album data-total="${pages.length}">
-        ${pages.map((p, i) => h`<li class="alb-page" data-alb-page="${p.id}" data-status="${p.status}">
+        ${pages.map((p, i) => h`<li class="alb-page${open && p.version > 1 && p.status === 'bekliyor' ? ' is-rev' : ''}" data-alb-page="${p.id}" data-status="${p.status}"${p.id === firstRev ? raw(' id="duzeltilen"') : ''}>
           <a class="alb-page__img" href="/m/a/${p.id}/display?v=${p.version}" data-lb data-caption="Sayfa ${i + 1}"><img src="/m/a/${p.id}/display?v=${p.version}" alt="Albüm sayfası ${i + 1}" loading="lazy" decoding="async"></a>
           <div class="alb-page__bar">
             <span class="alb-page__num">Sayfa ${i + 1}${p.version > 1 && p.status === 'bekliyor' ? h` <span class="alb-page__new">Düzeltildi</span>` : ''}</span>

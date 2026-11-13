@@ -3203,3 +3203,12 @@ body.is-sheet { overflow: hidden; }
 .dz-snap--x { top: 0; bottom: 0; width: 0; border-left: 1px solid #e2508a; }
 .dz-snap--y { left: 0; right: 0; height: 0; border-top: 1px solid #e2508a; }
 .dz-snap.is-gap { border-color: #2f9d6a; border-style: dashed; }
+.alb-rev { margin: 0 0 18px; padding: 16px 18px; border: 1px solid #cfdccb; border-radius: var(--radius); background: #f3f7f1; }
+.alb-rev p { margin: 0 0 10px; }
+.alb-rev__title { display: flex; align-items: center; gap: 8px; font-family: var(--serif); font-weight: 600; font-size: 1.35rem; color: var(--success); }
+.alb-rev__title svg { width: 18px; height: 18px; color: var(--success); }
+.alb-rev form { margin: 4px 0 10px; }
+.alb-rev__go { display: inline-flex; align-items: center; gap: 4px; font-size: .9rem; }
+.alb-rev__go svg { width: 14px; height: 14px; }
+.alb-page.is-rev { outline: 2px solid #9fbf9f; outline-offset: 4px; }
+#duzeltilen { scroll-margin-top: 90px; }

@@ -772,7 +772,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=91">
+<link rel="stylesheet" href="/css/style.css?v=92">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -908,7 +908,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=91"></head>
+  <link rel="stylesheet" href="/css/style.css?v=92"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1500,6 +1500,7 @@ const MESSAGE_INFO = [
   ['yorum', 'Yorum isteği', 'Teslimden 7 gün sonra.', ['ad', 'link']],
   ['teklif', 'Fiyat teklifi', 'Teklif sayfasından “WhatsApp’tan gönder” ya da “Mesajı kopyala” ile.', ['ad', 'etkinlik', 'link']],
   ['albumTasarim', 'Albüm tasarımı hazır', 'Albüm sayfalarını çifte gönderdiğinizde.', ['ad', 'link']],
+  ['albumRevize', 'Albüm değişiklikleri yapıldı', 'Çiftin istediği değişiklikleri yapıp düzeltilen sayfaları gönderdiğinizde.', ['ad', 'link']],
   ['indirildi', 'Fotoğraflar indirildi', 'Çift fotoğrafları toplu indirince; orijinallerin silineceği günle.', ['ad', 'tarih']],
   ['panelTeslim', 'Panel giriş bilgisi (yalnız teslim)', 'Yalnız teslim çiftini eklediğinizde giriş bilgileri.', ['ad', 'link', 'kod', 'sifre']],
   ['albumSiparis', 'Albüm siparişi onayı', 'Albüm sipariş formunu çifte onaya gönderdiğinizde.', ['ad', 'link']],

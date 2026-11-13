@@ -1153,11 +1153,26 @@ function register(router) {
     if (!form) return;
     const couple = getCoupleOr404(params.id);
     if (!db.listAlbumPages(couple.id).length) throw new HttpError(400, 'Önce albüm sayfalarını yükleyin.');
-    db.setAlbumDesign(couple.id, 'hazir', true);
-    events.albumDesignReady(couple.id);
-    setFlash(req, { message: `Albüm tasarımı ${couple.name} çiftine gönderildi.${wa.autoSend() ? '' : ' WhatsApp mesajı Panel › Gönderilecek mesajlar listesinde.'}`, type: 'success' });
+    const revised = sendAlbum(couple);
+    setFlash(req, { message: `${revised ? `Düzeltilen ${revised} sayfa` : 'Albüm tasarımı'} ${couple.name} çiftinin onayına gönderildi.${wa.autoSend() ? '' : ' WhatsApp mesajı Panel › Gönderilecek mesajlar listesinde.'}`, type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}#album`);
   });
+  // Tasarımcıdan aktarım bitince doğrudan çiftin onayına gönderilir
+  router.post('/admin/ciftler/:id/album-gonder.json', async (req, res, { params }) => {
+    apiGuard(req);
+    const couple = getCoupleOr404(params.id);
+    if (!db.listAlbumPages(couple.id).length) throw new HttpError(400, 'Önce albüm sayfalarını yükleyin.');
+    const revised = sendAlbum(couple);
+    setFlash(req, { message: `${revised ? `Düzeltilen ${revised} sayfa` : 'Albüm tasarımı'} ${couple.name} çiftinin onayına gönderildi; çifte bildirim gitti.${wa.autoSend() ? '' : ' WhatsApp mesajı Panel › Gönderilecek mesajlar listesinde.'}`, type: 'success' });
+    json(res, { ok: true, revised });
+  });
+  // Çifte gönder: düzeltme turuysa (değişiklik istenmiş sayfalar yeniden yüklendi) çifte "değişiklikler yapıldı" bildirimi gider
+  function sendAlbum(couple) {
+    const revised = couple.album_design_round > 0 ? db.revisedAlbumPages(couple.id).length : 0;
+    db.setAlbumDesign(couple.id, 'hazir', true);
+    events.albumDesignReady(couple.id, revised);
+    return revised;
+  }
 
   router.post('/admin/ciftler/:id/asama', async (req, res, { params }) => {
     const form = await formGuard(req, res);

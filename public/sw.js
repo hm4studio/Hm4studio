@@ -9,7 +9,7 @@ const STATIC_CACHE = `${VERSION}-static`;
 const MEDIA_CACHE = `${VERSION}-media`;
 const PRECACHE = [
   '/offline.html',
-  '/css/style.css?v=91',
+  '/css/style.css?v=92',
   '/js/pwa.js?v=3',
   '/images/icon-192.png',
   '/images/favicon.svg',

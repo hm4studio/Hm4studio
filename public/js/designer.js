@@ -1206,7 +1206,7 @@
     const stale = S.albumPages.map((p) => p.name).filter((nm) => { const m = /^Yaprak (\d{2,3})\.jpg$/.exec(nm); return m && +m[1] > list.length; });
     if (!todo.length && !stale.length) { status('Değişen yaprak yok; çiftin onayındaki sayfalar güncel.'); return; }
     const keep = items.length - todo.length;
-    const msg = `${todo.length} yaprak aktarılacak${keep ? `, ${keep} yaprak aynı kaldığı için onayı korunacak` : ''}${stale.length ? `, artık olmayan ${stale.length} eski yaprak silinecek` : ''}. Devam edilsin mi?`;
+    const msg = `${todo.length} yaprak aktarılıp çiftin onayına gönderilecek${keep ? `, ${keep} yaprak aynı kaldığı için onayı korunacak` : ''}${stale.length ? `, artık olmayan ${stale.length} eski yaprak silinecek` : ''}. Çifte bildirim gider. Devam edilsin mi?`;
     if (!window.confirm(msg)) return;
     busy(true);
     try {
@@ -1234,7 +1234,9 @@
         Object.keys(S.sent).forEach((k) => { if (+k > list.length) delete S.sent[k]; });
       }
       await saveNow();
-      status('Aktarıldı. Çift sayfasına yönlendiriliyorsunuz; oradan "Çifte gönder"e basın.');
+      // Çiftin onayına gönder (düzeltme turuysa çifte "değişiklikleriniz yapıldı" bildirimi gider)
+      await fetch(`${base}/album-gonder.json`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: '{}' });
+      status('Aktarıldı ve çiftin onayına gönderildi.');
       sending = false;
       window.location.href = `${base}#album`;
     } catch { await saveNow(); status('Aktarım yarıda kaldı; yeniden deneyin (aktarılanlar tekrar gitmez).'); busy(false); }

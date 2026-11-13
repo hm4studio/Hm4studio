@@ -174,8 +174,10 @@ function contractSent(coupleId, contractId) {
   safePush(() => push.toCouple(coupleId, { title: 'Sözleşmeniz onayınıza sunuldu', body: 'Hizmet sözleşmenizi panelinizden inceleyip onaylayabilirsiniz.', url: '/panel/sozlesme', tag: 'sozlesme' }));
 }
 // Albüm tasarımı: stüdyo çifte gönderdi / çift onayladı ya da değişiklik istedi (telefon bildirimi; WhatsApp "Gönderilecek mesajlar"da)
-function albumDesignReady(coupleId) {
-  safePush(() => push.toCouple(coupleId, { title: 'Albüm tasarımınız hazır', body: 'Sayfaları panelinizden inceleyip onaylayabilir ya da değişiklik isteyebilirsiniz.', url: '/panel/album', tag: 'album-tasarim' }));
+function albumDesignReady(coupleId, revised = 0) {
+  safePush(() => push.toCouple(coupleId, revised
+    ? { title: 'Albüm değişiklikleriniz yapıldı', body: `İstediğiniz değişiklikleri yaptık. Düzeltilen ${revised} sayfayı kontrol edip beğendiyseniz albümünüzü onaylayın.`, url: '/panel/album', tag: 'album-tasarim' }
+    : { title: 'Albüm tasarımınız hazır', body: 'Sayfaları panelinizden inceleyip onaylayabilir ya da değişiklik isteyebilirsiniz.', url: '/panel/album', tag: 'album-tasarim' }));
 }
 function albumDesignReviewed(coupleId, approved, changes) {
   const c = db.getCouple(coupleId);

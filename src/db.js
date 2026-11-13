@@ -692,6 +692,8 @@ module.exports = {
   // Revize sayfa: dosya değişir, inceleme sıfırlanır (çiftin önceki notu görünür kalır ki neyin düzeltildiği bilinsin)
   replaceAlbumPage: (id, fileKey) => q("UPDATE album_pages SET file_key = ?, status = 'bekliyor', version = version + 1, updated_at = datetime('now') WHERE id = ?").run(fileKey, id),
   reviewAlbumPage: (id, status, note) => q("UPDATE album_pages SET status = ?, note = ?, updated_at = datetime('now') WHERE id = ?").run(status, note, id),
+  // Düzeltilip çiftin yeniden bakmasını bekleyen sayfalar
+  revisedAlbumPages: (coupleId) => q("SELECT * FROM album_pages WHERE couple_id = ? AND version > 1 AND status = 'bekliyor'").all(coupleId),
   deleteAlbumPage: (id) => q('DELETE FROM album_pages WHERE id = ?').run(id),
   setAlbumDesign: (coupleId, state, bumpRound = false) => q(`UPDATE couples SET album_design_state = ?, album_design_at = datetime('now')${bumpRound ? ', album_design_round = album_design_round + 1' : ''} WHERE id = ?`).run(state, coupleId),
 

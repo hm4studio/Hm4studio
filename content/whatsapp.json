@@ -159,6 +159,14 @@
         "tarih"
       ],
       "metin": "Merhaba {ad}, fotoğraflarınızı panelinizden indirdiğinizi gördük, güzel günlerde kullanın!\n\nSunucumuzda yer açmak için orijinal boyuttaki dosyalar {tarih} tarihinde silinecek; panelinizde küçük halleri kalmaya devam edecek. İndirmenin tamamlandığından ve dosyaları yedeklediğinizden emin olun.\n\nHM4 Studio"
+    },
+    "albumRevize": {
+      "ad": "hm4_album_revize",
+      "degiskenler": [
+        "ad",
+        "link"
+      ],
+      "metin": "Merhaba {ad}, albümünüzde istediğiniz değişiklikleri yaptık. Düzeltilen sayfaları panelinizden kontrol edip beğendiyseniz albümünüzü onaylayabilirsiniz: {link}\n\nHM4 Studio"
     }
   },
   "kurallar": {
