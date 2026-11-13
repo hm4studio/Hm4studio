@@ -1140,7 +1140,7 @@ input[type="tel"]:focus, input[type="time"]:focus, input[type="search"]:focus { 
 .pui .card-filters input[type="search"] { grid-column: 1 / -1; }
 @media (min-width: 900px) { .pui .card-filters { grid-template-columns: 2fr repeat(4, minmax(0, 1fr)); } .pui .card-filters input[type="search"] { grid-column: auto; } }
 .ccards[hidden], .board[hidden], .crow[hidden], .crow-head[hidden] { display: none !important; }
-.crow-head, .crow__link { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 1fr) 104px; gap: 16px; align-items: center; }
+.crow-head, .crow__link { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 1fr) 156px; gap: 16px; align-items: center; }
 .crow-head { padding: 14px 0 8px; font-size: .78rem; color: var(--faint); border-bottom: 1px solid var(--rule); }
 .crows { list-style: none; margin: 0; padding: 0; }
 .crow__link { padding: 14px 0; border-bottom: 1px solid var(--rule); text-decoration: none; color: var(--graphite); }
@@ -1158,7 +1158,7 @@ input[type="tel"]:focus, input[type="time"]:focus, input[type="search"]:focus { 
 .steps i.is-now { background: var(--mark); }
 .crow.is-done .steps i { background: var(--faint); }
 .crow__ready { display: inline-flex; gap: 4px; justify-content: flex-end; }
-.crow__ready span { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 500; color: var(--faint); border: 1px solid var(--rule-2); border-radius: 50%; }
+.crow__ready span { flex: none; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 500; color: var(--faint); border: 1px solid var(--rule-2); border-radius: 50%; }
 .crow__ready span.is-on { color: #fff; background: var(--graphite); border-color: var(--graphite); }
 @media (max-width: 799px) {
   .crow-head { display: none; }

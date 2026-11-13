@@ -184,7 +184,7 @@ function doc(c, { couple, order, back }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Albüm siparişi ${orders.orderNo(order)} — ${couple.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=87">
+<link rel="stylesheet" href="/css/style.css?v=88">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
