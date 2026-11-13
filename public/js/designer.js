@@ -367,7 +367,7 @@
   async function autoBuild() {
     if (!S.photos.length) { status('Önce fotoğraf ekleyin.'); return; }
     const placed = S.pages.flat();
-    if (placed.length && !window.confirm('Yerleşim silinip fotoğraflar yeniden dizilsin mi? (Albüm dışına aldıklarınız dışarıda kalır.)')) return;
+    if (placed.length && !window.confirm('Yerleşim silinip fotoğraflar yeniden dizilsin mi? (Kenara aldıklarınız kenarda kalır.)')) return;
     if (byId('sortMode').value === 'color') { status('Tonlar inceleniyor…'); await Promise.all(S.photos.map(ensureColor)); }
     const outSet = new Set(placed.length ? S.out : []);
     const keep = S.photos.filter((p) => !outSet.has(p.id));
@@ -748,9 +748,12 @@
     add.addEventListener('click', () => { S.pages.push([]); S.sheet = S.pages.length - 1; S.sel = null; render(); });
     st.appendChild(add);
     const out = el('div', 'dz-tl__g dz-tl__g--out'); out.dataset.dropLeaf = 'out';
-    out.appendChild(el('span', 'dz-tl__n', `Albüm dışı · ${S.out.length}`));
+    out.appendChild(el('span', 'dz-tl__n', `Kenarda · ${S.out.length}`));
     S.out.forEach((id, j) => { const t = thumb(id, 'out', j); if (t) out.appendChild(t); });
-    if (!S.out.length) out.appendChild(el('span', 'dz-tl__empty', 'Çıkarmak için buraya sürükleyin'));
+    if (!S.out.length) out.appendChild(el('span', 'dz-tl__empty', 'Sonra kullanacağınız fotoğrafları buraya sürükleyin'));
+    // araç çubuğundaki sayaç: kenardaki fotoğraflara git
+    const jump = $('[data-out-jump]');
+    if (jump) { jump.hidden = !S.out.length; $('[data-out-count]').textContent = `Kenarda ${S.out.length} fotoğraf`; }
     st.appendChild(out);
     st.scrollLeft = keepX;
     const cur = st.querySelector('.dz-tl__g.is-cur');
@@ -1112,7 +1115,20 @@
     cr.z = Math.max(0.3, Math.min(d.W / p.w, d.H / p.h) / Math.max(d.W / p.w, d.H / p.h)); cr.ox = 0; cr.oy = 0;
     render(); scheduleSave();
   });
-  $('[data-remove]').addEventListener('click', () => { if (!S.sel) return; removeFromAlbum(S.sel); render(); scheduleSave(); });
+  $('[data-remove]').addEventListener('click', () => {
+    if (!S.sel) return;
+    const p = photoById(S.sel);
+    removeFromAlbum(S.sel); render(); scheduleSave();
+    status(`${p ? p.name : 'Fotoğraf'} kenara alındı; şeridin sonundaki “Kenarda” kutusunda bekliyor. Dokunarak ya da sürükleyerek tekrar ekleyebilirsiniz.`);
+  });
+  const jumpBtn = $('[data-out-jump]');
+  if (jumpBtn) jumpBtn.addEventListener('click', () => {
+    const st = $('[data-strip]'), box = st.querySelector('.dz-tl__g--out');
+    if (!box) return;
+    st.scrollTo({ left: box.offsetLeft - 20, behavior: 'smooth' });
+    $('.dz-tl').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    box.classList.remove('is-flash'); void box.offsetWidth; box.classList.add('is-flash');
+  });
   $$('[data-export]').forEach((b) => b.addEventListener('click', () => exportLeaves(b.dataset.export)));
   const sendBtn = $('[data-send]');
   if (sendBtn) sendBtn.addEventListener('click', sendToAlbum);

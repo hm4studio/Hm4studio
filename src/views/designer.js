@@ -77,6 +77,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
         <button type="button" class="dz-tool" data-variant>${icon('grid')}Düzeni değiştir</button>
         <div class="dz-gapctl"><label for="dz-gap">Boşluk</label><input id="dz-gap" type="range" min="0" max="120" step="2" value="30" data-gap><output data-gap-out>30 px</output>
           <span class="dz-gapseg"><button type="button" data-gap-scope="leaf" aria-pressed="true">Bu yaprak</button><button type="button" data-gap-scope="all" aria-pressed="false">Tüm albüm</button></span></div>
+        <button type="button" class="dz-tool dz-tool--side" data-out-jump hidden>${icon('image')}<span data-out-count></span></button>
         <button type="button" class="dz-tool" data-crop aria-pressed="false">${icon('move')}Kadraj</button>
         <div class="dz-crop" data-crop-panel hidden>
           <span class="dz-crop__lbl muted" data-crop-label></span>
@@ -89,7 +90,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
           </div>
           <button type="button" class="dz-tool" data-fit>Tam sığdır</button>
           ${couple ? h`<button type="button" class="dz-tool dz-tool--ps" data-ps title="Kısayol: E"><i>Ps</i>Photoshop'ta düzenle <kbd>E</kbd></button>` : ''}
-          <button type="button" class="dz-tool dz-tool--out" data-remove>${icon('close')}Albümden çıkar</button>
+          <button type="button" class="dz-tool dz-tool--out" data-remove title="Fotoğraf silinmez; şeridin sonundaki “Kenarda” kutusunda bekler">${icon('down')}Kenara al</button>
         </div>
       </div>
       <div class="dz-versions" data-versions hidden></div>
@@ -110,7 +111,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
       </div>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=10'] });
+  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=11'] });
 }
 
 module.exports = { designerPage };
