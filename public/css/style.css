@@ -3169,3 +3169,15 @@ body:has(.dz) { overflow-x: hidden; }
 .dz-gapseg { display: inline-flex; gap: 2px; padding: 2px; background: var(--paper); border-radius: 999px; }
 .dz-gapseg button { border: 0; background: none; padding: 6px 10px; border-radius: 999px; font: 500 .76rem var(--sans); color: var(--pencil); cursor: pointer; }
 .dz-gapseg button[aria-pressed="true"] { background: var(--navy); color: #fff; }
+/* Ana ekrana ekleme anlatımı */
+.isheet { position: fixed; inset: 0; z-index: 400; display: flex; align-items: flex-end; justify-content: center; background: rgba(20,22,26,.45); padding: 12px; }
+.isheet[hidden] { display: none; }
+.isheet__box { position: relative; width: 100%; max-width: 420px; background: #fff; border-radius: 20px; padding: 22px 20px 18px; box-shadow: 0 20px 50px -20px rgba(0,0,0,.5); text-align: left; }
+.isheet__x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border: 0; background: none; color: var(--pencil); cursor: pointer; }
+.isheet__icon { width: 52px; height: 52px; border-radius: 12px; }
+.isheet__title { font-family: var(--serif); font-weight: 500; font-size: 1.5rem; margin: 10px 0 2px; }
+.isheet__lead { margin: 0 0 10px; color: var(--pencil); font-size: .92rem; }
+.isheet__list { margin: 0 0 14px; padding-left: 22px; display: grid; gap: 8px; font-size: .95rem; line-height: 1.4; }
+.isheet__ok { width: 100%; margin-top: 10px; justify-content: center; }
+body.is-sheet { overflow: hidden; }
+.isheet [hidden] { display: none !important; }

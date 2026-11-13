@@ -423,6 +423,17 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
       <button type="button" class="btn btn--primary btn--sm" data-install-btn hidden>Ekle</button>
       <button type="button" class="install__close" data-install-close aria-label="Kapat">${icon('close')}</button>
     </div>
+    <div class="isheet" data-install-sheet hidden role="dialog" aria-modal="true" aria-labelledby="isheet-t">
+      <div class="isheet__box">
+        <button type="button" class="isheet__x" data-sheet-close aria-label="Kapat">${icon('close')}</button>
+        <img src="/images/icon-192.png" alt="" width="52" height="52" class="isheet__icon">
+        <h2 class="isheet__title" id="isheet-t" data-sheet-title></h2>
+        <p class="isheet__lead" data-sheet-lead></p>
+        <ol class="isheet__list" data-sheet-list></ol>
+        <button type="button" class="btn btn--outline btn--sm" data-sheet-copy hidden>${icon('copy')}Bağlantıyı kopyala</button>
+        <button type="button" class="btn btn--primary isheet__ok" data-sheet-close>Tamam</button>
+      </div>
+    </div>
 
     ${couple.phone ? h`<section class="panel-section" id="izinler" aria-labelledby="wa-title">
       <div class="panel-section__head"><h2 class="panel-section__title" id="wa-title">Bildirimler</h2></div>

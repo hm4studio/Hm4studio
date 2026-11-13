@@ -64,7 +64,7 @@ function appLogin(c, { error, values = {}, heroUrl }) {
     <p class="app-login__help">${raw('Erişim kodunuzu bilmiyor musunuz? Stüdyonuzdan isteyin.')}</p>
   </section>
 </main>
-<script src="/js/pwa.js?v=2" defer></script>
+<script src="/js/pwa.js?v=3" defer></script>
 </body>
 </html>`);
 }
