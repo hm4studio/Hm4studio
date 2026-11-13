@@ -195,7 +195,8 @@ async function saveJpegCopy(doc, j) {
 }
 
 // ── Rötuş: cilt yumuşatma ve kendi eylemleriniz ──
-const STRENGTH = { hafif: { div: 800, op: 70, label: 'Hafif' }, orta: { div: 600, op: 80, label: 'Orta' }, guclu: { div: 450, op: 90, label: 'Güçlü' } };
+// Doğal görünüm: küçük yarıçap, düşük opaklık; ince doku (gözenek) korunur
+const STRENGTH = { hafif: { div: 1000, op: 45, label: 'Hafif' }, orta: { div: 800, op: 60, label: 'Orta' }, guclu: { div: 650, op: 75, label: 'Güçlü' } };
 const docForJob = (j) => { try { return app.documents.find((d) => { try { return samePath(d.path, j.path); } catch (e) { return false; } }); } catch (e) { return null; } };
 // batchPlay hata fırlatmaz, sonuçta { _obj: 'error' } döner: burada hataya çevrilir
 async function bp(list) {
@@ -216,7 +217,7 @@ async function skinSmooth(j, level) {
       const hist = await ctx.hostControl.suspendHistory({ documentID: doc.id, name: `HM4 cilt yumuşat · ${st.label}` });
       try {
         const edge = Math.max(doc.width, doc.height);
-        const R = Math.max(2, Math.round(edge / st.div)), G = Math.max(1, Math.round(R / 3 * 10) / 10);
+        const R = Math.max(2, Math.round(edge / st.div)), G = Math.max(1, Math.round(R / 2 * 10) / 10);
         // 1) Görünen her şeyin birleşik kopyası
         if (doc.layers.length > 1) {
           await bp([{ _obj: 'select', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'front' }], makeVisible: false }]);
