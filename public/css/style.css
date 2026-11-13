@@ -3152,3 +3152,20 @@ body:has(.dz) { overflow-x: hidden; }
 .dlacc.is-open { background: var(--gold-bg); }
 .dlacc.is-open > .icon { color: var(--gold-d); }
 .field--check-end { display: flex; align-items: flex-end; padding-bottom: 10px; }
+/* Albüm: çerçeve tutamaçları, çift tıkla kadraj, boşluk */
+.dz-gut { position: absolute; z-index: 4; display: grid; place-items: center; touch-action: none; }
+.dz-gut--v { width: 22px; margin-left: -11px; cursor: col-resize; }
+.dz-gut--h { height: 22px; margin-top: -11px; cursor: row-resize; }
+.dz-gut i { border-radius: 4px; background: #fff; box-shadow: 0 0 0 1.5px var(--gold), 0 2px 6px rgba(0,0,0,.3); opacity: .9; }
+.dz-gut--v i { width: 6px; height: min(40px, 60%); }
+.dz-gut--h i { height: 6px; width: min(40px, 60%); }
+.dz-gut:hover i, .is-gutter .dz-gut i { opacity: 1; background: var(--gold); }
+.is-gutter, .is-gutter * { cursor: inherit; -webkit-user-select: none; user-select: none; }
+.dz-cell.is-edit { z-index: 3; overflow: hidden; box-shadow: 0 0 0 2px var(--gold); cursor: move; touch-action: none; }
+.dz-ghostimg { position: absolute; z-index: 2; opacity: .3; pointer-events: none; max-width: none; }
+.dz-gapctl { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 6px 0 14px; border: 1px solid var(--rule-2); border-radius: 999px; background: #fff; font-size: .86rem; }
+.dz-gapctl input { width: 110px; accent-color: var(--navy); }
+.dz-gapctl output { min-width: 42px; font-weight: 600; font-variant-numeric: lining-nums tabular-nums; }
+.dz-gapseg { display: inline-flex; gap: 2px; padding: 2px; background: var(--paper); border-radius: 999px; }
+.dz-gapseg button { border: 0; background: none; padding: 6px 10px; border-radius: 999px; font: 500 .76rem var(--sans); color: var(--pencil); cursor: pointer; }
+.dz-gapseg button[aria-pressed="true"] { background: var(--navy); color: #fff; }

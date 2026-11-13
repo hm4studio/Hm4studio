@@ -17,7 +17,7 @@
 
   // pages: yapraklar (fotoğraf kimlikleri, hikâye sırasıyla) · out: albüme girmeyenler · tpl: yaprağın şablon anahtarı
   // sent: aktarılan yaprakların imzası ("1": imza) · pool/extra: seçim dışından eklenebilenler · albumPages: çiftin onay durumları
-  const S = { photos: [], pages: [[]], out: [], tpl: {}, crop: {}, sheet: 0, cropMode: false, sel: null, dims: {}, couple: {}, set: 'secim', nextId: 1, sent: {}, pool: [], extra: [], albumPages: [] };
+  const S = { photos: [], pages: [[]], out: [], tpl: {}, crop: {}, sheet: 0, cropMode: false, sel: null, dims: {}, couple: {}, set: 'secim', nextId: 1, sent: {}, pool: [], extra: [], albumPages: [], adj: {}, gap: {}, edit: null };
   const byPid = new Map();
   const photoById = (id) => byPid.get(id);
   const indexPhotos = () => { byPid.clear(); S.photos.forEach((p) => byPid.set(p.id, p)); };
@@ -28,17 +28,19 @@
     return { pw: num('pw') * 10, ph: num('ph') * 10, leaves: Math.max(1, Math.round(num('leaves'))), gap: pxToMm(num('gapPx')), cut: num('cut'), safe: num('safe'), foldM: num('foldM') };
   }
   // Boş yaprakları at (açık olan hariç); şablon seçimleri yaprakla birlikte kayar
+  // Yaprağa bağlı ayarlar: şablon, çerçeve kaydırmaları, boşluk
+  const LEAF_MAPS = ['tpl', 'adj', 'gap'];
   function tidy() {
-    const keep = [], tpl = {};
+    const keep = [], maps = { tpl: {}, adj: {}, gap: {} };
     let sheet = 0;
     S.pages.forEach((l, i) => {
       if (!(l.length || i === S.sheet || S.pages.length === 1)) return;
-      if (S.tpl[i]) tpl[keep.length] = S.tpl[i];
+      LEAF_MAPS.forEach((m) => { if (S[m][i] != null) maps[m][keep.length] = S[m][i]; });
       if (i === S.sheet) sheet = keep.length;
       keep.push(l);
     });
     S.pages = keep.length ? keep : [[]];
-    S.tpl = tpl;
+    LEAF_MAPS.forEach((m) => { S[m] = maps[m]; });
     S.sheet = Math.max(0, Math.min(sheet, S.pages.length - 1));
   }
 
@@ -50,7 +52,7 @@
     // varsayılan kadrajlar saklanmaz (taslak küçük kalsın)
     const crop = {};
     Object.entries(S.crop).forEach(([k, c2]) => { if (c2 && (Math.abs(c2.z - 1) > 0.001 || Math.abs(c2.ox) > 0.0005 || Math.abs(c2.oy) > 0.0005)) crop[k] = c2; });
-    return { v: 2, set: S.set, cfg: v, pages: S.pages, tpl: S.tpl, crop, sheet: S.sheet, sent: S.sent, sentV: 2, extra: S.extra };
+    return { v: 2, set: S.set, cfg: v, pages: S.pages, tpl: S.tpl, crop, sheet: S.sheet, sent: S.sent, sentV: 2, extra: S.extra, adj: S.adj, gap: S.gap };
   }
   let dirty = false;
   // Sayfadan çıkarken bekleyen kaydı hemen gönder (keepalive: sayfa kapansa da istek tamamlanır)
@@ -242,14 +244,58 @@
     return top[i % top.length];
   }
   // Yaprağın son hali: [{ id, r }]
+  // Yaprağın boşluğu (px, 300 DPI): yaprağa özel değer yoksa genel ayar
+  const leafCfg = (i, c) => (S.gap[i] != null ? { ...c, gap: pxToMm(S.gap[i]) } : c);
+  function leafTemplate(i, c) {
+    const ids = S.pages[i] || [];
+    const rk = rankTemplates(ids, leafCfg(i, c));
+    return rk.exact.find((x) => x.key === S.tpl[i]) || rk.near.find((x) => x.key === S.tpl[i]) || defaultTemplate(i, rk);
+  }
+  // Çerçeve kaydırmaları (yuva sırasıyla): sol/üst taraf büyür, sağ/alt taraf aynı ölçüde küçülür
+  function leafRects(i, c) {
+    if (!(S.pages[i] || []).length) return { t: { key: '', order: [], rects: [] }, rects: [] };
+    const t = leafTemplate(i, c);
+    const rects = t.rects.map((r) => ({ ...r }));
+    const a = S.adj[i];
+    if (a && a.key === t.key && a.n === rects.length) {
+      for (const m of a.moves) {
+        if (m.ax === 'x') { m.A.forEach((k) => { if (rects[k]) rects[k].w += m.d; }); m.B.forEach((k) => { if (rects[k]) { rects[k].x += m.d; rects[k].w -= m.d; } }); }
+        else { m.A.forEach((k) => { if (rects[k]) rects[k].h += m.d; }); m.B.forEach((k) => { if (rects[k]) { rects[k].y += m.d; rects[k].h -= m.d; } }); }
+      }
+    }
+    return { t, rects };
+  }
   function computeLeaf(i, c) {
     const ids = S.pages[i] || [];
     if (!ids.length) return [];
-    const rk = rankTemplates(ids, c);
-    const t = rk.exact.find((x) => x.key === S.tpl[i]) || rk.near.find((x) => x.key === S.tpl[i]) || defaultTemplate(i, rk);
-    return t.order.map((pi, si) => ({ id: ids[pi], r: t.rects[si] }));
+    const { t, rects } = leafRects(i, c);
+    return t.order.map((pi, si) => ({ id: ids[pi], r: rects[si], si }));
   }
-  const currentKey = (i, c) => { const ids = S.pages[i] || []; if (!ids.length) return ''; const rk = rankTemplates(ids, c); return S.tpl[i] && [...rk.exact, ...rk.near].some((t) => t.key === S.tpl[i]) ? S.tpl[i] : defaultTemplate(i, rk).key; };
+  // Komşu fotoğraflar arasındaki sürüklenebilir çizgiler (katlama yerindekiler hariç)
+  function gutters(i, c) {
+    const cl = leafCfg(i, c), { rects } = leafRects(i, c), out = [], T = 0.6;
+    for (const ax of ['x', 'y']) {
+      const w = ax === 'x' ? 'w' : 'h', o = ax === 'x' ? 'y' : 'x', ow = ax === 'x' ? 'h' : 'w';
+      const seen = new Set();
+      rects.forEach((a, ia) => {
+        const at = a[ax] + a[w];
+        const key = at.toFixed(1);
+        if (seen.has(key)) return;
+        if (ax === 'x' && at <= c.pw + T && at + cl.gap >= c.pw - T) return;
+        const A = [], B = [];
+        rects.forEach((r, k) => { if (Math.abs(r[ax] + r[w] - at) < T) A.push(k); if (Math.abs(r[ax] - (at + cl.gap)) < T) B.push(k); });
+        if (!B.length) return;
+        // iki taraf karşı karşıya gelmeli (çakışan aralık)
+        const lo = Math.max(Math.min(...A.map((k) => rects[k][o])), Math.min(...B.map((k) => rects[k][o])));
+        const hi = Math.min(Math.max(...A.map((k) => rects[k][o] + rects[k][ow])), Math.max(...B.map((k) => rects[k][o] + rects[k][ow])));
+        if (hi - lo < 5) return;
+        seen.add(key);
+        out.push({ ax, at, gap: cl.gap, A, B, lo, hi });
+      });
+    }
+    return out;
+  }
+  const currentKey = (i, c) => { const ids = S.pages[i] || []; if (!ids.length) return ''; const rk = rankTemplates(ids, leafCfg(i, c)); return S.tpl[i] && [...rk.exact, ...rk.near].some((t) => t.key === S.tpl[i]) ? S.tpl[i] : defaultTemplate(i, rk).key; };
 
   // ── Kadraj ──
   const cropOf = (id) => S.crop[id] || (S.crop[id] = { z: 1, ox: 0, oy: 0 });
@@ -267,7 +313,7 @@
     S.pages.forEach((l) => { const i = l.indexOf(id); if (i >= 0) l.splice(i, 1); });
     const o = S.out.indexOf(id); if (o >= 0) S.out.splice(o, 1);
   }
-  function touched(...leaves) { leaves.forEach((l) => { if (l != null) delete S.tpl[l]; }); }
+  function touched(...leaves) { leaves.forEach((l) => { if (l != null) { delete S.tpl[l]; delete S.adj[l]; } }); }
   function moveTo(id, leaf, idx) {
     const from = locate(id);
     if (from && idx != null && S.pages[leaf][idx] != null) {
@@ -288,9 +334,11 @@
     if (S.sel === id) S.sel = null;
   }
   function shiftTpl(from, d) {
-    const n = {};
-    Object.entries(S.tpl).forEach(([k, v]) => { const i = +k; if (i < from) n[i] = v; else if (d > 0) n[i + d] = v; else if (i > from) n[i + d] = v; });
-    S.tpl = n;
+    LEAF_MAPS.forEach((m) => {
+      const n = {};
+      Object.entries(S[m]).forEach(([k, v]) => { const i = +k; if (i < from) n[i] = v; else if (d > 0) n[i + d] = v; else if (i > from) n[i + d] = v; });
+      S[m] = n;
+    });
   }
   function cutAt(leaf, idx) {
     const L = S.pages[leaf];
@@ -330,7 +378,7 @@
     S.pages = []; let i = 0;
     sizes.forEach((s) => { S.pages.push(sorted.slice(i, i + s).map((p) => p.id)); i += s; });
     S.out = S.photos.filter((p) => outSet.has(p.id)).map((p) => p.id);
-    S.tpl = {}; S.sheet = 0; S.sel = null;
+    S.tpl = {}; S.adj = {}; S.gap = {}; S.sheet = 0; S.sel = null; S.edit = null;
     tidy();
     status(`${keep.length} fotoğraf ${S.pages.length} yaprağa dizildi. Şeritte iki fotoğraf arasına dokunarak yaprak bölebilirsiniz.`);
     render(); scheduleSave();
@@ -343,7 +391,7 @@
     const sizes = S.pages.map((l) => l.length);
     const sorted = sortPhotos(all.map(photoById)).map((p) => p.id);
     let i = 0; S.pages = sizes.map((s) => { const r = sorted.slice(i, i + s); i += s; return r; });
-    S.tpl = {};
+    S.tpl = {}; S.adj = {};
   }
 
   // ── Sürükle-bırak (dokunmatikte şerit kaydırılabilir; sürükleme şeride dik hareketle başlar) ──
@@ -393,7 +441,12 @@
     if (!d) return;
     const id = d.src.id;
     if (!d.moved) {
-      if (d.src.type === 'cell') { S.sel = S.sel === id ? null : id; render(); return; }
+      if (d.src.type === 'cell') {
+        const now = Date.now();
+        if (lastTap.id === id && now - lastTap.t < 380) { lastTap = {}; enterEdit(id); return; } // çift tık / çift dokunuş
+        lastTap = { id, t: now };
+        S.sel = S.sel === id ? null : id; render(); return;
+      }
       const at = locate(id);
       if (at) { S.sheet = at.p; S.sel = id; render(); return; }
       moveTo(id, S.sheet, null); render(); scheduleSave(); return; // albüm dışındakine dokunmak: açık yaprağa ekler
@@ -439,6 +492,107 @@
     const g = geom(p.w || 3, p.h || 2, slot.W, slot.H, cropOf(p.id));
     im.style.width = `${g.w}px`; im.style.height = `${g.h}px`;
     im.style.left = `${g.left - slot.dx}px`; im.style.top = `${g.top - slot.dy}px`;
+    if (im._ghost) Object.assign(im._ghost.style, { width: `${g.w}px`, height: `${g.h}px`, left: `${slot.ox + g.left}px`, top: `${slot.oy + g.top}px` });
+  }
+
+  // ── Boşluk kaydırıcısı (bu yaprak / tüm albüm) ──
+  let gapScope = 'leaf';
+  function syncGap() {
+    const r = $('[data-gap]'); if (!r) return;
+    const v = gapScope === 'leaf' && S.gap[S.sheet] != null ? S.gap[S.sheet] : num('gapPx');
+    if (document.activeElement !== r) r.value = v;
+    $('[data-gap-out]').textContent = `${Math.round(v)} px`;
+    $$('[data-gap-scope]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.gapScope === gapScope)));
+  }
+  const gapRange = $('[data-gap]');
+  if (gapRange) {
+    gapRange.addEventListener('input', () => {
+      const v = Math.max(0, Math.round(Number(gapRange.value) || 0));
+      if (gapScope === 'leaf') S.gap[S.sheet] = v;
+      else { byId('gapPx').value = v; S.gap = {}; }
+      $('[data-gap-out]').textContent = `${v} px`;
+      renderSpread(cfg());
+    });
+    gapRange.addEventListener('change', () => { render(); scheduleSave(); });
+    $$('[data-gap-scope]').forEach((b) => b.addEventListener('click', () => {
+      gapScope = b.dataset.gapScope;
+      if (gapScope === 'all' && Object.keys(S.gap).length && window.confirm('Yapraklara özel boşluklar kaldırılıp tüm albüm aynı boşluğu kullansın mı?')) { S.gap = {}; render(); scheduleSave(); }
+      syncGap();
+    }));
+  }
+
+  // ── Çift tıkla kadraj ──
+  let lastTap = {};
+  function enterEdit(id) { S.edit = id; S.sel = id; status('Kadraj: sürükleyerek kaydırın, tekerlek ya da iki parmakla yakınlaştırın. Bitince dışarı tıklayın ya da Esc.'); render(); }
+  function exitEdit() { if (!S.edit) return; S.edit = null; render(); scheduleSave(); }
+  function zoomBy(id, f) {
+    const cr = cropOf(id);
+    cr.z = Math.max(0.3, Math.min(4, cr.z * f));
+    const cell = [...$$('.dz-cell')].find((x) => +x.dataset.idx === (S.pages[S.sheet] || []).indexOf(id));
+    if (cell) placeImg(cell.querySelector('img'), photoById(id), cell._slot);
+    $('[data-zoom]').value = cr.z;
+    scheduleSave();
+  }
+  // iki parmakla yakınlaştırma (kadraj modunda)
+  const touches = new Map();
+  let pinch = null;
+  root.addEventListener('pointerdown', (e) => {
+    if (!S.edit || e.pointerType !== 'touch') return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2) { const [a, b] = [...touches.values()]; pinch = { d0: Math.hypot(a.x - b.x, a.y - b.y), z0: cropOf(S.edit).z }; }
+  }, true);
+  window.addEventListener('pointermove', (e) => {
+    if (!touches.has(e.pointerId)) return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && touches.size === 2 && S.edit) { const [a, b] = [...touches.values()]; const dd = Math.hypot(a.x - b.x, a.y - b.y); zoomBy(S.edit, (pinch.z0 * dd / pinch.d0) / cropOf(S.edit).z); }
+  }, { passive: true });
+  const dropTouch = (e) => { touches.delete(e.pointerId); if (touches.size < 2) pinch = null; };
+  window.addEventListener('pointerup', dropTouch); window.addEventListener('pointercancel', dropTouch);
+  // kadraj dışına tıklayınca çık
+  document.addEventListener('pointerdown', (e) => {
+    if (!S.edit) return;
+    if (e.target.closest && (e.target.closest('.dz-cell.is-edit') || e.target.closest('[data-crop-panel]') || e.target.closest('.dz-tools'))) return;
+    exitEdit();
+  });
+
+  // ── Çerçeve sürükleme ──
+  let gut = null;
+  function startGutter(e, g, s) {
+    if (!e.isPrimary) return;
+    e.preventDefault(); e.stopPropagation();
+    const c = cfg(), i = S.sheet;
+    const { t, rects } = leafRects(i, c);
+    if (!S.adj[i] || S.adj[i].key !== t.key || S.adj[i].n !== rects.length) S.adj[i] = { key: t.key, n: rects.length, moves: [] };
+    const moves = S.adj[i].moves;
+    const same = (m) => m.ax === g.ax && m.A.join() === g.A.join() && m.B.join() === g.B.join();
+    let mv = moves.length && same(moves[moves.length - 1]) ? moves[moves.length - 1] : null;
+    if (!mv) { mv = { ax: g.ax, A: g.A, B: g.B, d: 0 }; moves.push(mv); }
+    const size = g.ax === 'x' ? 'w' : 'h', MIN = 15;
+    const maxGrow = Math.min(...g.B.map((k) => rects[k][size])) - MIN, maxShrink = Math.min(...g.A.map((k) => rects[k][size])) - MIN;
+    gut = { mv, d0: mv.d, s, sx: e.clientX, sy: e.clientY, lo: -maxShrink, hi: maxGrow, raf: 0 };
+    root.classList.add('is-gutter');
+    window.addEventListener('pointermove', onGutter, { passive: false });
+    window.addEventListener('pointerup', endGutter);
+    window.addEventListener('pointercancel', endGutter);
+  }
+  function onGutter(e) {
+    if (!gut) return;
+    e.preventDefault();
+    const delta = (gut.mv.ax === 'x' ? e.clientX - gut.sx : e.clientY - gut.sy) / gut.s;
+    gut.mv.d = gut.d0 + Math.max(gut.lo, Math.min(gut.hi, delta));
+    if (!gut.raf) gut.raf = requestAnimationFrame(() => { if (gut) { gut.raf = 0; renderSpread(cfg()); } });
+  }
+  function endGutter() {
+    window.removeEventListener('pointermove', onGutter);
+    window.removeEventListener('pointerup', endGutter);
+    window.removeEventListener('pointercancel', endGutter);
+    root.classList.remove('is-gutter');
+    if (gut) {
+      const a = S.adj[S.sheet];
+      if (a) a.moves = a.moves.filter((m) => Math.abs(m.d) > 0.05);
+      if (a && !a.moves.length) delete S.adj[S.sheet];
+    }
+    gut = null; render(); scheduleSave();
   }
 
   // ── Çizim ──
@@ -463,7 +617,7 @@
     head.appendChild(el('strong', '', `Yaprak ${S.sheet + 1}`));
     head.appendChild(document.createTextNode(` · ${ids.length} fotoğraf`));
     if (!ids.length) { $('[data-tpl-count]').textContent = 'Şeritten fotoğraf ekleyin'; return; }
-    const rk = rankTemplates(ids, c);
+    const rk = rankTemplates(ids, leafCfg(S.sheet, c));
     const curKey = currentKey(S.sheet, c);
     $('[data-tpl-count]').textContent = `${rk.exact.length} tam uyan · ${rk.near.length} yakın`;
     const tw = 128;
@@ -473,7 +627,7 @@
       b.style.width = `${tw}px`; b.style.height = `${Math.round(tw * c.ph / (2 * c.pw))}px`;
       b.setAttribute('aria-label', 'Bu şablonu uygula');
       drawMini(b, t.rects.map((r) => ({ id: null, r })), c, tw, false);
-      b.addEventListener('click', () => { S.tpl[S.sheet] = t.key; render(); scheduleSave(); });
+      b.addEventListener('click', () => { S.tpl[S.sheet] = t.key; delete S.adj[S.sheet]; render(); scheduleSave(); });
       return b;
     };
     rk.exact.slice(0, 30).forEach((t) => exactBox.appendChild(tile(t, false)));
@@ -504,18 +658,38 @@
       const p = photoById(id); if (!p) return;
       const vx = Math.max(0, r.x), vy = Math.max(0, r.y);
       const vw = Math.min(2 * c.pw, r.x + r.w) - vx, vh = Math.min(c.ph, r.y + r.h) - vy;
-      const d = el('div', `dz-cell${S.sel === id ? ' is-sel' : ''}`);
+      const editing = S.edit === id;
+      const d = el('div', `dz-cell${S.sel === id ? ' is-sel' : ''}${editing ? ' is-edit' : ''}`);
       d.dataset.leaf = S.sheet; d.dataset.idx = order.indexOf(id);
       Object.assign(d.style, { left: `${vx * s}px`, top: `${vy * s}px`, width: `${vw * s}px`, height: `${vh * s}px` });
       const im = el('img'); im.src = p.src; im.alt = p.name; im.draggable = false; im.decoding = 'async';
       d.appendChild(im);
-      d._slot = { W: r.w * s, H: r.h * s, dx: (vx - r.x) * s, dy: (vy - r.y) * s };
+      d._slot = { W: r.w * s, H: r.h * s, dx: (vx - r.x) * s, dy: (vy - r.y) * s, ox: r.x * s, oy: r.y * s };
+      if (editing) {
+        // çerçeve dışında kalan kısım soluk görünür
+        const gh = el('img', 'dz-ghostimg'); gh.src = p.src; gh.alt = ''; gh.draggable = false;
+        sp.appendChild(gh); im._ghost = gh;
+      }
       placeImg(im, p, d._slot);
       S.dims[id] = { W: r.w * s, H: r.h * s };
       if (psState.has(id)) { d.classList.add('is-ps'); d.appendChild(el('b', 'dz-ps', psState.get(id) === 'acik' ? "Photoshop'ta açık · kaydedince güncellenecek" : "Photoshop'a gönderildi")); }
-      d.addEventListener('pointerdown', (e) => (S.cropMode ? startPan(e, id, d) : startDrag(e, { type: 'cell', id })));
+      d.addEventListener('pointerdown', (e) => (S.cropMode || editing ? startPan(e, id, d) : startDrag(e, { type: 'cell', id })));
+      if (editing) d.addEventListener('wheel', (e) => { e.preventDefault(); zoomBy(id, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025))); }, { passive: false });
       sp.appendChild(d);
     });
+    // çerçeve tutamaçları
+    if (!S.cropMode && !S.edit) {
+      gutters(S.sheet, c).forEach((g) => {
+        const hd = el('div', `dz-gut dz-gut--${g.ax === 'x' ? 'v' : 'h'}`);
+        hd.setAttribute('role', 'separator'); hd.setAttribute('aria-label', g.ax === 'x' ? 'Çerçeveleri sağa-sola kaydır' : 'Çerçeveleri yukarı-aşağı kaydır');
+        const mid = (g.at + g.gap / 2) * s;
+        if (g.ax === 'x') Object.assign(hd.style, { left: `${mid}px`, top: `${g.lo * s}px`, height: `${(g.hi - g.lo) * s}px` });
+        else Object.assign(hd.style, { top: `${mid}px`, left: `${g.lo * s}px`, width: `${(g.hi - g.lo) * s}px` });
+        hd.appendChild(el('i'));
+        hd.addEventListener('pointerdown', (e) => startGutter(e, g, s));
+        sp.appendChild(hd);
+      });
+    }
     const fold = el('div', 'dz-fold');
     fold.style.left = `${c.pw * s}px`; fold.style.width = `${Math.max(1, 2 * c.foldM * s)}px`;
     sp.appendChild(fold);
@@ -591,6 +765,8 @@
     tidy();
     const c = cfg();
     if (S.sel && !locate(S.sel)) S.sel = null;
+    if (S.edit && !(S.pages[S.sheet] || []).includes(S.edit)) S.edit = null;
+    syncGap();
     renderTemplates(c);
     renderSpread(c);
     renderStrip();
@@ -904,15 +1080,15 @@
     e.currentTarget.setAttribute('aria-expanded', String(!box.hidden));
     render();
   });
-  const goSheet = (d) => { S.sheet = Math.min(S.pages.length - 1, Math.max(0, S.sheet + d)); S.sel = null; render(); };
+  const goSheet = (d) => { S.sheet = Math.min(S.pages.length - 1, Math.max(0, S.sheet + d)); S.sel = null; S.edit = null; render(); };
   $$('[data-go]').forEach((b) => b.addEventListener('click', () => goSheet(Number(b.dataset.go))));
   $$('[data-peek]').forEach((b) => b.addEventListener('click', () => goSheet(Number(b.dataset.peek))));
   $('[data-variant]').addEventListener('click', () => {
     const c = cfg(), ids = S.pages[S.sheet] || [];
     if (!ids.length) return;
-    const rk = rankTemplates(ids, c), list = rk.exact.length ? rk.exact : rk.near;
+    const rk = rankTemplates(ids, leafCfg(S.sheet, c)), list = rk.exact.length ? rk.exact : rk.near;
     const i = list.findIndex((t) => t.key === currentKey(S.sheet, c));
-    S.tpl[S.sheet] = list[(i + 1) % list.length].key;
+    S.tpl[S.sheet] = list[(i + 1) % list.length].key; delete S.adj[S.sheet];
     render(); scheduleSave();
   });
   $('[data-crop]').addEventListener('click', (e) => {
@@ -957,6 +1133,8 @@
   document.addEventListener('visibilitychange', () => { if (document.hidden) endDrag(); });
   document.addEventListener('keydown', (e) => {
     if (e.target.closest && e.target.closest('input,select,textarea')) return;
+    if (e.key === 'Escape' && S.edit) { exitEdit(); return; }
+    if (S.edit) return;
     if (e.key === 'ArrowRight') goSheet(1);
     if (e.key === 'ArrowLeft') goSheet(-1);
   });
@@ -971,6 +1149,7 @@
     S.pages = (d.pages || []).map((l) => l.filter((id) => ok.has(id)));
     if (!S.pages.length) S.pages = [[]];
     S.tpl = d.v === 2 ? (d.tpl || {}) : {};
+    S.adj = d.adj || {}; S.gap = d.gap || {};
     S.crop = d.crop || {}; S.sheet = d.sheet || 0;
     const used = new Set(S.pages.flat());
     S.out = sortPhotos(S.photos.filter((p) => !used.has(p.id))).map((p) => p.id);
@@ -989,7 +1168,7 @@
       $('[data-n="secim"]').textContent = data.favCount; $('[data-n="duzenli"]').textContent = data.editedCount;
       $$('[data-set-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.setBtn === S.set)));
       const d = data.draft;
-      S.pages = [[]]; S.tpl = {}; S.crop = {}; S.sheet = 0; S.sel = null;
+      S.pages = [[]]; S.tpl = {}; S.adj = {}; S.gap = {}; S.edit = null; S.crop = {}; S.sheet = 0; S.sel = null;
       S.out = sortPhotos(S.photos).map((p) => p.id);
       if (!switching && d && d.cfg && (d.set || 'secim') === S.set) applyDraft(d);
       else if (!switching && !d) {
