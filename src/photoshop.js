@@ -1,7 +1,7 @@
 'use strict';
 // Photoshop bağlantısı: albüm panelinden gönderilen fotoğraf, Photoshop'taki "HM4 Albüm" eklentisinde açılır;
-// kaydedilince yeni hali buraya yüklenir. Düzenlenmiş fotoğraf varsa onun yerine geçer (eskisi sürüm olarak saklanır),
-// yoksa aynı adla yeni bir düzenlenmiş fotoğraf oluşur (çiftin "Düzenlenmiş" listesinde de görünür).
+// kaydedilince yeni hali buraya yüklenir. Düzenlenmiş fotoğraf varsa onun yerine geçer,
+// yoksa aynı adla yeni bir düzenlenmiş fotoğraf oluşur (çiftin "Düzenlenmiş" listesinde de görünür). Önceki hal saklanmaz.
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -67,8 +67,9 @@ function applyUpload(job, parts) {
   const dim = media.jpegSize(parts.original && parts.originalExt === 'jpg' ? parts.original : parts.display) || {};
   let resultId;
   if (src.kind === 'duzenli') {
-    q('INSERT INTO photo_versions(photo_id, file_key, original_ext, w, h, note) VALUES(?, ?, ?, ?, ?, ?)').run(src.id, src.file_key, src.original_ext || null, src.w || null, src.h || null, 'önceki');
+    // Önceki hal saklanmaz (asıllar stüdyonun kendi diskinde); eski dosyalar hemen silinir
     q('UPDATE photos SET file_key = ?, original_ext = ?, w = ?, h = ?, rev = rev + 1 WHERE id = ?').run(key, parts.originalExt || null, dim.w || null, dim.h || null, src.id);
+    media.removeCouplePhoto(src.couple_id, src.file_key);
     resultId = src.id;
   } else {
     resultId = dbx.addPhoto({ coupleId: src.couple_id, fileKey: key, originalName: src.original_name || `foto-${src.id}.jpg`, originalExt: parts.originalExt || null, kind: 'duzenli', w: dim.w || null, h: dim.h || null });
@@ -98,5 +99,12 @@ function restore(v) {
   q('DELETE FROM photo_versions WHERE id = ?').run(v.id);
   return { removed: false };
 }
+
+// Eski sürümden kalan dosyaları temizle (artık önceki hal tutulmuyor)
+try {
+  q('SELECT v.file_key, p.couple_id FROM photo_versions v JOIN photos p ON p.id = v.photo_id WHERE v.file_key IS NOT NULL').all()
+    .forEach((x) => media.removeCouplePhoto(x.couple_id, x.file_key));
+  q('DELETE FROM photo_versions WHERE file_key IS NOT NULL').run();
+} catch { /* ilk kurulumda tablo boş */ }
 
 module.exports = { createToken, tokenInfo, revokeToken, checkToken, createJob, getJob, setStatus, openJobs, coupleJobs, jobFile, applyUpload, versions, getVersion, restore };

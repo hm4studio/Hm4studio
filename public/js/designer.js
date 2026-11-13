@@ -695,7 +695,7 @@
       const r = await fetch(`/admin/foto/${fid}/surumler`, { credentials: 'same-origin' });
       const d = await r.json();
       if (!d.versions.length || versionsFor !== `${fid}:${p.src}`) return;
-      box.appendChild(el('h4', '', 'Bu fotoğrafın önceki halleri'));
+      box.appendChild(el('h4', '', 'Rötuşu geri al'));
       d.versions.forEach((v) => {
         const row = el('div', 'dz-ver');
         const when = new Date(`${v.created_at.replace(' ', 'T')}Z`).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
