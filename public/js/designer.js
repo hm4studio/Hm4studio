@@ -1107,7 +1107,17 @@
   }
   // Baskı dosyası (bleed: true): her kenarda kesme payı kadar taşma eklenir; kenara değen fotoğraflar taşma payına uzar.
   // Çiftin onayına giden önizleme (bleed: false) kesim ölçüsündedir.
-  async function renderLeaf(leaf, k, bleed = false) {
+  // Önizleme için ekran boyutu (2400 px) yeter: orijinali açmak iPad'i dondurur
+  const prevCache = new Map();
+  function loadPreview(p) {
+    const key = p.src;
+    if (prevCache.has(key)) return prevCache.get(key);
+    const pr = new Promise((res, rej) => { const im = new Image(); im.decoding = 'async'; im.onload = () => res(im); im.onerror = rej; im.src = p.src; });
+    prevCache.set(key, pr);
+    if (prevCache.size > 8) prevCache.delete(prevCache.keys().next().value);
+    return pr;
+  }
+  async function renderLeaf(leaf, k, bleed = false, preview = false) {
     const c = cfg();
     const b = bleed ? c.cut : 0;
     const cv = document.createElement('canvas');
@@ -1125,7 +1135,7 @@
         if (r.x + r.w >= 2 * c.pw - E) r.w = 2 * c.pw + b - r.x;
         if (r.y + r.h >= c.ph - E) r.h = c.ph + b - r.y;
       }
-      const full = await loadFull(p);
+      const full = await (preview ? loadPreview(p) : loadFull(p));
       const dw = r.w * k, dh = r.h * k;
       const g = geom(full.naturalWidth, full.naturalHeight, dw, dh, { ...cropOf(id) });
       ctx.drawImage(full, -g.left / g.s, -g.top / g.s, dw / g.s, dh / g.s, (r.x + b) * k, (r.y + b) * k, dw, dh);
@@ -1202,8 +1212,10 @@
       for (let n = 0; n < todo.length; n++) {
         const { leaf, num, sig } = todo[n];
         status(`Aktarılıyor: ${n + 1} / ${todo.length} (Yaprak ${num})…`);
+        progress(`Aktarılıyor ${n + 1} / ${todo.length}`);
+        await new Promise((r) => setTimeout(r, 30)); // ekran güncellensin
         const c = cfg();
-        const cv = await renderLeaf(leaf, 2400 / (2 * c.pw));
+        const cv = await renderLeaf(leaf, 2400 / (2 * c.pw), false, true);
         const display = await toBlob(cv, 0.86);
         const t = document.createElement('canvas');
         t.width = 900; t.height = Math.round(cv.height * 900 / cv.width);
@@ -1222,10 +1234,18 @@
       }
       await saveNow();
       status('Aktarıldı. Çift sayfasına yönlendiriliyorsunuz; oradan "Çifte gönder"e basın.');
+      sending = false;
       window.location.href = `${base}#album`;
     } catch { await saveNow(); status('Aktarım yarıda kaldı; yeniden deneyin (aktarılanlar tekrar gitmez).'); busy(false); }
+    sending = false; progress('');
   }
   function busy(on) { $$('[data-export],[data-send],[data-auto]').forEach((b) => { b.disabled = on; }); }
+  // Aktarım sürerken düğmede ilerleme görünür; sayfadan çıkılmaya çalışılırsa tarayıcı uyarır
+  let sending = false;
+  const sendLabel = sendBtnEl() ? sendBtnEl().innerHTML : '';
+  function sendBtnEl() { return document.querySelector('[data-send]'); }
+  function progress(t) { const b = sendBtnEl(); if (!b) return; if (t) { sending = true; b.textContent = t; } else b.innerHTML = sendLabel; }
+  window.addEventListener('beforeunload', (e) => { if (sending) { e.preventDefault(); e.returnValue = ''; } });
 
   // ── Sıfırdan albüm (cihazdan; fotoğraflar sunucuya gitmez) ──
   function exifShot(buf) {
