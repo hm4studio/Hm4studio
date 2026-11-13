@@ -49,7 +49,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
         ${num('safe', 'Güvenli alan (mm)', 15)}
         ${num('foldM', 'Katlama payı (mm)', 10)}
         <div class="field"><label for="sortMode">Otomatik sıralama</label><select id="sortMode" data-cfg><option value="time">Çekim saatine göre</option><option value="name">Dosya adına göre</option><option value="color">Renk ve tona göre</option></select></div>
-        <div class="field"><label for="dpi">Dışa aktarma</label><select id="dpi" data-cfg><option value="150">150 DPI</option><option value="200">200 DPI</option><option value="250" selected>250 DPI</option></select></div>
+        <div class="field"><label for="dpi">Dışa aktarma</label><select id="dpi" data-cfg><option value="150">150 DPI</option><option value="200">200 DPI</option><option value="250">250 DPI</option><option value="300" selected>300 DPI</option></select></div>
       </div>
       <label class="check dz-bleed"><input type="checkbox" id="fullBleed" data-cfg><span>Kenara kadar doldur (taşma payıyla)</span></label>
       <p class="muted dz-note">Güvenli alan ve katlama payı varsayılandır; baskı firmasının önerisine göre değiştirin.</p>
@@ -112,7 +112,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
       </div>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=13'] });
+  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=14'] });
 }
 
 module.exports = { designerPage };

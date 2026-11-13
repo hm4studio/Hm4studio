@@ -1114,11 +1114,30 @@
     return cv;
   }
   const toBlob = (cv, q) => new Promise((res) => cv.toBlob(res, 'image/jpeg', q));
+  // Baskı dosyası: sRGB renk profili gömülür (baskıcı renkleri yanlış yorumlamasın) ve DPI bilgisi yazılır
+  const SRGB_ICC = 'AAACTGxjbXMEQAAAbW50clJHQiBYWVogB+oACwANAA0ALQAHYWNzcEFQUEwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPbWAAEAAAAA0y1sY21zAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALZGVzYwAAAQgAAAA2Y3BydAAAAUAAAABMd3RwdAAAAYwAAAAUY2hhZAAAAaAAAAAsclhZWgAAAcwAAAAUYlhZWgAAAeAAAAAUZ1hZWgAAAfQAAAAUclRSQwAAAggAAAAgZ1RSQwAAAggAAAAgYlRSQwAAAggAAAAgY2hybQAAAigAAAAkbWx1YwAAAAAAAAABAAAADGVuVVMAAAAaAAAAHABzAFIARwBCACAAYgB1AGkAbAB0AC0AaQBuAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAADAAAAAcAE4AbwAgAGMAbwBwAHkAcgBpAGcAaAB0ACwAIAB1AHMAZQAgAGYAcgBlAGUAbAB5WFlaIAAAAAAAAPbWAAEAAAAA0y1zZjMyAAAAAAABDEIAAAXe///zJQAAB5MAAP2Q///7of///aIAAAPcAADAblhZWiAAAAAAAABvoAAAOPUAAAOQWFlaIAAAAAAAACSfAAAPhAAAtsNYWVogAAAAAAAAYpcAALeHAAAY2XBhcmEAAAAAAAMAAAACZmYAAPKnAAANWQAAE9AAAApbY2hybQAAAAAAAwAAAACj1wAAVHsAAEzNAACZmgAAJmYAAA9c';
+  async function printJpeg(blob, dpi) {
+    const src = new Uint8Array(await blob.arrayBuffer());
+    if (src[0] !== 0xff || src[1] !== 0xd8) return blob;
+    let i = 2; const keep = [];
+    // baştaki APP0 (JFIF) ve APP2 (ICC) bölümleri atlanır, yerine yenileri yazılır
+    while (i + 4 < src.length && src[i] === 0xff && (src[i + 1] === 0xe0 || src[i + 1] === 0xe2)) i += 2 + ((src[i + 2] << 8) | src[i + 3]);
+    const jfif = new Uint8Array([0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 1, dpi >> 8, dpi & 255, dpi >> 8, dpi & 255, 0, 0]);
+    const icc = Uint8Array.from(atob(SRGB_ICC), (ch) => ch.charCodeAt(0));
+    const len = 2 + 12 + 2 + icc.length;
+    const app2 = new Uint8Array(2 + len);
+    app2.set([0xff, 0xe2, len >> 8, len & 255]); app2.set([...'ICC_PROFILE'].map((ch) => ch.charCodeAt(0)), 4); app2[15] = 0; app2[16] = 1; app2[17] = 1; app2.set(icc, 18);
+    keep.push(src.subarray(0, 2), jfif, app2, src.subarray(i));
+    return new Blob(keep, { type: 'image/jpeg' });
+  }
+  // iPad/iPhone'da tarayıcının tuval sınırı (~16 MP) var; bilgisayarda tam çözünürlük
+  const touchDevice = /iPad|iPhone|Android/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
   function printScale() {
     const c = cfg();
     let k = parseInt(byId('dpi').value, 10) / 25.4;
     const px = ((2 * c.pw + 2 * c.cut) * k) * ((c.ph + 2 * c.cut) * k);
-    if (px > 16e6) k *= Math.sqrt(16e6 / px);
+    const cap = touchDevice ? 16e6 : 120e6;
+    if (px > cap) k *= Math.sqrt(cap / px);
     return k;
   }
   const leafName = (i) => `${S.couple.refNo ? `${S.couple.refNo} ` : ''}${S.couple.name || 'Albüm'} - Yaprak ${String(i + 1).padStart(2, '0')}.jpg`.replace(/[\\/:*?"<>|]+/g, '-');
@@ -1138,12 +1157,12 @@
       for (let n = 0; n < list.length; n++) {
         status(`Hazırlanıyor: ${n + 1} / ${list.length} yaprak (${dpi} DPI)…`);
         const cv = await renderLeaf(list[n], k, true);
-        download(await toBlob(cv, 0.92), leafName(list[n]));
+        download(await printJpeg(await toBlob(cv, 1), dpi), leafName(list[n]));
         cv.width = cv.height = 0;
         await new Promise((r) => setTimeout(r, 400));
       }
       const c2 = cfg();
-      status(`${list.length} yaprak indirildi · ${((2 * c2.pw + 2 * c2.cut) / 10).toFixed(1)} × ${((c2.ph + 2 * c2.cut) / 10).toFixed(1)} cm (her kenarda ${c2.cut} mm taşma payı) · ${dpi} DPI${dpi < parseInt(byId('dpi').value, 10) ? ' (tarayıcı sınırı nedeniyle düşürüldü)' : ''}.`);
+      status(`${list.length} yaprak indirildi · ${((2 * c2.pw + 2 * c2.cut) / 10).toFixed(1)} × ${((c2.ph + 2 * c2.cut) / 10).toFixed(1)} cm (her kenarda ${c2.cut} mm taşma payı) · ${dpi} DPI${dpi < parseInt(byId('dpi').value, 10) ? ' (iPad bellek sınırı nedeniyle düşürüldü; tam çözünürlük için bilgisayardan indirin)' : ''}.`);
     } catch { status('Bir fotoğraf yüklenemedi; bağlantıyı kontrol edip yeniden deneyin.'); }
     busy(false);
   }
