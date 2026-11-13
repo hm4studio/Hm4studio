@@ -17,6 +17,7 @@ function adminNav(active, csrf, demoAdmin = false) {
     { href: '/admin/takvim', label: 'Takvim', key: 'calendar', icon: 'clock' },
     { href: '/admin/ciftler', label: 'Çiftler', key: 'list', icon: 'heart' },
     { href: '/admin/siparisler', label: 'Siparişler', key: 'orders', icon: 'book' },
+    { href: '/admin/album', label: 'Albüm', key: 'album', icon: 'image' },
     { href: '/admin/gorevler', label: 'Görevler', key: 'tasks', icon: 'tasks' },
     { href: '/admin/rapor', label: 'Rapor', key: 'report', icon: 'chart' },
     { href: '/admin/hesap', label: 'Ayarlar', key: 'settings', icon: 'settings' },
@@ -967,7 +968,7 @@ function albumDesignSection(couple, pages, base, csrf) {
       <span class="state state--${st === 'onaylandi' ? 'ok' : st === 'degisiklik' ? 'soon' : 'upcoming'}">${ALBUM_STATE[st]}${couple.album_design_round > 1 ? ` · ${couple.album_design_round}. tur` : ''}</span>
     </div>
     <p class="muted">Tasarım sayfalarını (JPG) yükleyin ve “Çifte gönder”e basın. Çift her sayfayı “beğendim” ya da “değişiklik istiyorum + not” ile işaretler. Düzelttiğiniz sayfayı <strong>aynı dosya adıyla</strong> yüklerseniz eskisinin yerine geçer ve yeniden onaya düşer.</p>
-    <div class="ad-designer"><p><strong>Albüm tasarımcısı</strong><br><span class="muted">Seçilen kareleri yapraklara dizin; düzenlenmiş halleri kendiliğinden kullanılır.</span></p><a class="btn btn--primary btn--sm" href="${base}/tasarimci">${icon('grid')}Tasarımcıda aç</a></div>
+    <div class="ad-designer"><p><strong>Albüm tasarımcısı</strong><br><span class="muted">Seçilen kareleri yapraklara dizin; düzenlenmiş halleri kendiliğinden kullanılır.</span></p><a class="btn btn--primary btn--sm" href="/admin/album?cift=${couple.id}">${icon('grid')}Tasarımcıda aç</a></div>
     ${pages.length ? h`<p class="ad-sum">${pages.length} sayfa · <span class="is-ok">${n('onay')} beğenildi</span> · <span class="is-due">${n('degisiklik')} değişiklik</span> · ${n('bekliyor')} incelenmedi</p>` : ''}
     <form class="uploader" data-uploader data-endpoint="${base}/album-sayfa">
       <label class="uploader__drop">

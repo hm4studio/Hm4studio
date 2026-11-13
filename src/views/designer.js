@@ -1,25 +1,40 @@
 'use strict';
 // Albüm tasarımcısı sayfası (iskelet; çalışma alanını public/js/designer.js kurar).
-const { h } = require('./html');
+const { h, raw } = require('./html');
 const { panelLayout, icon } = require('./components');
 const admin = require('./admin');
 
 const num = (id, label, value, attrs = {}) => h`<div class="field"><label for="${id}">${label}</label><input id="${id}" type="number" inputmode="decimal" value="${value}" step="${attrs.step || 1}" min="${attrs.min ?? 0}" data-cfg></div>`;
 
-function designerPage(c, { couple, csrf, demoAdmin }) {
-  const base = `/admin/ciftler/${couple.id}`;
+function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmin }) {
+  const base = couple ? `/admin/ciftler/${couple.id}` : '';
   const body = h`
   <div class="container dz" data-designer data-base="${base}">
     <div class="dz-head">
       <div>
-        <a class="back-link" href="${base}#album">${icon('left')}${couple.name}</a>
-        <h1 class="page-title">Albüm tasarımı</h1>
+        <h1 class="page-title">Albüm</h1>
+        <p class="muted dz-sub">${couple ? h`<a href="${base}#album">${couple.name} sayfasına git ${icon('right')}</a>` : 'Bir çift seçin ya da cihazınızdan fotoğraf ekleyerek sıfırdan başlayın.'}</p>
       </div>
       <div class="dz-head__act">
         <span class="dz-save muted" data-save aria-live="polite"></span>
         <button type="button" class="btn btn--outline btn--sm" data-toggle-settings aria-expanded="false" aria-controls="dz-settings">${icon('settings')}Ayarlar</button>
         <button type="button" class="btn btn--primary btn--sm" data-auto>${icon('sparkle')}Otomatik diz</button>
       </div>
+    </div>
+
+    <div class="dz-source">
+      <label class="dz-pick"><span class="dz-pick__lbl">Albüm</span>
+        <select data-source aria-label="Çift seçin">
+          <option value=""${couple ? '' : raw(' selected')}>Sıfırdan albüm · cihazdan fotoğraf</option>
+          ${couples.length ? h`<optgroup label="Düzenlenmiş fotoğrafı olan çiftler">${couples.map((k) => h`<option value="${k.id}"${couple && couple.id === k.id ? raw(' selected') : ''}>${k.name} · ${k.edited_count} düzenlenmiş${k.fav_count ? ` · ${k.fav_count} seçim` : ''}</option>`)}</optgroup>` : ''}
+          ${couple && !couples.some((k) => k.id === couple.id) ? h`<option value="${couple.id}" selected>${couple.name}</option>` : ''}
+        </select>
+      </label>
+      <div class="dz-set" data-set hidden>
+        <button type="button" data-set-btn="secim">Albüm seçimi <span data-n="secim"></span></button>
+        <button type="button" data-set-btn="duzenli">Tüm düzenlenmiş <span data-n="duzenli"></span></button>
+      </div>
+      ${couple ? '' : h`<label class="btn btn--outline btn--sm dz-files">${icon('upload')}Fotoğraf ekle<input type="file" accept="image/jpeg,image/png,image/webp" multiple data-files></label>`}
     </div>
 
     <section class="dz-settings" id="dz-settings" hidden>
@@ -41,7 +56,7 @@ function designerPage(c, { couple, csrf, demoAdmin }) {
 
     <div class="dz-work">
       <aside class="dz-tray" aria-label="Albüm seçimi">
-        <div class="dz-tray__head"><strong>Albüm seçimi</strong><span class="muted" data-tray-count></span></div>
+        <div class="dz-tray__head"><strong>Fotoğraflar</strong><span class="muted" data-tray-count></span></div>
         <p class="dz-tray__hint muted">Fotoğrafı tutup yaprağa bırakın. Yapraktan buraya bırakılan fotoğraf çıkar.</p>
         <div class="dz-thumbs" data-thumbs></div>
       </aside>
@@ -77,11 +92,11 @@ function designerPage(c, { couple, csrf, demoAdmin }) {
       <div class="dz-foot__act">
         <button type="button" class="btn btn--outline" data-export="one">${icon('download')}Bu yaprağı indir</button>
         <button type="button" class="btn btn--outline" data-export="all">${icon('download')}Tümünü indir</button>
-        <button type="button" class="btn btn--primary" data-send>${icon('send')}Albüm tasarımına aktar</button>
+        ${couple ? h`<button type="button" class="btn btn--primary" data-send>${icon('send')}Çiftin albüm onayına aktar</button>` : ''}
       </div>
     </div>
   </div>`;
-  return panelLayout(c, { title: `Albüm tasarımı · ${couple.name}`, csrf, nav: admin.adminNav('list', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=1'] });
+  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=3'] });
 }
 
 module.exports = { designerPage };

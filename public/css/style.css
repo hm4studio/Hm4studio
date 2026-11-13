@@ -3034,3 +3034,17 @@ fieldset > legend.sr-only { left: 0; top: 0; }
 }
 .ad-designer { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 14px 16px; margin: 14px 0; background: var(--gold-bg); border-radius: 14px; }
 .ad-designer p { margin: 0; font-size: .88rem; }
+.dz-sub { margin: 4px 0 0; font-size: .9rem; }
+.dz-sub a { display: inline-flex; align-items: center; gap: 4px; color: var(--gold-d); text-decoration: none; }
+.dz-sub .icon { width: 14px; height: 14px; }
+.dz-source { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 18px; padding: 12px 14px; background: var(--paper); border: 1px solid var(--rule); border-radius: 16px; }
+.dz-pick { display: flex; align-items: center; gap: 10px; flex: 1 1 320px; margin: 0; }
+.dz-pick__lbl { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--pencil); font-weight: 600; }
+.dz-pick select { flex: 1; min-height: 44px; font-size: 1rem; }
+.dz-set { display: inline-flex; padding: 4px; gap: 4px; background: #fff; border: 1px solid var(--rule); border-radius: 999px; }
+.dz-set[hidden] { display: none; }
+.dz-set button { border: 0; background: none; padding: 8px 14px; border-radius: 999px; font: 500 .86rem var(--sans); color: var(--pencil); cursor: pointer; }
+.dz-set button span { font-variant-numeric: lining-nums; opacity: .75; }
+.dz-set button[aria-pressed="true"] { background: var(--navy); color: #fff; }
+.dz-files { position: relative; cursor: pointer; }
+.dz-files input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }

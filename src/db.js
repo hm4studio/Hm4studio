@@ -600,6 +600,12 @@ module.exports = {
   approveOrder: (coupleId) => q("UPDATE album_orders SET state = 'onaylandi', approved_at = datetime('now'), updated_at = datetime('now') WHERE couple_id = ?").run(coupleId),
   setOrderStamp: (coupleId, col, on) => { if (['lab_at', 'arrived_at'].includes(col)) q(`UPDATE album_orders SET ${col} = ${on ? "datetime('now')" : 'NULL'} WHERE couple_id = ?`).run(coupleId); },
   setCouplePhone: (id, phone) => q('UPDATE couples SET phone = ? WHERE id = ?').run(phone || null, id),
+  listEditedCouples: () => q(`SELECT c.id, c.name, c.ref_no, c.album_cover_id,
+      (SELECT COUNT(*) FROM photos p WHERE p.couple_id = c.id AND p.kind = 'duzenli') AS edited_count,
+      (SELECT COUNT(*) FROM favorites f WHERE f.couple_id = c.id) AS fav_count,
+      (SELECT MAX(p.created_at) FROM photos p WHERE p.couple_id = c.id AND p.kind = 'duzenli') AS edited_at
+    FROM couples c WHERE EXISTS(SELECT 1 FROM photos p WHERE p.couple_id = c.id AND p.kind = 'duzenli')
+    ORDER BY edited_at DESC`).all(),
   setAlbumDraft: (id, json) => q('UPDATE couples SET album_draft = ? WHERE id = ?').run(json || null, id),
   setDeliveryOnly: (id, x) => q('UPDATE couples SET delivery_only = ?, season = ?, event_type = ?, dlv_video = ?, album_limit = ? WHERE id = ?').run(x.on ? 1 : 0, x.season || '', x.eventType || '', x.video ? 1 : 0, x.limit, id),
   addTask: (x) => Number(q('INSERT INTO tasks(couple_id, check_id, title, member_id, due_date) VALUES(?, ?, ?, ?, ?)').run(x.coupleId || null, x.checkId || null, x.title, x.memberId || null, x.dueDate).lastInsertRowid),

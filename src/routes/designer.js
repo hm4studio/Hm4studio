@@ -4,7 +4,7 @@
 const db = require('../db');
 const demo = require('../demo');
 const { getContent } = require('../content');
-const { html, json, readJson, HttpError } = require('../http');
+const { html, json, readJson, redirect, HttpError } = require('../http');
 const { requireAdmin, checkCsrf, toId } = require('./guards');
 const views = require('../views/designer');
 
@@ -12,7 +12,14 @@ const views = require('../views/designer');
 const baseKey = (name) => String(name || '').toLowerCase().replace(/\.[a-z0-9]{2,5}$/, '').replace(/[^a-z0-9]/g, '');
 const serialKey = (name) => { const m = String(name || '').replace(/\.[a-z0-9]{2,5}$/i, '').match(/\d{3,}/g); return m ? m[m.length - 1] : ''; };
 
-function photoList(couple) {
+function photoList(couple, set = 'secim') {
+  if (set === 'duzenli') {
+    return db.listPhotos(couple.id, 'duzenli').map((e) => ({
+      id: e.id, name: e.original_name || `foto-${e.id}`, w: e.w || 3, h: e.h || 2,
+      thumb: `/m/${e.id}/thumb`, src: `/m/${e.id}/display`, full: e.original_ext ? `/m/${e.id}/original` : `/m/${e.id}/display`,
+      edited: true, cover: false,
+    }));
+  }
   const favs = db.listFavoritePhotos(couple.id);
   const cover = couple.album_cover_id && !favs.some((p) => p.id === couple.album_cover_id) ? db.getPhoto(couple.album_cover_id) : null;
   const list = cover && cover.couple_id === couple.id ? [cover, ...favs] : favs;
@@ -52,21 +59,33 @@ function register(router) {
     return c;
   };
 
+  // Albüm paneli: çift seçilir (düzenlenmiş fotoğrafı olanlar) ya da sıfırdan albüm
+  router.get('/admin/album', (req, res, { query }) => {
+    if (!requireAdmin(req, res)) return;
+    const couples = db.listEditedCouples();
+    const id = query.get('cift') ? toId(query.get('cift')) : 0;
+    const sel = id ? db.getCouple(id) : null;
+    html(res, views.designerPage(getContent(), { couples, selected: sel, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+  });
   router.get('/admin/ciftler/:id/tasarimci', (req, res, { params }) => {
     if (!requireAdmin(req, res)) return;
-    const couple = coupleOr404(params.id);
-    html(res, views.designerPage(getContent(), { couple, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+    redirect(res, `/admin/album?cift=${toId(params.id)}`);
   });
 
-  router.get('/admin/ciftler/:id/tasarimci.json', (req, res, { params }) => {
+  router.get('/admin/ciftler/:id/tasarimci.json', (req, res, { params, query }) => {
     if (req.session?.kind !== 'admin') throw new HttpError(401, 'Oturum gerekli');
     const couple = coupleOr404(params.id);
     let draft = null;
     try { draft = couple.album_draft ? JSON.parse(couple.album_draft) : null; } catch { draft = null; }
     const order = db.getOrder(couple.id);
+    const favCount = db.favoriteCount(couple.id);
+    const editedCount = db.listPhotos(couple.id, 'duzenli').length;
+    const want = query.get('set') || (draft && draft.set) || (favCount ? 'secim' : 'duzenli');
+    const set = want === 'duzenli' && editedCount ? 'duzenli' : favCount ? 'secim' : 'duzenli';
     json(res, {
+      set, favCount, editedCount,
       couple: { id: couple.id, name: couple.name, locked: Boolean(couple.album_locked), refNo: couple.ref_no || '' },
-      photos: photoList(couple),
+      photos: photoList(couple, set),
       draft,
       size: order ? String(order.boyut || '') : '',
       pagesHint: order ? String(order.sayfa || '') : '',

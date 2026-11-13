@@ -12,7 +12,8 @@
   const num = (id) => parseFloat(byId(id).value) || 0;
   const pxToMm = (px) => px / 300 * 25.4;
 
-  const S = { photos: [], pages: [], sheet: 0, variant: {}, crop: {}, cropMode: false, cropId: null, dims: {}, couple: {} };
+  const S = { photos: [], pages: [], sheet: 0, variant: {}, crop: {}, cropMode: false, cropId: null, dims: {}, couple: {}, set: 'secim', nextId: 1 };
+  const local = !base;
   const photoById = (id) => S.photos.find((p) => p.id === id);
   const status = (t) => { $('[data-status]').textContent = t; };
 
@@ -34,9 +35,10 @@
   function snapshot() {
     const v = {};
     CFG_IDS.forEach((id) => { const el = byId(id); v[id] = el.type === 'checkbox' ? el.checked : el.value; });
-    return { v: 1, cfg: v, pages: S.pages, variant: S.variant, crop: S.crop, sheet: S.sheet };
+    return { v: 1, set: S.set, cfg: v, pages: S.pages, variant: S.variant, crop: S.crop, sheet: S.sheet };
   }
   function scheduleSave() {
+    if (local) return;
     $('[data-save]').textContent = 'Kaydediliyor…';
     clearTimeout(saveT);
     saveT = setTimeout(async () => {
@@ -469,7 +471,7 @@
     if (px > 16e6) k *= Math.sqrt(16e6 / px);
     return k;
   }
-  const leafName = (i) => `${S.couple.refNo ? `${S.couple.refNo} ` : ''}${S.couple.name} - Yaprak ${String(i + 1).padStart(2, '0')}.jpg`.replace(/[\\/:*?"<>|]+/g, '-');
+  const leafName = (i) => `${S.couple.refNo ? `${S.couple.refNo} ` : ''}${S.couple.name || 'Albüm'} - Yaprak ${String(i + 1).padStart(2, '0')}.jpg`.replace(/[\\/:*?"<>|]+/g, '-');
   function download(blob, name) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name;
@@ -556,33 +558,84 @@
     render(); scheduleSave();
   });
   $$('[data-export]').forEach((b) => b.addEventListener('click', () => exportLeaves(b.dataset.export)));
-  $('[data-send]').addEventListener('click', sendToAlbum);
+  const sendBtn = $('[data-send]');
+  if (sendBtn) sendBtn.addEventListener('click', sendToAlbum);
+  $('[data-source]').addEventListener('change', (e) => {
+    if (local && S.photos.length && !window.confirm('Sıfırdan albüm kaydedilmez. Bu çalışmadan çıkılsın mı?')) { e.target.value = ''; return; }
+    window.location.href = e.target.value ? `/admin/album?cift=${e.target.value}` : '/admin/album';
+  });
+  $$('[data-set-btn]').forEach((b) => b.addEventListener('click', () => {
+    const want = b.dataset.setBtn;
+    if (want === S.set) return;
+    if (S.pages.some((l) => l.length) && !window.confirm('Fotoğraf grubu değişince mevcut yerleşim sıfırlanır. Devam edilsin mi?')) return;
+    S.pages = []; S.variant = {}; S.crop = {}; S.sheet = 0;
+    load(want, true);
+  }));
+
+  // ── Sıfırdan albüm: fotoğraflar cihazdan, tarayıcıda küçültülür (sunucuya gitmez) ──
+  async function shrink(img, edge, q) {
+    const k = Math.min(1, edge / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const b = await toBlob(c, q); c.width = c.height = 0;
+    return URL.createObjectURL(b);
+  }
+  async function addFiles(files) {
+    const list = [...files].filter((f) => /^image\//.test(f.type));
+    const failed = [];
+    busy(true);
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i];
+      status(`Hazırlanıyor: ${i + 1} / ${list.length}…`);
+      const url = URL.createObjectURL(f);
+      const img = new Image(); img.src = url;
+      try { await img.decode(); } catch { failed.push(f.name); URL.revokeObjectURL(url); continue; }
+      S.photos.push({ id: S.nextId++, name: f.name, w: img.naturalWidth, h: img.naturalHeight, thumb: await shrink(img, 600, 0.8), src: await shrink(img, 1800, 0.86), full: url, edited: false, cover: false });
+    }
+    busy(false);
+    render();
+    status(`${S.photos.length} fotoğraf hazır.${failed.length ? ` Okunamayan: ${failed.join(', ')}.` : ' "Otomatik diz" ile yerleştirin.'} Sıfırdan albüm kaydedilmez; bitince yaprakları indirin.`);
+  }
+  const fileInput = $('[data-files]');
+  if (fileInput) fileInput.addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+  window.addEventListener('beforeunload', (e) => { if (local && S.photos.length) { e.preventDefault(); e.returnValue = ''; } });
   let rz = null;
   window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 120); });
 
   // ── Başlangıç ──
-  (async () => {
+  function applyDraft(d) {
+    CFG_IDS.forEach((id) => { if (d.cfg[id] === undefined) return; const el = byId(id); if (el.type === 'checkbox') el.checked = Boolean(d.cfg[id]); else el.value = d.cfg[id]; });
+    const ok = new Set(S.photos.map((p) => p.id));
+    S.pages = (d.pages || []).map((l) => l.filter((id) => ok.has(id)));
+    S.variant = d.variant || {}; S.crop = d.crop || {}; S.sheet = d.sheet || 0;
+  }
+  async function load(want, switching) {
     try {
-      const r = await fetch(`${base}/tasarimci.json`, { credentials: 'same-origin' });
+      const r = await fetch(`${base}/tasarimci.json${want ? `?set=${want}` : ''}`, { credentials: 'same-origin' });
       const data = await r.json();
-      S.couple = data.couple; S.photos = data.photos;
+      S.couple = data.couple; S.photos = data.photos; S.set = data.set;
+      const box = $('[data-set]');
+      box.hidden = !(data.favCount && data.editedCount);
+      $('[data-n="secim"]').textContent = data.favCount; $('[data-n="duzenli"]').textContent = data.editedCount;
+      $$('[data-set-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.setBtn === S.set)));
       const d = data.draft;
-      if (d && d.cfg) {
-        CFG_IDS.forEach((id) => { if (d.cfg[id] === undefined) return; const el = byId(id); if (el.type === 'checkbox') el.checked = Boolean(d.cfg[id]); else el.value = d.cfg[id]; });
-        const ok = new Set(S.photos.map((p) => p.id));
-        S.pages = (d.pages || []).map((l) => l.filter((id) => ok.has(id)));
-        S.variant = d.variant || {}; S.crop = d.crop || {}; S.sheet = d.sheet || 0;
-      } else {
+      if (!switching && d && d.cfg && (d.set || 'secim') === S.set) applyDraft(d);
+      else if (!switching && !d) {
         const m = String(data.size || '').match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)/i);
         if (m) { byId('pw').value = m[1].replace(',', '.'); byId('ph').value = m[2].replace(',', '.'); }
         const pg = parseInt(data.pagesHint, 10);
         if (pg) byId('leaves').value = Math.max(1, Math.round(pg / 2));
       }
       render();
+      if (switching) scheduleSave();
       const edited = S.photos.filter((p) => p.edited).length;
-      if (!S.photos.length) status('Çift henüz albüm için fotoğraf seçmedi.');
-      else status(`${S.photos.length} fotoğraf${edited ? `, ${edited} tanesi düzenlenmiş haliyle` : ''}.${data.couple.locked ? '' : ' Çift seçimi henüz tamamlamadı.'}${d ? '' : ' "Otomatik diz" ile başlayın.'}`);
-      $('[data-save]').textContent = d ? 'Taslak açıldı' : '';
+      const what = S.set === 'duzenli' ? 'düzenlenmiş fotoğraf' : `albüm seçimi${edited ? `, ${edited} tanesi düzenlenmiş haliyle` : ''}`;
+      if (!S.photos.length) status('Bu çiftte gösterilecek fotoğraf yok.');
+      else status(`${S.photos.length} ${S.set === 'duzenli' ? what : `fotoğraf (${what})`}.${S.pages.some((l) => l.length) ? '' : ' "Otomatik diz" ile başlayın.'}`);
+      $('[data-save]').textContent = d && !switching ? 'Taslak açıldı' : '';
     } catch { status('Fotoğraflar alınamadı. Sayfayı yenileyin.'); }
-  })();
+  }
+  if (local) { render(); status('Cihazınızdan fotoğraf ekleyin ya da yukarıdan bir çift seçin.'); }
+  else load('', false);
 }());
