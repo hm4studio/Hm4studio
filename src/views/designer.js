@@ -17,6 +17,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
       </div>
       <div class="dz-head__act">
         <span class="dz-save muted" data-save aria-live="polite"></span>
+        ${couple ? h`<a class="btn btn--text btn--sm" href="/admin/photoshop">Photoshop bağlantısı</a>` : ''}
         <button type="button" class="btn btn--outline btn--sm" data-toggle-settings aria-expanded="false" aria-controls="dz-settings">${icon('settings')}Ayarlar</button>
         <button type="button" class="btn btn--primary btn--sm" data-auto>${icon('sparkle')}Otomatik diz</button>
       </div>
@@ -85,9 +86,11 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
             <button type="button" class="dz-ic" data-nudge="0,1" aria-label="Aşağı">${icon('down')}</button>
           </div>
           <button type="button" class="dz-tool" data-fit>Tam sığdır</button>
+          ${couple ? h`<button type="button" class="dz-tool dz-tool--ps" data-ps title="Kısayol: E"><i>Ps</i>Photoshop'ta düzenle <kbd>E</kbd></button>` : ''}
           <button type="button" class="dz-tool dz-tool--out" data-remove>${icon('close')}Albümden çıkar</button>
         </div>
       </div>
+      <div class="dz-versions" data-versions hidden></div>
     </section>
 
     <section class="dz-tl" aria-label="Hikâye şeridi">
@@ -105,7 +108,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
       </div>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=6'] });
+  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=7'] });
 }
 
 module.exports = { designerPage };

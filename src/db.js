@@ -247,6 +247,27 @@ addColumn('couples', 'delivery_only', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('couples', 'season', "TEXT NOT NULL DEFAULT ''");
 addColumn('couples', 'dlv_video', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('couples', 'album_draft', 'TEXT'); // albüm tasarımcısı taslağı (JSON)
+addColumn('photos', 'rev', 'INTEGER NOT NULL DEFAULT 0'); // dosya yenilendikçe artar (Photoshop rötuşu)
+db.exec(`CREATE TABLE IF NOT EXISTS ps_jobs (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
+  photo_id INTEGER NOT NULL,
+  file_photo_id INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'bekliyor',
+  result_photo_id INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS photo_versions (
+  id INTEGER PRIMARY KEY,
+  photo_id INTEGER NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+  file_key TEXT,
+  original_ext TEXT,
+  w INTEGER, h INTEGER,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS photo_versions_photo ON photo_versions(photo_id);`);
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS leads (
@@ -765,7 +786,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
+    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM ps_jobs; DELETE FROM photo_versions; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

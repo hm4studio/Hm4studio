@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { color: #ddd; font-family: -apple-system, system-ui, sans-serif; font-size: 12px; padding: 10px; margin: 0; }
+  h1 { font-size: 13px; margin: 0 0 8px; color: #fff; }
+  .conn { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; color: #aaa; }
+  .conn i { width: 8px; height: 8px; border-radius: 50%; background: #777; display: inline-block; }
+  .conn.ok { color: #9fd39f; } .conn.ok i { background: #5cc35c; }
+  .conn.err { color: #f0a39a; } .conn.err i { background: #e0675a; }
+  .setup { background: #2c2c2c; border: 1px solid #474747; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+  .setup p { margin: 0 0 8px; color: #bbb; line-height: 1.45; }
+  input { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 5px; border: 1px solid #555; background: #1e1e1e; color: #eee; font-size: 11px; }
+  button { margin-top: 8px; padding: 6px 10px; border-radius: 5px; border: 0; background: #31a8ff; color: #001e36; font-weight: 700; font-size: 12px; }
+  button.ghost { background: #444; color: #ddd; font-weight: 500; }
+  .job { background: #2c2c2c; border: 1px solid #474747; border-radius: 8px; padding: 9px; margin-bottom: 8px; }
+  .job .n { color: #fff; font-weight: 600; }
+  .job .m { color: #aaa; margin-top: 2px; word-break: break-all; }
+  .job .s { margin-top: 7px; padding: 5px 7px; border-radius: 5px; background: #1f3a52; color: #9cd2ff; line-height: 1.4; }
+  .job.done .s { background: #1f4228; color: #a6e3a6; }
+  .job.err .s { background: #4a2420; color: #f3b1a8; }
+  .empty { color: #888; line-height: 1.5; }
+  .foot { margin-top: 12px; color: #777; font-size: 11px; line-height: 1.5; }
+  a { color: #8cc8ff; }
+</style>
+</head>
+<body>
+  <h1>HM4 Albüm</h1>
+  <div class="conn" id="conn"><i></i><span id="connText">Bağlanılıyor…</span></div>
+  <div class="setup" id="setup" style="display:none">
+    <p>Sitedeki <b>Albüm › Photoshop bağlantısı</b> sayfasından bağlantı kodu oluşturup buraya yapıştırın.</p>
+    <input id="token" type="text" placeholder="hm4ps_…" spellcheck="false">
+    <button id="save">Bağlan</button>
+  </div>
+  <div id="jobs"></div>
+  <div class="foot" id="foot">Panelde “Photoshop'ta düzenle”ye bastığınız fotoğraf burada kendiliğinden açılır. Düzenleyip ⌘S ile kaydedin; yeni hali siteye yüklenir.<br><button class="ghost" id="reset">Bağlantı kodunu değiştir</button></div>
+  <script src="index.js"></script>
+</body>
+</html>

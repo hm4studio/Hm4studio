@@ -496,6 +496,7 @@
       d._slot = { W: r.w * s, H: r.h * s, dx: (vx - r.x) * s, dy: (vy - r.y) * s };
       placeImg(im, p, d._slot);
       S.dims[id] = { W: r.w * s, H: r.h * s };
+      if (psState.has(id)) { d.classList.add('is-ps'); d.appendChild(el('b', 'dz-ps', psState.get(id) === 'acik' ? "Photoshop'ta açık · kaydedince güncellenecek" : "Photoshop'a gönderildi")); }
       d.addEventListener('pointerdown', (e) => (S.cropMode ? startPan(e, id, d) : startDrag(e, { type: 'cell', id })));
       sp.appendChild(d);
     });
@@ -579,6 +580,7 @@
     renderStrip();
     renderNote();
     renderPool();
+    renderVersions();
     const sel = S.sel ? photoById(S.sel) : null;
     $('[data-crop-panel]').hidden = !sel;
     $('[data-crop-label]').textContent = sel ? sel.name : '';
@@ -632,6 +634,84 @@
       });
       grid.appendChild(b);
     });
+  }
+
+  // ── Photoshop ──
+  const psState = new Map(); // albüm fotoğrafı → 'bekliyor' | 'acik'
+  let psTimer = null, psSeen = new Set();
+  async function sendToPs() {
+    const p = S.sel && photoById(S.sel);
+    if (!p || local) return;
+    try {
+      const r = await fetch(`${base}/ps-gonder`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ photoId: p.id, fileId: p.fileId || p.id }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'gönderilemedi');
+      psState.set(p.id, 'bekliyor');
+      status(d.connected ? `${p.name} Photoshop'a gönderildi. Eklenti açık değilse Photoshop'ta HM4 Albüm panelini açın.` : 'Gönderildi, ama Photoshop bağlantısı kurulmamış: üstteki "Photoshop bağlantısı"ndan kurun.');
+      render(); psPoll();
+    } catch { status("Photoshop'a gönderilemedi; yeniden deneyin."); }
+  }
+  async function psPoll() {
+    clearTimeout(psTimer);
+    if (local) return;
+    try {
+      const r = await fetch(`${base}/ps-durum`, { credentials: 'same-origin' });
+      const d = await r.json();
+      const before = new Map(psState);
+      psState.clear();
+      let done = false;
+      d.jobs.forEach((j) => {
+        if (j.status === 'bekliyor' || j.status === 'acik') psState.set(j.photo_id, j.status);
+        if (j.status === 'yuklendi' && !psSeen.has(`${j.id}:${j.updated_at}`)) { psSeen.add(`${j.id}:${j.updated_at}`); if (before.size || psSeen.size) done = true; }
+      });
+      if (done) { await refreshPhotos(); status('Photoshop rötuşu geldi; fotoğraf güncellendi.'); versionsFor = null; }
+      if (done || [...before.keys()].some((k) => before.get(k) !== psState.get(k)) || psState.size !== before.size) render();
+    } catch { /* bir sonraki turda */ }
+    psTimer = setTimeout(psPoll, psState.size ? 3000 : 15000);
+  }
+  // Fotoğrafların yeni adreslerini al (yerleşim değişmez)
+  async function refreshPhotos() {
+    try {
+      const r = await fetch(`${base}/tasarimci.json?set=${S.set}`, { credentials: 'same-origin' });
+      const data = await r.json();
+      [...data.photos, ...(data.pool || [])].forEach((n) => {
+        const p = photoById(n.id);
+        if (p) Object.assign(p, { thumb: n.thumb, src: n.src, full: n.full, w: n.w, h: n.h, fileId: n.fileId, edited: n.edited });
+        const q = S.pool.find((x) => x.id === n.id); if (q && q !== p) Object.assign(q, n);
+      });
+      fullCache.clear(); rankCache.clear();
+    } catch { /* sonra */ }
+  }
+  let versionsFor = null;
+  async function renderVersions() {
+    const box = $('[data-versions]'); if (!box) return;
+    const p = S.sel && photoById(S.sel);
+    if (!p || local) { box.hidden = true; versionsFor = null; return; }
+    const fid = p.fileId || p.id;
+    if (versionsFor === `${fid}:${p.src}`) return;
+    versionsFor = `${fid}:${p.src}`;
+    box.hidden = true; box.textContent = '';
+    try {
+      const r = await fetch(`/admin/foto/${fid}/surumler`, { credentials: 'same-origin' });
+      const d = await r.json();
+      if (!d.versions.length || versionsFor !== `${fid}:${p.src}`) return;
+      box.appendChild(el('h4', '', 'Bu fotoğrafın önceki halleri'));
+      d.versions.forEach((v) => {
+        const row = el('div', 'dz-ver');
+        const when = new Date(`${v.created_at.replace(' ', 'T')}Z`).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        row.appendChild(el('span', '', v.has_file ? `${when} öncesi hali` : 'Çiftin seçtiği hali (rötuşsuz)'));
+        const b = el('button', 'dz-tool dz-tool--sm', 'Buna dön'); b.type = 'button';
+        b.addEventListener('click', async () => {
+          if (!window.confirm(v.has_file ? 'Fotoğraf bu haline dönsün mü? Şimdiki hali de saklanır.' : 'Rötuşlu hal silinip çiftin seçtiği hale dönülsün mü? Düzenlenmiş fotoğraflardan da kalkar.')) return;
+          const rr = await fetch(`/admin/foto/surum/${v.id}/geri`, { method: 'POST', credentials: 'same-origin', headers: { 'X-CSRF-Token': csrf } });
+          if (!rr.ok) { status('Geri alınamadı.'); return; }
+          await refreshPhotos(); versionsFor = null; status('Fotoğraf önceki haline döndü.'); render();
+        });
+        row.appendChild(b);
+        box.appendChild(row);
+      });
+      box.hidden = false;
+    } catch { box.hidden = true; }
   }
 
   // ── Dışa aktarma ──
@@ -896,9 +976,12 @@
       $('[data-save]').textContent = d && !switching ? 'Taslak açıldı' : '';
     } catch { status('Fotoğraflar alınamadı. Sayfayı yenileyin.'); }
   }
+  const psBtn = $('[data-ps]');
+  if (psBtn) psBtn.addEventListener('click', sendToPs);
+  document.addEventListener('keydown', (e) => { if ((e.key === 'e' || e.key === 'E') && !e.metaKey && !e.ctrlKey && !(e.target.closest && e.target.closest('input,select,textarea')) && S.sel) { e.preventDefault(); sendToPs(); } });
   const poolBtn = $('[data-pool-toggle]');
   if (poolBtn) poolBtn.addEventListener('click', () => { const box = $('[data-pool]'); box.hidden = !box.hidden; poolBtn.setAttribute('aria-expanded', String(!box.hidden)); renderPool(); });
   if (!byId('sortMode').value) byId('sortMode').value = 'time';
   if (local) { render(); status('Cihazınızdan fotoğraf ekleyin ya da yukarıdan bir çift seçin.'); }
-  else load('', false);
+  else { load('', false).then(() => psPoll()); }
 }());

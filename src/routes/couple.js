@@ -379,7 +379,7 @@ function register(router) {
       const base = (photo.original_name || `foto-${photo.id}`).replace(/\.[^.]+$/, '');
       download = `${base}${path.extname(file)}`;
     }
-    sendFile(req, res, dir, file, { cache: 'private, max-age=3600', download });
+    sendFile(req, res, dir, file, { cache: 'private, no-cache', download });
   });
 }
 

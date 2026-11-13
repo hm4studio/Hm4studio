@@ -1,0 +1,25 @@
+{
+  "id": "com.hm4studio.album",
+  "name": "HM4 Albüm",
+  "version": "1.0.0",
+  "main": "index.html",
+  "manifestVersion": 5,
+  "host": { "app": "PS", "minVersion": "24.2.0" },
+  "entrypoints": [
+    {
+      "type": "panel",
+      "id": "hm4panel",
+      "label": { "default": "HM4 Albüm" },
+      "minimumSize": { "width": 230, "height": 220 },
+      "maximumSize": { "width": 2000, "height": 2000 },
+      "preferredDockedSize": { "width": 260, "height": 440 },
+      "preferredFloatingSize": { "width": 260, "height": 440 },
+      "icons": [{ "width": 23, "height": 23, "path": "icons/icon.png", "scale": [1, 2], "theme": ["all"], "species": ["chrome"] }]
+    }
+  ],
+  "icons": [{ "width": 48, "height": 48, "path": "icons/plugin.png", "scale": [1], "theme": ["all"], "species": ["pluginList"] }],
+  "requiredPermissions": {
+    "network": { "domains": ["https://www.hm4studio.com", "https://hm4studio.com"] },
+    "localFileSystem": "plugin"
+  }
+}
