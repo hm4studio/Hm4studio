@@ -3,38 +3,62 @@
 <head>
 <meta charset="utf-8">
 <style>
-  body { color: #ddd; font-family: -apple-system, system-ui, sans-serif; font-size: 12px; padding: 10px; margin: 0; }
-  h1 { font-size: 13px; margin: 0 0 8px; color: #fff; }
-  .conn { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; color: #aaa; }
-  .conn i { width: 8px; height: 8px; border-radius: 50%; background: #777; display: inline-block; }
-  .conn.ok { color: #9fd39f; } .conn.ok i { background: #5cc35c; }
-  .conn.err { color: #f0a39a; } .conn.err i { background: #e0675a; }
-  .setup { background: #2c2c2c; border: 1px solid #474747; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
-  .setup p { margin: 0 0 8px; color: #bbb; line-height: 1.45; }
-  input { width: 100%; box-sizing: border-box; padding: 6px; border-radius: 5px; border: 1px solid #555; background: #1e1e1e; color: #eee; font-size: 11px; }
-  button { margin-top: 8px; padding: 6px 10px; border-radius: 5px; border: 0; background: #31a8ff; color: #001e36; font-weight: 700; font-size: 12px; }
-  button.ghost { background: #444; color: #ddd; font-weight: 500; }
-  .job { background: #2c2c2c; border: 1px solid #474747; border-radius: 8px; padding: 9px; margin-bottom: 8px; }
-  .job .n { color: #fff; font-weight: 600; }
-  .job .m { color: #aaa; margin-top: 2px; word-break: break-all; }
-  .job .s { margin-top: 7px; padding: 5px 7px; border-radius: 5px; background: #1f3a52; color: #9cd2ff; line-height: 1.4; }
-  .job.done .s { background: #1f4228; color: #a6e3a6; }
-  .job.err .s { background: #4a2420; color: #f3b1a8; }
-  .empty { color: #888; line-height: 1.5; }
-  .foot { margin-top: 12px; color: #777; font-size: 11px; line-height: 1.5; }
-  a { color: #8cc8ff; }
+/* HM4 Albüm — Photoshop paneli (UXP uyumlu: yalnızca flex, kenarlık, renk) */
+body { margin: 0; padding: 0; background: #12171f; color: #e9e4d8; font-family: -apple-system, "Helvetica Neue", system-ui, sans-serif; font-size: 12px; }
+.wrap { padding: 16px 14px 14px; }
+.head { display: flex; flex-direction: column; align-items: flex-start; padding-bottom: 12px; border-bottom: 1px solid #2a3240; }
+.head img.wm { height: 13px; width: auto; }
+.head .sub { margin-top: 7px; font-size: 9px; letter-spacing: 2.4px; color: #8d8574; text-transform: uppercase; }
+.conn { display: flex; align-items: center; margin-top: 12px; font-size: 11px; color: #9a9384; }
+.conn i { width: 6px; height: 6px; border-radius: 3px; background: #6b665c; margin-right: 7px; }
+.conn.ok i { background: #8fb59a; } .conn.ok { color: #b7c9bb; }
+.conn.err i { background: #c9705f; } .conn.err { color: #d9a092; }
+.label { margin: 18px 0 8px; font-size: 9px; letter-spacing: 2px; color: #7c7566; text-transform: uppercase; display: flex; justify-content: space-between; }
+.job { display: flex; padding: 10px; margin-bottom: 8px; background: #19202b; border: 1px solid #252e3c; border-radius: 3px; }
+.job.active { border-color: #5c5038; background: #1c2029; }
+.job .ph { width: 52px; height: 52px; border-radius: 2px; background: #252e3c; flex-shrink: 0; overflow: hidden; }
+.job .ph img { width: 52px; height: 52px; object-fit: cover; }
+.job .tx { margin-left: 11px; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.job .n { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 15px; color: #f3efe6; line-height: 1.15; }
+.job .m { margin-top: 2px; font-size: 10.5px; color: #8a8577; letter-spacing: .2px; }
+.job .s { margin-top: 7px; font-size: 11px; color: #c9b58a; display: flex; align-items: center; }
+.job .s b { width: 6px; height: 6px; border-radius: 3px; background: #b49a66; margin-right: 6px; flex-shrink: 0; }
+
+
+.job.done .s { color: #9fbfa6; } .job.done .s b { background: #8fb59a; }
+.job.err { border-color: #4d2c27; }
+.job.err .s { color: #e0a596; align-items: flex-start; line-height: 1.4; } .job.err .s b { background: #c9705f; margin-top: 4px; }
+.btn { display: inline-block; margin-top: 8px; padding: 5px 11px; border: 1px solid #b49a66; border-radius: 2px; background: transparent; color: #d7c39a; font-size: 11px; letter-spacing: .3px; align-self: flex-start; }
+.btn.solid { background: #b49a66; color: #12171f; font-weight: 600; border-color: #b49a66; padding: 7px 14px; }
+.empty { padding: 22px 12px; text-align: center; border: 1px dashed #2a3240; border-radius: 3px; color: #8a8577; line-height: 1.55; }
+.empty img { height: 11px; width: auto; opacity: .45; margin-bottom: 10px; }
+.foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid #222a36; font-size: 10.5px; color: #7c7566; line-height: 1.55; }
+.foot .k { color: #c9b58a; }
+.foot .lnk { color: #b49a66; display: inline-block; margin-top: 6px; cursor: pointer; }
+.btn { cursor: pointer; }
+.setup { margin-top: 16px; padding: 14px; background: #19202b; border: 1px solid #252e3c; border-radius: 3px; }
+.setup h2 { margin: 0 0 6px; font-family: Georgia, serif; font-style: italic; font-weight: normal; font-size: 16px; color: #f3efe6; }
+.setup p { margin: 0 0 10px; color: #a29b8c; line-height: 1.5; font-size: 11px; }
+.setup ol { margin: 0 0 12px; padding-left: 16px; color: #a29b8c; font-size: 11px; line-height: 1.6; }
+.setup input { width: 100%; box-sizing: border-box; padding: 7px 8px; border-radius: 2px; border: 1px solid #333d4d; background: #10141b; color: #e9e4d8; font-size: 11px; letter-spacing: .3px; }
+.job.idle .s { color: #a29b8c; } .job.idle .s b { background: #6b665c; }
+.hidden { display: none; }
 </style>
 </head>
 <body>
-  <h1>HM4 Albüm</h1>
+<div class="wrap">
+  <div class="head"><img class="wm" src="icons/logo.png" alt="HM4 Studio"><div class="sub">Albüm · Photoshop</div></div>
   <div class="conn" id="conn"><i></i><span id="connText">Bağlanılıyor…</span></div>
-  <div class="setup" id="setup" style="display:none">
-    <p>Sitedeki <b>Albüm › Photoshop bağlantısı</b> sayfasından bağlantı kodu oluşturup buraya yapıştırın.</p>
+  <div class="setup hidden" id="setup">
+    <h2>Bağlantıyı kurun</h2>
+    <ol><li>Sitede <b>Albüm › Photoshop bağlantısı</b>na girin.</li><li><b>Bağlantı kodu oluştur</b>a basıp kopyalayın.</li><li>Buraya yapıştırıp bağlanın.</li></ol>
     <input id="token" type="text" placeholder="hm4ps_…" spellcheck="false">
-    <button id="save">Bağlan</button>
+    <div class="btn solid" id="save">Bağlan</div>
   </div>
+  <div class="label"><span>Fotoğraflar</span><span id="count"></span></div>
   <div id="jobs"></div>
-  <div class="foot" id="foot">Panelde “Photoshop'ta düzenle”ye bastığınız fotoğraf burada kendiliğinden açılır. Düzenleyip ⌘S ile kaydedin; yeni hali siteye yüklenir.<br><button class="ghost" id="reset">Bağlantı kodunu değiştir</button></div>
-  <script src="index.js"></script>
+  <div class="foot">Albüm panelinde <span class="k">Photoshop'ta düzenle</span>ye bastığınız fotoğraf burada kendiliğinden açılır. Düzenleyip <span class="k">⌘S</span> ile kaydedin; yeni hali siteye ve çiftin galerisine gider.<br><span class="lnk" id="reset">Bağlantı kodunu değiştir</span></div>
+</div>
+<script src="index.js"></script>
 </body>
 </html>

@@ -64,7 +64,7 @@ function register(router) {
   // Eklenti paketi (.ccx = zip); site adresi pakete yazılır
   router.get('/admin/photoshop/hm4-album.ccx', async (req, res) => {
     if (!requireAdmin(req, res)) return;
-    const files = ['manifest.json', 'index.html', 'index.js', 'icons/icon.png', 'icons/icon@2x.png', 'icons/plugin.png'];
+    const files = ['manifest.json', 'index.html', 'index.js', 'icons/icon.png', 'icons/icon@2x.png', 'icons/plugin.png', 'icons/logo.png'];
     const tmp = path.join(config.privateDir, 'tmp-ps');
     fs.mkdirSync(tmp, { recursive: true });
     const cfgFile = path.join(tmp, 'config.json');
@@ -87,6 +87,14 @@ function register(router) {
     const f = job && ps.jobFile(job);
     if (!f) throw new HttpError(404, 'Dosya bulunamadı');
     sendFile(req, res, f.dir, f.file, { cache: 'no-store', download: f.name });
+  });
+  // Eklentideki kartın küçük fotoğrafı
+  router.get('/api/ps/isler/:id/kucuk', (req, res, { params }) => {
+    pluginApi(req);
+    const job = ps.getJob(toId(params.id));
+    const p = job && db.getPhoto(job.file_photo_id);
+    if (!p) throw new HttpError(404, 'Bulunamadı');
+    if (!sendFile(req, res, media.coupleDir(p.couple_id, p.file_key), 'thumb.jpg', { cache: 'no-store' })) throw new HttpError(404, 'Bulunamadı');
   });
   router.post('/api/ps/isler/:id/acildi', (req, res, { params }) => {
     pluginApi(req);

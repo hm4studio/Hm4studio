@@ -27,6 +27,7 @@ function setConn(kind, text) {
   $('conn').className = `conn ${kind}`;
   $('connText').textContent = text;
 }
+const showSetup = (on) => { $('setup').className = on ? 'setup' : 'setup hidden'; };
 
 async function api(path, opts = {}) {
   const r = await fetch(SITE + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: `Bearer ${TOKEN}` } });
@@ -51,25 +52,56 @@ function b64ToBytes(s) {
   return out.subarray(0, o);
 }
 
+function bytesToB64(u8) {
+  let out = '';
+  for (let i = 0; i < u8.length; i += 3) {
+    const n = (u8[i] << 16) | ((u8[i + 1] || 0) << 8) | (u8[i + 2] || 0);
+    out += B64[(n >> 18) & 63] + B64[(n >> 12) & 63] + (i + 1 < u8.length ? B64[(n >> 6) & 63] : '=') + (i + 2 < u8.length ? B64[n & 63] : '=');
+  }
+  return out;
+}
+// Kartın küçük fotoğrafı (bir kez indirilir)
+async function loadThumb(j) {
+  if (j.thumb || j.thumbTried) return;
+  j.thumbTried = true;
+  try {
+    const r = await api(`/api/ps/isler/${j.id}/kucuk`);
+    j.thumb = `data:image/jpeg;base64,${bytesToB64(new Uint8Array(await r.arrayBuffer()))}`;
+    render();
+  } catch (e) { /* küçük fotoğraf olmadan da çalışır */ }
+}
+
 // ── İş listesi ──
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 function render() {
   const box = $('jobs');
   box.innerHTML = '';
   const list = [...jobs.values()].sort((a, b) => b.id - a.id).slice(0, 12);
-  if (!list.length) { box.innerHTML = '<div class="empty">Bekleyen fotoğraf yok.</div>'; return; }
+  $('count').textContent = list.length ? String(list.length) : '';
+  if (!list.length) {
+    const e = el('div', 'empty');
+    const im = el('img'); im.src = 'icons/logo.png'; im.alt = '';
+    e.appendChild(im); e.appendChild(el('div', '', 'Bekleyen fotoğraf yok.')); e.appendChild(el('div', '', 'Albüm panelinden gönderdiğiniz fotoğraflar burada görünür.'));
+    box.appendChild(e); return;
+  }
   for (const j of list) {
-    const d = document.createElement('div');
-    d.className = `job ${j.state === 'done' ? 'done' : j.state === 'err' ? 'err' : ''}`;
-    d.innerHTML = '<div class="n"></div><div class="m"></div><div class="s"></div>';
-    d.querySelector('.n').textContent = j.couple;
-    d.querySelector('.m').textContent = j.name;
-    d.querySelector('.s').textContent = j.msg;
+    const kind = j.state === 'done' ? 'done' : j.state === 'err' ? 'err' : j.state === 'closed' ? 'idle' : 'active';
+    const d = el('div', `job ${kind}`);
+    const ph = el('div', 'ph');
+    if (j.thumb) { const im = el('img'); im.src = j.thumb; im.alt = ''; ph.appendChild(im); }
+    d.appendChild(ph);
+    const tx = el('div', 'tx');
+    tx.appendChild(el('div', 'n', j.couple));
+    tx.appendChild(el('div', 'm', j.name));
+    const s = el('div', 's'); s.appendChild(el('b')); s.appendChild(el('span', '', j.msg)); tx.appendChild(s);
     if (j.state === 'closed' || j.state === 'err') {
-      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = 'Yeniden aç';
+      const b = el('div', 'btn', 'Yeniden aç');
       b.addEventListener('click', () => openJob(j, true));
-      d.appendChild(b);
+      tx.appendChild(b);
     }
+    d.appendChild(tx);
     box.appendChild(d);
+    loadThumb(j);
   }
 }
 
@@ -95,7 +127,7 @@ async function openJob(j, again) {
     }
     await core.executeAsModal(async () => { await app.open(j.entry); }, { commandName: 'HM4: fotoğrafı aç' });
     await api(`/api/ps/isler/${j.id}/acildi`, { method: 'POST' });
-    j.state = 'open'; j.msg = 'Açık · ⌘S ile kaydedince siteye gider';
+    j.state = 'open'; j.msg = "Photoshop'ta açık · ⌘S ile kaydedin";
   } catch (e) {
     j.state = 'err'; j.msg = `Açılamadı: ${e.message}`;
   }
@@ -107,8 +139,8 @@ async function poll() {
   try {
     const r = await api('/api/ps/isler');
     const data = await r.json();
-    setConn('ok', `${SITE.replace(/^https?:\/\//, '')} adresine bağlı`);
-    $('setup').style.display = 'none';
+    setConn('ok', `${SITE.replace(/^https?:\/\/(www\.)?/, '')} adresine bağlı`);
+    showSetup(false);
     for (const x of data.jobs) {
       if (jobs.has(x.id)) continue;
       const j = { id: x.id, couple: x.couple, name: x.name, state: 'new', msg: '' };
@@ -118,7 +150,7 @@ async function poll() {
     }
   } catch (e) {
     busy = false;
-    if (e.auth) { setConn('err', 'Bağlantı kodu geçersiz'); $('setup').style.display = 'block'; }
+    if (e.auth) { setConn('err', 'Bağlantı kodu geçersiz'); showSetup(true); }
     else setConn('err', 'Siteye ulaşılamıyor; yeniden deneniyor…');
   }
 }
@@ -192,12 +224,12 @@ $('save').addEventListener('click', () => {
   setConn('', 'Bağlanılıyor…');
   poll();
 });
-$('reset').addEventListener('click', () => { $('setup').style.display = 'block'; $('token').value = ''; });
+$('reset').addEventListener('click', () => { showSetup(true); $('token').value = ''; });
 
 (async () => {
   await loadConfig();
   render();
-  if (!TOKEN) { setConn('err', 'Bağlantı kodu girilmedi'); $('setup').style.display = 'block'; }
+  if (!TOKEN) { setConn('err', 'Bağlantı kodu girilmedi'); showSetup(true); }
   poll();
   pollTimer = setInterval(poll, 1500);
 })();
