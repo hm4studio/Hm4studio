@@ -75,6 +75,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
       </div>
       <div class="dz-tools">
         <button type="button" class="dz-tool" data-variant>${icon('grid')}Düzeni değiştir</button>
+        <button type="button" class="dz-tool" data-select-all aria-pressed="false" title="Kısayol: ⌘A">${icon('check')}<span>Tümünü seç</span></button>
         <div class="dz-gapctl"><label for="dz-gap">Boşluk</label><input id="dz-gap" type="range" min="0" max="120" step="2" value="30" data-gap><output data-gap-out>30 px</output>
           <span class="dz-gapseg"><button type="button" data-gap-scope="leaf" aria-pressed="true">Bu yaprak</button><button type="button" data-gap-scope="all" aria-pressed="false">Tüm albüm</button></span></div>
         <button type="button" class="dz-tool dz-tool--side" data-out-jump hidden>${icon('image')}<span data-out-count></span></button>
@@ -111,7 +112,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
       </div>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=11'] });
+  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=12'] });
 }
 
 module.exports = { designerPage };

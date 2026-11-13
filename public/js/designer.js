@@ -17,7 +17,7 @@
 
   // pages: yapraklar (fotoğraf kimlikleri, hikâye sırasıyla) · out: albüme girmeyenler · tpl: yaprağın şablon anahtarı
   // sent: aktarılan yaprakların imzası ("1": imza) · pool/extra: seçim dışından eklenebilenler · albumPages: çiftin onay durumları
-  const S = { photos: [], pages: [[]], out: [], tpl: {}, crop: {}, sheet: 0, cropMode: false, sel: null, dims: {}, couple: {}, set: 'secim', nextId: 1, sent: {}, pool: [], extra: [], albumPages: [], adj: {}, gap: {}, edit: null };
+  const S = { photos: [], pages: [[]], out: [], tpl: {}, crop: {}, sheet: 0, cropMode: false, sel: null, dims: {}, couple: {}, set: 'secim', nextId: 1, sent: {}, pool: [], extra: [], albumPages: [], adj: {}, gap: {}, edit: null, multi: [] };
   const byPid = new Map();
   const photoById = (id) => byPid.get(id);
   const indexPhotos = () => { byPid.clear(); S.photos.forEach((p) => byPid.set(p.id, p)); };
@@ -257,7 +257,8 @@
     const t = leafTemplate(i, c);
     const rects = t.rects.map((r) => ({ ...r }));
     const a = S.adj[i];
-    if (a && a.key === t.key && a.n === rects.length) {
+    if (a && a.key === t.key && a.n === rects.length && Array.isArray(a.rects) && a.rects.length === rects.length) return { t, rects: a.rects.map((r) => ({ ...r })) };
+    if (a && a.key === t.key && a.n === rects.length && Array.isArray(a.moves)) {
       for (const m of a.moves) {
         if (m.ax === 'x') { m.A.forEach((k) => { if (rects[k]) rects[k].w += m.d; }); m.B.forEach((k) => { if (rects[k]) { rects[k].x += m.d; rects[k].w -= m.d; } }); }
         else { m.A.forEach((k) => { if (rects[k]) rects[k].h += m.d; }); m.B.forEach((k) => { if (rects[k]) { rects[k].y += m.d; rects[k].h -= m.d; } }); }
@@ -404,7 +405,7 @@
     if (e.pointerType === 'mouse' || src.type === 'cell') e.preventDefault();
     const ghost = el('img', 'dz-ghost'); ghost.src = photoById(src.id).thumb; ghost.alt = ''; ghost.hidden = true;
     document.body.appendChild(ghost);
-    drag = { src, ghost, pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false };
+    drag = { src, ghost, pid: e.pointerId, sx: e.clientX, sy: e.clientY, moved: false, mods: e.shiftKey || e.metaKey || e.ctrlKey };
     window.addEventListener('pointermove', onMove, { passive: false });
     window.addEventListener('pointerup', onUp);
     window.addEventListener('pointercancel', endDrag);
@@ -437,7 +438,9 @@
   }
   function onUp(e) {
     if (drag && e.pointerId !== drag.pid) return;
+    const mods = drag && drag.mods;
     const d = endDrag();
+    if (d) d.mods = mods;
     if (!d) return;
     const id = d.src.id;
     if (!d.moved) {
@@ -445,6 +448,8 @@
         const now = Date.now();
         if (lastTap.id === id && now - lastTap.t < 380) { lastTap = {}; enterEdit(id); return; } // çift tık / çift dokunuş
         lastTap = { id, t: now };
+        if (d.mods) { const set = new Set(S.multi.length ? S.multi : S.sel ? [S.sel] : []); if (set.has(id)) set.delete(id); else set.add(id); S.multi = [...set]; S.sel = id; render(); return; }
+        S.multi = [];
         S.sel = S.sel === id ? null : id; render(); return;
       }
       const at = locate(id);
@@ -508,8 +513,8 @@
   if (gapRange) {
     gapRange.addEventListener('input', () => {
       const v = Math.max(0, Math.round(Number(gapRange.value) || 0));
-      if (gapScope === 'leaf') S.gap[S.sheet] = v;
-      else { byId('gapPx').value = v; S.gap = {}; }
+      if (gapScope === 'leaf') { S.gap[S.sheet] = v; if (S.adj[S.sheet] && S.adj[S.sheet].rects) delete S.adj[S.sheet]; }
+      else { byId('gapPx').value = v; S.gap = {}; Object.keys(S.adj).forEach((k) => { if (S.adj[k] && S.adj[k].rects) delete S.adj[k]; }); }
       $('[data-gap-out]').textContent = `${v} px`;
       renderSpread(cfg());
     });
@@ -520,6 +525,16 @@
       syncGap();
     }));
   }
+
+  // ── Tümünü seç ──
+  function selectAll() {
+    const ids = S.pages[S.sheet] || [];
+    if (S.multi.length === ids.length && ids.length) { S.multi = []; S.sel = null; }
+    else { S.multi = [...ids]; S.sel = null; status('Sayfadaki tüm fotoğraflar seçili: köşeden çekince hepsi birlikte, oranı koruyarak büyür/küçülür; kenardan çekince o yönde. Esc ile seçim kalkar.'); }
+    render();
+  }
+  const selBtn = $('[data-select-all]');
+  if (selBtn) selBtn.addEventListener('click', selectAll);
 
   // ── Çift tıkla kadraj ──
   let lastTap = {};
@@ -557,19 +572,22 @@
 
   // ── Çerçeve sürükleme ──
   let gut = null;
+  // Yaprağın şu anki çerçevelerini kalıcı hale getir (sonraki düzenlemeler bunun üzerinden)
+  function materialize(i, c) {
+    const { t, rects } = leafRects(i, c);
+    S.adj[i] = { key: t.key, n: rects.length, rects: rects.map((r) => ({ ...r })) };
+    return S.adj[i];
+  }
+  const MIN_FRAME = 15; // mm
   function startGutter(e, g, s) {
     if (!e.isPrimary) return;
     e.preventDefault(); e.stopPropagation();
     const c = cfg(), i = S.sheet;
-    const { t, rects } = leafRects(i, c);
-    if (!S.adj[i] || S.adj[i].key !== t.key || S.adj[i].n !== rects.length) S.adj[i] = { key: t.key, n: rects.length, moves: [] };
-    const moves = S.adj[i].moves;
-    const same = (m) => m.ax === g.ax && m.A.join() === g.A.join() && m.B.join() === g.B.join();
-    let mv = moves.length && same(moves[moves.length - 1]) ? moves[moves.length - 1] : null;
-    if (!mv) { mv = { ax: g.ax, A: g.A, B: g.B, d: 0 }; moves.push(mv); }
-    const size = g.ax === 'x' ? 'w' : 'h', MIN = 15;
-    const maxGrow = Math.min(...g.B.map((k) => rects[k][size])) - MIN, maxShrink = Math.min(...g.A.map((k) => rects[k][size])) - MIN;
-    gut = { mv, d0: mv.d, s, sx: e.clientX, sy: e.clientY, lo: -maxShrink, hi: maxGrow, raf: 0 };
+    const a = materialize(i, c);
+    const base = a.rects.map((r) => ({ ...r }));
+    const size = g.ax === 'x' ? 'w' : 'h';
+    const maxGrow = Math.min(...g.B.map((k) => base[k][size])) - MIN_FRAME, maxShrink = Math.min(...g.A.map((k) => base[k][size])) - MIN_FRAME;
+    gut = { a, base, g, s, sx: e.clientX, sy: e.clientY, lo: -maxShrink, hi: maxGrow, raf: 0 };
     root.classList.add('is-gutter');
     window.addEventListener('pointermove', onGutter, { passive: false });
     window.addEventListener('pointerup', endGutter);
@@ -578,8 +596,12 @@
   function onGutter(e) {
     if (!gut) return;
     e.preventDefault();
-    const delta = (gut.mv.ax === 'x' ? e.clientX - gut.sx : e.clientY - gut.sy) / gut.s;
-    gut.mv.d = gut.d0 + Math.max(gut.lo, Math.min(gut.hi, delta));
+    const { g, base, a } = gut;
+    const d = Math.max(gut.lo, Math.min(gut.hi, (g.ax === 'x' ? e.clientX - gut.sx : e.clientY - gut.sy) / gut.s));
+    const pos = g.ax, size = g.ax === 'x' ? 'w' : 'h';
+    a.rects = base.map((r) => ({ ...r }));
+    g.A.forEach((k) => { a.rects[k][size] += d; });
+    g.B.forEach((k) => { a.rects[k][pos] += d; a.rects[k][size] -= d; });
     if (!gut.raf) gut.raf = requestAnimationFrame(() => { if (gut) { gut.raf = 0; renderSpread(cfg()); } });
   }
   function endGutter() {
@@ -587,12 +609,89 @@
     window.removeEventListener('pointerup', endGutter);
     window.removeEventListener('pointercancel', endGutter);
     root.classList.remove('is-gutter');
-    if (gut) {
-      const a = S.adj[S.sheet];
-      if (a) a.moves = a.moves.filter((m) => Math.abs(m.d) > 0.05);
-      if (a && !a.moves.length) delete S.adj[S.sheet];
-    }
     gut = null; render(); scheduleSave();
+  }
+
+  // ── Çerçeve boyutlandırma (seçili fotoğraf ya da tümü) ──
+  // Boşluklar korunur: seçimin kapladığı aralıkta yalnızca fotoğraf olan kısımlar ölçeklenir.
+  function axisMap(list, pos, size, oMin, oMax, nMin, nMax) {
+    const edges = [...new Set([oMin, oMax, ...list.flatMap((r) => [r[pos], r[pos] + r[size]])])].sort((x, y) => x - y);
+    const segs = [];
+    for (let k = 0; k < edges.length - 1; k++) {
+      const a = edges[k], b = edges[k + 1], mid = (a + b) / 2;
+      segs.push({ a, b, gap: !list.some((r) => r[pos] < mid && r[pos] + r[size] > mid) });
+    }
+    const G = segs.filter((x) => x.gap).reduce((t, x) => t + (x.b - x.a), 0);
+    const C = (oMax - oMin) - G;
+    const k = C > 0 ? Math.max(0.05, ((nMax - nMin) - G) / C) : 1;
+    const f = (v) => { let out = nMin; for (const sg of segs) { if (v <= sg.a) break; const len = Math.min(v, sg.b) - sg.a; out += sg.gap ? len : len * k; } return out; };
+    return { f, k, G, C };
+  }
+  const bbox = (list) => ({ x0: Math.min(...list.map((r) => r.x)), y0: Math.min(...list.map((r) => r.y)), x1: Math.max(...list.map((r) => r.x + r.w)), y1: Math.max(...list.map((r) => r.y + r.h)) });
+  let rsz = null;
+  function frameSelection() {
+    const ids = S.multi.length ? S.multi : S.sel ? [S.sel] : [];
+    return ids.filter((id) => (S.pages[S.sheet] || []).includes(id));
+  }
+  function startResize(e, hnd, s) {
+    if (!e.isPrimary) return;
+    e.preventDefault(); e.stopPropagation();
+    const c = cfg(), i = S.sheet;
+    const sel = frameSelection();
+    const items = computeLeaf(i, c);
+    const idx = items.filter((x) => sel.includes(x.id)).map((x) => x.si);
+    if (!idx.length) return;
+    const a = materialize(i, c);
+    const base = a.rects.map((r) => ({ ...r }));
+    const bb = bbox(idx.map((k) => base[k]));
+    rsz = { a, base, idx, bb, hnd, s, sx: e.clientX, sy: e.clientY, c, raf: 0 };
+    root.classList.add('is-gutter');
+    window.addEventListener('pointermove', onResize, { passive: false });
+    window.addEventListener('pointerup', endResize);
+    window.addEventListener('pointercancel', endResize);
+  }
+  function onResize(e) {
+    if (!rsz) return;
+    e.preventDefault();
+    const { base, idx, bb, hnd, c } = rsz;
+    const dx = (e.clientX - rsz.sx) / rsz.s, dy = (e.clientY - rsz.sy) / rsz.s;
+    const sel = idx.map((k) => base[k]);
+    const minW = Math.min(...sel.map((r) => r.w)), minH = Math.min(...sel.map((r) => r.h));
+    const W = bb.x1 - bb.x0, H = bb.y1 - bb.y0;
+    const mx = axisMap(sel, 'x', 'w', bb.x0, bb.x1, 0, W), my = axisMap(sel, 'y', 'h', bb.y0, bb.y1, 0, H);
+    const L = -c.cut, R = 2 * c.pw + c.cut, T = -c.cut, B = c.ph + c.cut;
+    let x0 = bb.x0, x1 = bb.x1, y0 = bb.y0, y1 = bb.y1;
+    const hasW = /w/.test(hnd), hasE = /e/.test(hnd), hasN = /n/.test(hnd), hasS = /s/.test(hnd);
+    if (hnd.length === 2) {
+      // köşe: oranı koruyarak büyüt/küçült (karşı köşe sabit)
+      const kx = mx.C ? ((W + (hasE ? dx : -dx)) - mx.G) / mx.C : 1, ky = my.C ? ((H + (hasS ? dy : -dy)) - my.G) / my.C : 1;
+      let k = (kx + ky) / 2;
+      k = Math.max(k, MIN_FRAME / minW, MIN_FRAME / minH);
+      const nW = mx.G + mx.C * k, nH = my.G + my.C * k;
+      if (hasE) x1 = x0 + nW; else x0 = x1 - nW;
+      if (hasS) y1 = y0 + nH; else y0 = y1 - nH;
+      if (x0 < L || x1 > R || y0 < T || y1 > B) return; // sayfa dışına taşma
+    } else {
+      if (hasE) x1 = Math.min(R, Math.max(bb.x0 + mx.G + mx.C * (MIN_FRAME / minW), bb.x1 + dx));
+      if (hasW) x0 = Math.max(L, Math.min(bb.x1 - mx.G - mx.C * (MIN_FRAME / minW), bb.x0 + dx));
+      if (hasS) y1 = Math.min(B, Math.max(bb.y0 + my.G + my.C * (MIN_FRAME / minH), bb.y1 + dy));
+      if (hasN) y0 = Math.max(T, Math.min(bb.y1 - my.G - my.C * (MIN_FRAME / minH), bb.y0 + dy));
+    }
+    const fx = axisMap(sel, 'x', 'w', bb.x0, bb.x1, x0, x1).f, fy = axisMap(sel, 'y', 'h', bb.y0, bb.y1, y0, y1).f;
+    rsz.a.rects = base.map((r) => ({ ...r }));
+    idx.forEach((k) => {
+      const r = base[k];
+      const nx = fx(r.x), nx2 = fx(r.x + r.w), ny = fy(r.y), ny2 = fy(r.y + r.h);
+      rsz.a.rects[k] = { x: nx, y: ny, w: nx2 - nx, h: ny2 - ny };
+    });
+    if (!rsz.raf) rsz.raf = requestAnimationFrame(() => { if (rsz) { rsz.raf = 0; renderSpread(cfg()); } });
+  }
+  function endResize() {
+    window.removeEventListener('pointermove', onResize);
+    window.removeEventListener('pointerup', endResize);
+    window.removeEventListener('pointercancel', endResize);
+    root.classList.remove('is-gutter');
+    rsz = null; render(); scheduleSave();
   }
 
   // ── Çizim ──
@@ -659,7 +758,7 @@
       const vx = Math.max(0, r.x), vy = Math.max(0, r.y);
       const vw = Math.min(2 * c.pw, r.x + r.w) - vx, vh = Math.min(c.ph, r.y + r.h) - vy;
       const editing = S.edit === id;
-      const d = el('div', `dz-cell${S.sel === id ? ' is-sel' : ''}${editing ? ' is-edit' : ''}`);
+      const d = el('div', `dz-cell${S.sel === id || S.multi.includes(id) ? ' is-sel' : ''}${editing ? ' is-edit' : ''}`);
       d.dataset.leaf = S.sheet; d.dataset.idx = order.indexOf(id);
       Object.assign(d.style, { left: `${vx * s}px`, top: `${vy * s}px`, width: `${vw * s}px`, height: `${vh * s}px` });
       const im = el('img'); im.src = p.src; im.alt = p.name; im.draggable = false; im.decoding = 'async';
@@ -677,6 +776,22 @@
       if (editing) d.addEventListener('wheel', (e) => { e.preventDefault(); zoomBy(id, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025))); }, { passive: false });
       sp.appendChild(d);
     });
+    // seçili çerçeve(ler): köşe ve kenar tutamaçları
+    const fsel = frameSelection();
+    if (fsel.length && !S.cropMode && !S.edit) {
+      const its = computeLeaf(S.sheet, c).filter((x) => fsel.includes(x.id)).map((x) => x.r);
+      if (its.length) {
+        const bb = bbox(its);
+        const box = el('div', `dz-selbox${fsel.length > 1 ? ' is-multi' : ''}`);
+        Object.assign(box.style, { left: `${bb.x0 * s}px`, top: `${bb.y0 * s}px`, width: `${(bb.x1 - bb.x0) * s}px`, height: `${(bb.y1 - bb.y0) * s}px` });
+        ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].forEach((hd) => {
+          const k = el('i', `dz-h dz-h--${hd}`); k.dataset.h = hd;
+          k.addEventListener('pointerdown', (e) => startResize(e, hd, s));
+          box.appendChild(k);
+        });
+        sp.appendChild(box);
+      }
+    }
     // çerçeve tutamaçları
     if (!S.cropMode && !S.edit) {
       gutters(S.sheet, c).forEach((g) => {
@@ -770,6 +885,8 @@
     if (S.sel && !locate(S.sel)) S.sel = null;
     if (S.edit && !(S.pages[S.sheet] || []).includes(S.edit)) S.edit = null;
     syncGap();
+    const selAllBtn = $('[data-select-all]');
+    if (selAllBtn) { const all = (S.pages[S.sheet] || []).length && S.multi.length === (S.pages[S.sheet] || []).length; selAllBtn.setAttribute('aria-pressed', String(Boolean(all))); selAllBtn.lastChild.textContent = all ? 'Seçimi kaldır' : 'Tümünü seç'; }
     renderTemplates(c);
     renderSpread(c);
     renderStrip();
@@ -1083,7 +1200,7 @@
     e.currentTarget.setAttribute('aria-expanded', String(!box.hidden));
     render();
   });
-  const goSheet = (d) => { S.sheet = Math.min(S.pages.length - 1, Math.max(0, S.sheet + d)); S.sel = null; S.edit = null; render(); };
+  const goSheet = (d) => { S.sheet = Math.min(S.pages.length - 1, Math.max(0, S.sheet + d)); S.sel = null; S.edit = null; S.multi = []; render(); };
   $$('[data-go]').forEach((b) => b.addEventListener('click', () => goSheet(Number(b.dataset.go))));
   $$('[data-peek]').forEach((b) => b.addEventListener('click', () => goSheet(Number(b.dataset.peek))));
   $('[data-variant]').addEventListener('click', () => {
@@ -1150,6 +1267,8 @@
   document.addEventListener('keydown', (e) => {
     if (e.target.closest && e.target.closest('input,select,textarea')) return;
     if (e.key === 'Escape' && S.edit) { exitEdit(); return; }
+    if (e.key === 'Escape' && (S.multi.length || S.sel)) { S.multi = []; S.sel = null; render(); return; }
+    if ((e.key === 'a' || e.key === 'A') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); selectAll(); return; }
     if (S.edit) return;
     if (e.key === 'ArrowRight') goSheet(1);
     if (e.key === 'ArrowLeft') goSheet(-1);
