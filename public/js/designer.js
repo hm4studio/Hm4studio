@@ -16,7 +16,8 @@
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 
   // pages: yapraklar (fotoğraf kimlikleri, hikâye sırasıyla) · out: albüme girmeyenler · tpl: yaprağın şablon anahtarı
-  const S = { photos: [], pages: [[]], out: [], tpl: {}, crop: {}, sheet: 0, cropMode: false, sel: null, dims: {}, couple: {}, set: 'secim', nextId: 1 };
+  // sent: aktarılan yaprakların imzası ("1": imza) · pool/extra: seçim dışından eklenebilenler · albumPages: çiftin onay durumları
+  const S = { photos: [], pages: [[]], out: [], tpl: {}, crop: {}, sheet: 0, cropMode: false, sel: null, dims: {}, couple: {}, set: 'secim', nextId: 1, sent: {}, pool: [], extra: [], albumPages: [] };
   const byPid = new Map();
   const photoById = (id) => byPid.get(id);
   const indexPhotos = () => { byPid.clear(); S.photos.forEach((p) => byPid.set(p.id, p)); };
@@ -46,7 +47,12 @@
   function snapshot() {
     const v = {};
     CFG_IDS.forEach((id) => { const e = byId(id); v[id] = e.type === 'checkbox' ? e.checked : e.value; });
-    return { v: 2, set: S.set, cfg: v, pages: S.pages, tpl: S.tpl, crop: S.crop, sheet: S.sheet };
+    return { v: 2, set: S.set, cfg: v, pages: S.pages, tpl: S.tpl, crop: S.crop, sheet: S.sheet, sent: S.sent, extra: S.extra };
+  }
+  async function saveNow() {
+    if (local) return;
+    clearTimeout(saveT);
+    try { await fetch(`${base}/tasarimci/taslak`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(snapshot()) }); } catch { /* bir sonraki kayıtta denenir */ }
   }
   function scheduleSave() {
     if (local) return;
@@ -522,9 +528,14 @@
       return t;
     };
     S.pages.forEach((L, i) => {
+      const pg = pageOf(i), ch = changedSinceSent(i);
       const g = el('div', `dz-tl__g${i === S.sheet ? ' is-cur' : ''}`);
       g.dataset.dropLeaf = i;
-      g.appendChild(el('span', 'dz-tl__n', String(i + 1)));
+      const lab = el('span', 'dz-tl__n', String(i + 1));
+      if (ch) lab.appendChild(el('b', 'dz-st dz-st--edit', 'düzeltildi'));
+      else if (pg && pg.status === 'degisiklik') lab.appendChild(el('b', 'dz-st dz-st--change', 'değişiklik'));
+      else if (pg && pg.status === 'onay') lab.appendChild(el('b', 'dz-st dz-st--ok', '✓'));
+      g.appendChild(lab);
       L.forEach((id, j) => {
         if (j > 0) {
           const cut = el('button', 'dz-tl__cut'); cut.type = 'button'; cut.setAttribute('aria-label', 'Burada yeni yaprak başlat'); cut.title = 'Burada böl';
@@ -566,10 +577,61 @@
     renderTemplates(c);
     renderSpread(c);
     renderStrip();
+    renderNote();
+    renderPool();
     const sel = S.sel ? photoById(S.sel) : null;
     $('[data-crop-panel]').hidden = !sel;
     $('[data-crop-label]').textContent = sel ? sel.name : '';
     if (sel) $('[data-zoom]').value = cropOf(sel.id).z;
+  }
+
+  // ── Revize: yaprak imzası, çiftin onay durumu ──
+  const pageName = (num) => `Yaprak ${String(num).padStart(2, '0')}.jpg`;
+  const leafNum = (i) => { let n = 0; for (let k = 0; k <= i; k++) if ((S.pages[k] || []).length) n++; return (S.pages[i] || []).length ? n : 0; };
+  function leafSig(i) {
+    const c = cfg();
+    const parts = computeLeaf(i, c).map(({ id, r }) => { const cr = cropOf(id); return `${id}:${[r.x, r.y, r.w, r.h].map((v) => v.toFixed(1)).join(',')}:${cr.z.toFixed(2)},${cr.ox.toFixed(3)},${cr.oy.toFixed(3)}`; });
+    const str = `${cfgKey(c)}|${parts.join('|')}`;
+    let h = 5381; for (let k = 0; k < str.length; k++) h = ((h * 33) ^ str.charCodeAt(k)) >>> 0;
+    return h.toString(36);
+  }
+  const pageOf = (i) => { const n = leafNum(i); return n ? S.albumPages.find((p) => p.name === pageName(n)) : null; };
+  const changedSinceSent = (i) => { const n = leafNum(i); return n && S.sent[n] && S.sent[n] !== leafSig(i); };
+  function renderNote() {
+    const box = $('[data-note]'); if (!box) return;
+    const pg = pageOf(S.sheet);
+    box.textContent = '';
+    box.className = 'dz-note';
+    if (!pg || (pg.status !== 'degisiklik' && !pg.note)) { box.hidden = true; return; }
+    box.hidden = false;
+    box.classList.add(pg.status === 'degisiklik' ? 'is-change' : 'is-ok');
+    box.appendChild(el('strong', '', pg.status === 'degisiklik' ? 'Çift değişiklik istedi' : 'Çiftin notu'));
+    if (pg.note) box.appendChild(el('span', '', `“${pg.note}”`));
+    if (changedSinceSent(S.sheet)) box.appendChild(el('em', '', 'Düzelttiniz; aktarınca çifte yeniden gider.'));
+  }
+
+  // ── Seçim dışından fotoğraf ekleme (yerleşim bozulmaz) ──
+  function renderPool() {
+    const btn = $('[data-pool-toggle]'), box = $('[data-pool]'), grid = $('[data-pool-grid]');
+    if (!btn) return;
+    const rest = S.pool.filter((p) => !byPid.has(p.id));
+    btn.hidden = local || !rest.length;
+    if (btn.hidden) { box.hidden = true; return; }
+    if (box.hidden) return;
+    grid.textContent = '';
+    rest.forEach((p) => {
+      const b = el('button', 'dz-pool__ph'); b.type = 'button'; b.title = p.name;
+      const im = el('img'); im.src = p.thumb; im.alt = p.name; im.loading = 'lazy';
+      b.appendChild(im);
+      if (p.edited) b.appendChild(el('span', 'dz-badge', 'D'));
+      b.addEventListener('click', () => {
+        S.photos.push(p); S.extra.push(p.id); indexPhotos();
+        (S.pages[S.sheet] || (S.pages[S.sheet] = [])).push(p.id); touched(S.sheet);
+        status(`${p.name} ${S.sheet + 1}. yaprağa eklendi.`);
+        render(); scheduleSave();
+      });
+      grid.appendChild(b);
+    });
   }
 
   // ── Dışa aktarma ──
@@ -630,16 +692,25 @@
     } catch { status('Bir fotoğraf yüklenemedi; bağlantıyı kontrol edip yeniden deneyin.'); }
     busy(false);
   }
+  // Yalnızca değişen yapraklar gider; dokunulmayanların onayı korunur. Fazla kalan eski yapraklar silinir.
   async function sendToAlbum() {
     const list = filled();
     if (!list.length) { status('Önce fotoğrafları yapraklara yerleştirin.'); return; }
-    if (!window.confirm(`${list.length} yaprak, çiftin "Albüm tasarımı" bölümüne aktarılsın mı? Aynı adlı eski sayfaların yerine geçer. Çifte göndermeyi çift sayfasından siz yaparsınız.`)) return;
+    const names = new Set(S.albumPages.map((p) => p.name));
+    const items = list.map((leaf, n) => ({ leaf, num: n + 1, sig: leafSig(leaf) }));
+    const todo = items.filter((x) => S.sent[x.num] !== x.sig || !names.has(pageName(x.num)));
+    const stale = S.albumPages.map((p) => p.name).filter((nm) => { const m = /^Yaprak (\d{2,3})\.jpg$/.exec(nm); return m && +m[1] > list.length; });
+    if (!todo.length && !stale.length) { status('Değişen yaprak yok; çiftin onayındaki sayfalar güncel.'); return; }
+    const keep = items.length - todo.length;
+    const msg = `${todo.length} yaprak aktarılacak${keep ? `, ${keep} yaprak aynı kaldığı için onayı korunacak` : ''}${stale.length ? `, artık olmayan ${stale.length} eski yaprak silinecek` : ''}. Devam edilsin mi?`;
+    if (!window.confirm(msg)) return;
     busy(true);
     try {
-      for (let n = 0; n < list.length; n++) {
-        status(`Aktarılıyor: ${n + 1} / ${list.length}…`);
+      for (let n = 0; n < todo.length; n++) {
+        const { leaf, num, sig } = todo[n];
+        status(`Aktarılıyor: ${n + 1} / ${todo.length} (Yaprak ${num})…`);
         const c = cfg();
-        const cv = await renderLeaf(list[n], 2400 / (2 * c.pw));
+        const cv = await renderLeaf(leaf, 2400 / (2 * c.pw));
         const display = await toBlob(cv, 0.86);
         const t = document.createElement('canvas');
         t.width = 900; t.height = Math.round(cv.height * 900 / cv.width);
@@ -647,13 +718,19 @@
         const thumb = await toBlob(t, 0.8);
         const r = await fetch(`${base}/album-sayfa`, {
           method: 'POST', credentials: 'same-origin', body: new Blob([thumb, display]),
-          headers: { 'X-CSRF-Token': csrf, 'X-Parts': `thumb:${thumb.size},display:${display.size}`, 'X-Filename': encodeURIComponent(`Yaprak ${String(n + 1).padStart(2, '0')}.jpg`), 'Content-Type': 'application/octet-stream' },
+          headers: { 'X-CSRF-Token': csrf, 'X-Parts': `thumb:${thumb.size},display:${display.size}`, 'X-Filename': encodeURIComponent(pageName(num)), 'Content-Type': 'application/octet-stream' },
         });
         if (!r.ok) throw new Error('upload');
+        S.sent[num] = sig;
       }
-      status('Aktarıldı. Çift sayfasına yönlendiriliyorsunuz…');
+      if (stale.length) {
+        await fetch(`${base}/tasarimci/sayfa-sil`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ names: stale }) });
+        Object.keys(S.sent).forEach((k) => { if (+k > list.length) delete S.sent[k]; });
+      }
+      await saveNow();
+      status('Aktarıldı. Çift sayfasına yönlendiriliyorsunuz; oradan "Çifte gönder"e basın.');
       window.location.href = `${base}#album`;
-    } catch { status('Aktarım yarıda kaldı; yeniden deneyin.'); busy(false); }
+    } catch { await saveNow(); status('Aktarım yarıda kaldı; yeniden deneyin (aktarılanlar tekrar gitmez).'); busy(false); }
   }
   function busy(on) { $$('[data-export],[data-send],[data-auto]').forEach((b) => { b.disabled = on; }); }
 
@@ -793,7 +870,11 @@
     try {
       const r = await fetch(`${base}/tasarimci.json${want ? `?set=${want}` : ''}`, { credentials: 'same-origin' });
       const data = await r.json();
-      S.couple = data.couple; S.photos = data.photos; S.set = data.set; indexPhotos();
+      S.couple = data.couple; S.set = data.set; S.pool = data.pool || []; S.albumPages = data.albumPages || [];
+      const d0 = data.draft && (data.draft.set || 'secim') === data.set && !switching ? data.draft : null;
+      S.extra = d0 && Array.isArray(d0.extra) ? d0.extra.filter((id) => S.pool.some((p) => p.id === id)) : [];
+      S.sent = d0 && d0.sent ? d0.sent : {};
+      S.photos = [...data.photos, ...S.pool.filter((p) => S.extra.includes(p.id))]; indexPhotos();
       $('[data-set]').hidden = !(data.favCount && data.editedCount);
       $('[data-n="secim"]').textContent = data.favCount; $('[data-n="duzenli"]').textContent = data.editedCount;
       $$('[data-set-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.setBtn === S.set)));
@@ -815,6 +896,8 @@
       $('[data-save]').textContent = d && !switching ? 'Taslak açıldı' : '';
     } catch { status('Fotoğraflar alınamadı. Sayfayı yenileyin.'); }
   }
+  const poolBtn = $('[data-pool-toggle]');
+  if (poolBtn) poolBtn.addEventListener('click', () => { const box = $('[data-pool]'); box.hidden = !box.hidden; poolBtn.setAttribute('aria-expanded', String(!box.hidden)); renderPool(); });
   if (!byId('sortMode').value) byId('sortMode').value = 'time';
   if (local) { render(); status('Cihazınızdan fotoğraf ekleyin ya da yukarıdan bir çift seçin.'); }
   else load('', false);

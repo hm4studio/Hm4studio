@@ -61,6 +61,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
     </section>
 
     <section class="dz-stage" aria-label="Yaprak">
+      <div class="dz-note" data-note hidden></div>
       <div class="dz-canvas" data-wrap>
         <div class="dz-peek dz-peek--prev" data-peek="-1"></div>
         <div class="dz-spread" data-spread></div>
@@ -90,7 +91,8 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
     </section>
 
     <section class="dz-tl" aria-label="Hikâye şeridi">
-      <div class="dz-tl__head"><span><strong>Hikâye şeridi</strong> <span class="muted" data-sort-label></span></span><span class="muted dz-tl__hint">İki fotoğrafın arasına dokunun: yeni yaprak başlar · çizgiye dokunun: yapraklar birleşir</span></div>
+      <div class="dz-tl__head"><span><strong>Hikâye şeridi</strong> <span class="muted" data-sort-label></span></span><span class="dz-tl__right"><span class="muted dz-tl__hint">İki fotoğrafın arasına dokunun: yeni yaprak başlar · çizgiye dokunun: yapraklar birleşir</span><button type="button" class="dz-tool dz-tool--sm" data-pool-toggle hidden aria-expanded="false">${icon('plus')}Seçim dışından ekle</button></span></div>
+      <div class="dz-pool" data-pool hidden><p class="muted">Çiftin seçmediği fotoğraflar. Dokunduğunuz fotoğraf açık yaprağa eklenir; yerleşim bozulmaz.</p><div class="dz-pool__grid" data-pool-grid></div></div>
       <div class="dz-strip" data-strip></div>
     </section>
 
@@ -103,7 +105,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
       </div>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=5'] });
+  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=6'] });
 }
 
 module.exports = { designerPage };
