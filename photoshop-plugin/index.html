@@ -42,6 +42,18 @@ body { margin: 0; padding: 0; background: #12171f; color: #e9e4d8; font-family: 
 .setup ol { margin: 0 0 12px; padding-left: 16px; color: #a29b8c; font-size: 11px; line-height: 1.6; }
 .setup input { width: 100%; box-sizing: border-box; padding: 7px 8px; border-radius: 2px; border: 1px solid #333d4d; background: #10141b; color: #e9e4d8; font-size: 11px; letter-spacing: .3px; }
 .job.idle .s { color: #a29b8c; } .job.idle .s b { background: #6b665c; }
+.acts { display: flex; flex-wrap: wrap; margin-top: 8px; }
+.chip { padding: 4px 9px; margin: 0 5px 5px 0; border: 1px solid #3a3424; border-radius: 12px; background: #221f18; color: #d7c39a; font-size: 10.5px; cursor: pointer; }
+.chip.auto { border-color: #b49a66; }
+.set { margin-top: 14px; padding: 12px; background: #19202b; border: 1px solid #252e3c; border-radius: 3px; }
+.set h3 { margin: 0 0 4px; font-family: Georgia, serif; font-style: italic; font-weight: normal; font-size: 14px; color: #f3efe6; }
+.hint { color: #8a8577; font-size: 10.5px; line-height: 1.5; margin: 4px 0 6px; }
+.grp { margin-top: 10px; font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: #7c7566; }
+.row { display: flex; align-items: center; padding: 5px 0; border-bottom: 1px solid #222a36; font-size: 11.5px; color: #d9d3c5; }
+.row .ck { width: 12px; height: 12px; border: 1px solid #5a5446; border-radius: 2px; margin-right: 8px; font-size: 9px; color: #12171f; text-align: center; cursor: pointer; }
+.row .ck.on { background: #b49a66; border-color: #b49a66; }
+.row .star { margin-left: auto; font-size: 10px; color: #6b665c; cursor: pointer; padding-left: 8px; }
+.row .star.on { color: #d7c39a; }
 .hidden { display: none; }
 </style>
 </head>
@@ -55,9 +67,15 @@ body { margin: 0; padding: 0; background: #12171f; color: #e9e4d8; font-family: 
     <input id="token" type="text" placeholder="hm4ps_…" spellcheck="false">
     <div class="btn solid" id="save">Bağlan</div>
   </div>
+  <div class="set hidden" id="settings">
+    <h3>Eylemleriniz</h3>
+    <div class="hint">Kartlarda görünmesini istediğiniz eylemleri işaretleyin. ☆ ile seçtiğiniz, fotoğraf açılınca kendiliğinden uygulanır.</div>
+    <div id="acts"></div>
+    <div class="btn" id="closeActs">Kapat</div>
+  </div>
   <div class="label"><span>Fotoğraflar</span><span id="count"></span></div>
   <div id="jobs"></div>
-  <div class="foot">Albüm panelinde <span class="k">Photoshop'ta düzenle</span>ye bastığınız fotoğraf burada kendiliğinden açılır. Düzenleyip <span class="k">⌘S</span> ile kaydedin; yeni hali siteye ve çiftin galerisine gider.<br><span class="lnk" id="reset">Bağlantı kodunu değiştir</span></div>
+  <div class="foot">Albüm panelinde <span class="k">Photoshop'ta düzenle</span>ye bastığınız fotoğraf burada kendiliğinden açılır. Düzenleyip <span class="k">⌘S</span> ile kaydedin ya da <span class="k">Siteye gönder</span>e basın; yeni hali siteye ve çiftin galerisine gider.<br><span class="lnk" id="editActs">Eylemleri seç</span> · <span class="lnk" id="reset">Bağlantı kodunu değiştir</span></div>
 </div>
 <script src="index.js"></script>
 </body>

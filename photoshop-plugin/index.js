@@ -1,6 +1,6 @@
 // HM4 Albüm — Photoshop eklentisi (UXP)
 // Sitedeki albüm panelinden gönderilen fotoğrafları açar; ⌘S ile kaydedilince yeni hali siteye yükler.
-const { app, core, action, imaging } = require('photoshop');
+const { app, core, action, imaging, constants } = require('photoshop');
 const uxp = require('uxp');
 const lfs = uxp.storage.localFileSystem;
 const formats = uxp.storage.formats;
@@ -94,6 +94,18 @@ function render() {
     tx.appendChild(el('div', 'n', j.couple));
     tx.appendChild(el('div', 'm', j.name));
     const s = el('div', 's'); s.appendChild(el('b')); s.appendChild(el('span', '', j.msg)); tx.appendChild(s);
+    if (j.state === 'open' || (j.state === 'done' && docForJob(j))) {
+      const acts = el('div', 'acts');
+      const chip = (label, cls, fn) => { const c = el('span', `chip${cls ? ` ${cls}` : ''}`, label); c.addEventListener('click', fn); acts.appendChild(c); };
+      chip('Cilt · Hafif', autoRun === 'cilt:hafif' ? 'auto' : '', () => skinSmooth(j, 'hafif'));
+      chip('Orta', autoRun === 'cilt:orta' ? 'auto' : '', () => skinSmooth(j, 'orta'));
+      chip('Güçlü', autoRun === 'cilt:guclu' ? 'auto' : '', () => skinSmooth(j, 'guclu'));
+      favActs.forEach((id) => chip(id.split('\u241f')[1], autoRun === id ? 'auto' : '', () => runAction(j, id)));
+      tx.appendChild(acts);
+      const send = el('div', 'btn solid', 'Siteye gönder');
+      send.addEventListener('click', () => { const d = docForJob(j); if (d) upload(j, d); });
+      tx.appendChild(send);
+    }
     if (j.state === 'closed' || j.state === 'err') {
       const b = el('div', 'btn', 'Yeniden aç');
       b.addEventListener('click', () => openJob(j, true));
@@ -127,7 +139,9 @@ async function openJob(j, again) {
     }
     await core.executeAsModal(async () => { await app.open(j.entry); }, { commandName: 'HM4: fotoğrafı aç' });
     await api(`/api/ps/isler/${j.id}/acildi`, { method: 'POST' });
-    j.state = 'open'; j.msg = "Photoshop'ta açık · ⌘S ile kaydedin";
+    j.state = 'open'; j.msg = "Photoshop'ta açık · bitince Siteye gönder";
+    render();
+    await runAuto(j);
   } catch (e) {
     j.state = 'err'; j.msg = `Açılamadı: ${e.message}`;
   }
@@ -165,6 +179,136 @@ function jobForDoc(doc) {
   return null;
 }
 
+// Belgenin JPEG kopyası (kalite 12, renk profili gömülü) → bayt
+async function saveJpegCopy(doc, j) {
+  try {
+    const folder = await jobsFolder();
+    const f = await folder.createFile(`${j.id}-gonder.jpg`, { overwrite: true });
+    const token = lfs.createSessionToken(f);
+    await bp([{
+      _obj: 'save', as: { _obj: 'JPEG', extendedQuality: 12, matteColor: { _enum: 'matteColor', _value: 'none' } },
+      in: { _path: token, _kind: 'local' }, documentID: doc.id, copy: true, lowerCase: true, embedProfiles: true, saveStage: { _enum: 'saveStageType', _value: 'saveBegin' },
+    }]);
+    const out = new Uint8Array(await f.read({ format: formats.binary }));
+    return out.length > 1000 && out[0] === 0xff && out[1] === 0xd8 ? out : null;
+  } catch (e) { return null; }
+}
+
+// ── Rötuş: cilt yumuşatma ve kendi eylemleriniz ──
+const STRENGTH = { hafif: { div: 800, op: 70, label: 'Hafif' }, orta: { div: 600, op: 80, label: 'Orta' }, guclu: { div: 450, op: 90, label: 'Güçlü' } };
+const docForJob = (j) => { try { return app.documents.find((d) => { try { return samePath(d.path, j.path); } catch (e) { return false; } }); } catch (e) { return null; } };
+// batchPlay hata fırlatmaz, sonuçta { _obj: 'error' } döner: burada hataya çevrilir
+async function bp(list) {
+  const res = await action.batchPlay(list, { synchronousExecution: true });
+  const bad = (res || []).find((r) => r && r._obj === 'error');
+  if (bad) throw new Error(bad.message || 'Photoshop komutu çalışmadı');
+  return res;
+}
+
+async function skinSmooth(j, level) {
+  const doc = docForJob(j); if (!doc) { j.msg = 'Belge açık değil'; render(); return; }
+  const st = STRENGTH[level] || STRENGTH.orta;
+  const prev = j.msg; j.msg = `Cilt yumuşatılıyor (${st.label})…`; render();
+  let skinFound = false;
+  try {
+    await core.executeAsModal(async (ctx) => {
+      app.activeDocument = doc;
+      const hist = await ctx.hostControl.suspendHistory({ documentID: doc.id, name: `HM4 cilt yumuşat · ${st.label}` });
+      try {
+        const edge = Math.max(doc.width, doc.height);
+        const R = Math.max(2, Math.round(edge / st.div)), G = Math.max(1, Math.round(R / 3 * 10) / 10);
+        // 1) Görünen her şeyin birleşik kopyası
+        if (doc.layers.length > 1) {
+          await bp([{ _obj: 'select', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'front' }], makeVisible: false }]);
+          await bp([{ _obj: 'mergeVisible', duplicate: true }]);
+        } else {
+          await bp([{ _obj: 'duplicate', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], version: 5 }]);
+        }
+        await bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', name: `Cilt yumuşatma · ${st.label} (HM4)` } }]);
+        // 2) Ten seçimi (yüz algılamalı); bulunamazsa maske kapalı başlar, fırçayla açılır
+        try {
+          await bp([{ _obj: 'colorRange', colors: { _enum: 'colors', _value: 'skinTone' }, UseFacesKey: true, skinToneFuzziness: 40 }]);
+          await bp([{ _obj: 'duplicate', _target: [{ _ref: 'channel', _property: 'selection' }], name: 'HM4 ten' }]);
+          skinFound = true;
+        } catch (e) { skinFound = false; }
+        await bp([{ _obj: 'set', _target: [{ _ref: 'channel', _property: 'selection' }], to: { _enum: 'ordinal', _value: 'none' } }]);
+        // 3) Dokuyu koruyan yumuşatma (ters yüksek geçiren)
+        await bp([{ _obj: 'invert' }]);
+        await bp([{ _obj: 'highPass', radius: { _unit: 'pixelsUnit', _value: R } }]);
+        await bp([{ _obj: 'gaussianBlur', radius: { _unit: 'pixelsUnit', _value: G } }]);
+        await bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', mode: { _enum: 'blendMode', _value: 'vividLight' }, opacity: { _unit: 'percentUnit', _value: st.op } } }]);
+        // 4) Maske: yalnızca ten
+        if (skinFound) {
+          await bp([{ _obj: 'set', _target: [{ _ref: 'channel', _property: 'selection' }], to: { _ref: 'channel', _name: 'HM4 ten' } }]);
+          await bp([{ _obj: 'make', new: { _class: 'channel' }, at: { _ref: 'channel', _enum: 'channel', _value: 'mask' }, using: { _enum: 'userMaskEnabled', _value: 'revealSelection' } }]);
+          await bp([{ _obj: 'delete', _target: [{ _ref: 'channel', _name: 'HM4 ten' }] }]).catch(() => {});
+        } else {
+          await bp([{ _obj: 'make', new: { _class: 'channel' }, at: { _ref: 'channel', _enum: 'channel', _value: 'mask' }, using: { _enum: 'userMaskEnabled', _value: 'hideAll' } }]);
+        }
+      } finally { await ctx.hostControl.resumeHistory(hist); }
+    }, { commandName: 'HM4: cilt yumuşat' });
+    j.msg = skinFound ? `Cilt yumuşatıldı (${st.label}) · fazla yerleri maskeden silin` : `Katman eklendi · ten bulunamadı: beyaz fırçayla teni boyayın`;
+  } catch (e) { j.msg = `Cilt yumuşatılamadı: ${e.message || e}`; }
+  render();
+  return prev;
+}
+
+// Photoshop'taki eylemler
+const ACT_KEY = 'hm4_actions', AUTO_KEY = 'hm4_auto';
+let favActs = []; let autoRun = '';
+try { favActs = JSON.parse(localStorage.getItem(ACT_KEY) || '[]'); autoRun = localStorage.getItem(AUTO_KEY) || ''; } catch (e) { favActs = []; }
+const actId = (set, name) => `${set}\u241f${name}`;
+function listActions() {
+  try { return app.actionTree.map((st) => ({ set: st.name, actions: st.actions.map((a) => a.name) })); } catch (e) { return []; }
+}
+function findAction(id) {
+  try { for (const st of app.actionTree) for (const a of st.actions) if (actId(st.name, a.name) === id) return a; } catch (e) { /* yok */ }
+  return null;
+}
+async function runAction(j, id) {
+  const doc = docForJob(j); if (!doc) return;
+  const a = findAction(id);
+  const nm = id.split('\u241f')[1];
+  if (!a) { j.msg = `“${nm}” eylemi bulunamadı`; render(); return; }
+  j.msg = `“${nm}” uygulanıyor…`; render();
+  try {
+    await core.executeAsModal(async () => { app.activeDocument = doc; await a.play(); }, { commandName: `HM4: ${nm}` });
+    j.msg = `“${nm}” uygulandı · bitince Siteye gönder`;
+  } catch (e) { j.msg = `“${nm}” uygulanamadı: ${e.message || e}`; }
+  render();
+}
+async function runAuto(j) {
+  if (!autoRun) return;
+  if (autoRun.startsWith('cilt:')) await skinSmooth(j, autoRun.slice(5));
+  else await runAction(j, autoRun);
+}
+
+// Eylem seçme ekranı
+function renderSettings() {
+  const box = $('acts'); box.innerHTML = '';
+  const row = (label, on, star, onCk, onStar) => {
+    const r = el('div', 'row');
+    const ck = el('span', `ck${on ? ' on' : ''}`, on ? '✓' : ''); if (onCk) ck.addEventListener('click', onCk); else ck.className += ' hidden';
+    r.appendChild(ck); r.appendChild(el('span', '', label));
+    const s = el('span', `star${star ? ' on' : ''}`, star ? '★ otomatik' : '☆'); s.addEventListener('click', onStar); r.appendChild(s);
+    return r;
+  };
+  const save = () => { try { localStorage.setItem(ACT_KEY, JSON.stringify(favActs)); localStorage.setItem(AUTO_KEY, autoRun); } catch (e) { /* saklanamadı */ } renderSettings(); render(); };
+  box.appendChild(el('div', 'grp', 'HM4 · Cilt yumuşatma'));
+  for (const k of Object.keys(STRENGTH)) box.appendChild(row(STRENGTH[k].label, true, autoRun === `cilt:${k}`, null, () => { autoRun = autoRun === `cilt:${k}` ? '' : `cilt:${k}`; save(); }));
+  const tree = listActions();
+  if (!tree.length) box.appendChild(el('div', 'hint', 'Photoshop’ta kayıtlı eylem bulunamadı (Pencere › Eylemler).'));
+  for (const st of tree) {
+    box.appendChild(el('div', 'grp', st.set));
+    for (const nm of st.actions) {
+      const id = actId(st.set, nm), on = favActs.includes(id);
+      box.appendChild(row(nm, on, autoRun === id,
+        () => { favActs = on ? favActs.filter((x) => x !== id) : [...favActs, id]; save(); },
+        () => { autoRun = autoRun === id ? '' : id; if (autoRun && !favActs.includes(id)) favActs.push(id); save(); }));
+    }
+  }
+}
+
 async function upload(j, doc) {
   j.state = 'uploading'; j.msg = 'Siteye yükleniyor…'; render();
   try {
@@ -180,8 +324,10 @@ async function upload(j, doc) {
       };
       display = await enc(2400);
       thumb = await enc(900);
-      // Orijinal: JPG olarak kaydedildiyse dosyanın kendisi, değilse tam boy JPEG
-      if (/\.jpe?g$/i.test(String(doc.path || '')) && samePath(doc.path, j.path)) original = new Uint8Array(await j.entry.read({ format: formats.binary }));
+      // Orijinal: katmanlı belge de olsa en yüksek kalitede (12) JPEG kopyası kaydedilir; açık belge olduğu gibi kalır
+      const copy = await saveJpegCopy(doc, j);
+      if (copy) original = copy;
+      else if (/\.jpe?g$/i.test(String(doc.path || '')) && samePath(doc.path, j.path)) original = new Uint8Array(await j.entry.read({ format: formats.binary }));
       else original = await enc(Math.max(W, H));
     }, { commandName: 'HM4: siteye hazırla' });
     j.msg = `Siteye yükleniyor… (${((thumb.length + display.length + original.length) / 1048576).toFixed(1)} MB)`; render();
@@ -194,7 +340,7 @@ async function upload(j, doc) {
     const t = new Date();
     j.state = 'done'; j.msg = `✓ Siteye yüklendi · ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
   } catch (e) {
-    j.state = 'err'; j.msg = `Yüklenemedi: ${e.message}. ⌘S ile tekrar deneyin.`;
+    j.state = 'err'; j.msg = `Yüklenemedi: ${e.message}. Yeniden deneyin.`;
   }
   render();
 }
@@ -202,7 +348,7 @@ async function upload(j, doc) {
 action.addNotificationListener(['save'], async () => {
   const doc = app.activeDocument;
   const j = jobForDoc(doc);
-  if (j) await upload(j, doc);
+  if (j && j.state !== 'uploading') await upload(j, doc);
 });
 action.addNotificationListener(['close'], async () => {
   const open = new Set();
@@ -225,6 +371,8 @@ $('save').addEventListener('click', () => {
   poll();
 });
 $('reset').addEventListener('click', () => { showSetup(true); $('token').value = ''; });
+$('editActs').addEventListener('click', () => { const s = $('settings'); const on = s.className.includes('hidden'); s.className = on ? 'set' : 'set hidden'; if (on) renderSettings(); });
+$('closeActs').addEventListener('click', () => { $('settings').className = 'set hidden'; });
 
 (async () => {
   await loadConfig();
