@@ -616,6 +616,16 @@ function register(router) {
     redirect(res, '/admin/sayfa-basliklari');
   });
 
+  // İndirme izni istisnası (kalan ödeme olsa da indirme açık)
+  router.post('/admin/ciftler/:id/indirme-izni', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const couple = getCoupleOr404(params.id);
+    db.setDownloadOverride(couple.id, form.on === '1');
+    setFlash(req, { message: form.on === '1' ? 'İndirme açıldı; çift fotoğraflarını indirebilir.' : 'İndirme kapatıldı; ödeme tamamlanınca kendiliğinden açılır.', type: 'success' });
+    redirect(res, `/admin/ciftler/${couple.id}`);
+  });
+
   // Teslim ayarları: tutanak kalemleri, metni, dosyaların saklanma süresi
   router.get('/admin/teslim-ayarlari', (req, res) => {
     if (!requireAdmin(req, res)) return;

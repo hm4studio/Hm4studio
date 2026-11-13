@@ -899,7 +899,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=82"></head>
+  <link rel="stylesheet" href="/css/style.css?v=83"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -998,6 +998,18 @@ function albumDesignSection(couple, pages, base, csrf) {
   </section>`;
 }
 
+// Kalan ödeme varsa çift indiremez (çifte gösterilmez); yöneticiye not ve istisna anahtarı
+function downloadAccess(couple, csrf) {
+  const st = require('../access').downloadState(couple);
+  if (!st.remaining) return '';
+  return h`<form class="dlacc${st.ok ? ' is-open' : ''}" method="post" action="/admin/ciftler/${couple.id}/indirme-izni">
+    <input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="on" value="${st.override ? '0' : '1'}">
+    ${icon(st.ok ? 'download' : 'lock')}
+    <span>${st.ok ? h`<strong>İndirme sizin izninizle açık</strong> · kalan ödeme ${tl(st.remaining)}` : h`<strong>İndirme kapalı</strong> · kalan ödeme ${tl(st.remaining)} <span class="muted">· çift yalnızca görüntüleyebilir, kendisine bir uyarı gösterilmez</span>`}</span>
+    <button class="btn btn--${st.ok ? 'text' : 'outline'} btn--sm" type="submit">${st.ok ? 'İndirmeyi kapat' : 'İndirmeyi aç'}</button>
+  </form>`;
+}
+
 // Çiftin indirmeleri ve orijinal temizliği (yöneticiye not)
 function downloadNotes(couple) {
   const st = require('../purge').statusFor(couple);
@@ -1027,6 +1039,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
       </div>
     </div>
     ${flashBlock(f)}
+    ${downloadAccess(couple, csrf)}
     ${downloadNotes(couple)}
 
     ${journey.adminBlock(c, { couple, card, contract: ct, events: evs, totalCount, favCount })}

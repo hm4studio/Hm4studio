@@ -3145,3 +3145,9 @@ body:has(.dz) { overflow-x: hidden; }
 .dlnotes { list-style: none; margin: 4px 0 14px; padding: 0; display: grid; gap: 6px; }
 .dlnotes li { display: flex; gap: 8px; align-items: center; font-size: .88rem; padding: 8px 12px; background: var(--c-tes-bg); border-radius: 10px; color: var(--navy); }
 .dlnotes .icon { width: 15px; height: 15px; color: var(--c-tes); flex: 0 0 auto; }
+.is-nodl img, .is-nodl video { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
+.dlacc { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 8px; padding: 9px 12px; background: var(--c-late-bg); border-radius: 10px; font-size: .88rem; color: var(--navy); }
+.dlacc > .icon { width: 16px; height: 16px; color: var(--c-late); flex: 0 0 auto; }
+.dlacc > span { flex: 1 1 260px; }
+.dlacc.is-open { background: var(--gold-bg); }
+.dlacc.is-open > .icon { color: var(--gold-d); }

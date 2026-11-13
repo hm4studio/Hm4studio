@@ -91,11 +91,11 @@ function formatDate(iso) {
 }
 
 // Çift ve admin galerilerinde ortak fotoğraf kutusu
-function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFav, noDownload, coverAction, isCover, albumCover = null, albumCoverEndpoint = '' }) {
+function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFav, noDownload, noSave = false, coverAction, isCover, albumCover = null, albumCoverEndpoint = '' }) {
   const fav = Boolean(p.is_fav);
   return h`
   <li class="tile${fav ? ' is-fav' : ''}${isCover ? ' is-cover' : ''}${albumCover === p.id ? ' is-acover' : ''}" data-tile data-r="${p.w && p.h ? (p.w / p.h).toFixed(3) : ''}">
-    <a class="tile__img" href="/m/${p.id}/display" data-lb data-caption="${p.original_name || ''}" data-dl="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1">
+    <a class="tile__img" href="/m/${p.id}/display" data-lb data-caption="${p.original_name || ''}"${noSave ? '' : raw(` data-dl="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1"`)}>
       <img src="/m/${p.id}/thumb" alt="${p.original_name || 'Fotoğraf'}" loading="lazy" decoding="async" width="${p.w || 640}" height="${p.h || 640}">
     </a>
     <div class="tile__bar">
@@ -108,7 +108,7 @@ function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFa
         <input type="hidden" name="csrf" value="${csrf}">
         <button type="submit" class="tile__btn${isCover ? ' is-on' : ''}" aria-label="${isCover ? 'Kapaktan kaldır' : 'Çiftin galerisine kapak yap'}" title="${isCover ? 'Kapaktan kaldır' : 'Kapak yap'}">${icon('star')}</button>
       </form>` : ''}
-      ${noDownload ? '' : h`<a class="tile__btn" href="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1" aria-label="İndir">${icon('download')}</a>`}
+      ${noDownload || noSave ? '' : h`<a class="tile__btn" href="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1" aria-label="İndir">${icon('download')}</a>`}
       ${canDelete ? h`<form method="post" action="${deleteAction}" class="inline-form" data-confirm="Bu fotoğraf kalıcı olarak silinsin mi?">
         <input type="hidden" name="csrf" value="${csrf}">
         <button type="submit" class="tile__btn tile__btn--danger" aria-label="Sil">${icon('trash')}</button>
@@ -249,6 +249,7 @@ function aiBot(c) {
 }
 
 function coupleShell(c, { couple, page, csrf, flash: f, body, scripts = [] }) {
+  if (!require('../access').canDownload(couple)) scripts = [...scripts, '/js/nodl.js?v=1'];
   const nav = h`<div class="panel-nav">${pagesFor(couple).map((p) => h`<a class="panel-nav__link panel-nav__page" href="${p.href}"${p.key === page ? raw(' aria-current="page"') : ''}><span>${p.label}</span></a>`)}<span class="panel-nav__who">${couple.name}</span>${config.demoMode ? h`<a class="panel-nav__link" href="/gorus?alan=${encodeURIComponent('Çift paneli')}">${icon('star')}<span>Görüş bildir</span></a>` : ''}${logoutForm(csrf)}</div>`;
   const content = h`
   <div class="container">
@@ -269,6 +270,7 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
   const day = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
   if (couple.delivered_at) {
     const has = editedCount || totalCount || videoCount;
+    if (!require('../access').canDownload(couple)) return { done: true, eyebrow: 'Teslim edildi', title: 'Hepsi sizde 🤍', text: has ? `Fotoğraflarınız${videoCount ? ' ve videonuz' : ''} panelinizde; dilediğiniz zaman görüntüleyebilirsiniz.` : 'Bizi tercih ettiğiniz için teşekkür ederiz. Mutluluklar!', href: editedCount ? '/panel/fotograflar?g=duzenli' : '', btn: 'Fotoğraflara git' };
     return { done: true, eyebrow: 'Teslim edildi', title: 'Hepsi sizde 🤍',
       text: has ? `Fotoğraflarınız${videoCount ? ' ve videonuz' : ''} panelinizde. Dosyalar teslimden sonra bir süre sunucumuzda kalır; lütfen indirip yedekleyin${keepUntil ? ` (son gün: ${formatDate(keepUntil)})` : ''}.` : 'Bizi tercih ettiğiniz için teşekkür ederiz. Mutluluklar!',
       href: editedCount ? '/panel/indir?g=duzenli' : totalCount ? '/panel/indir' : '', btn: 'Tümünü indir', download: true };
@@ -282,8 +284,9 @@ function nextStep(couple, { events, totalCount, favCount, editedCount, videoCoun
   const ao = couple.album_design_state ? require('../db').getOrder(couple.id) : null;
   if (ao && ao.state === 'onay') return { title: 'Albüm siparişinizi onaylayın', text: 'Paket, boyut, sayfa, model ve rengi kontrol edin; onayınızdan sonra albümünüz baskıya gider.', href: '/panel/siparis', btn: 'Siparişi aç' };
   if (couple.album_design_state === 'hazir') return { title: 'Albüm tasarımınızı inceleyin', text: 'Sayfaları tek tek görüp beğendiklerinizi onaylayın, değişiklik istediğiniz sayfaya not bırakın.', href: '/panel/album', btn: 'Albümü aç' };
-  if (editedCount) return { title: 'Fotoğraflarınız teslim edildi', text: `${editedCount} düzenlenmiş fotoğrafınızı görüntüleyip indirebilirsiniz.`, href: '/panel/fotograflar?g=duzenli', btn: 'Fotoğraflara git' };
-  if (videoCount) return { title: 'Videonuz hazır', text: 'İzleyip indirebilirsiniz.', href: '/panel/video', btn: 'Videoyu aç' };
+  const dlOk = require('../access').canDownload(couple);
+  if (editedCount) return { title: 'Fotoğraflarınız teslim edildi', text: `${editedCount} düzenlenmiş fotoğrafınızı ${dlOk ? 'görüntüleyip indirebilirsiniz' : 'panelinizde görüntüleyebilirsiniz'}.`, href: '/panel/fotograflar?g=duzenli', btn: 'Fotoğraflara git' };
+  if (videoCount) return { title: 'Videonuz hazır', text: dlOk ? 'İzleyip indirebilirsiniz.' : 'Panelinizde izleyebilirsiniz.', href: '/panel/video', btn: 'Videoyu aç' };
   if (upcoming) {
     const n = Math.round((new Date(`${upcoming.event_date}T12:00:00Z`) - new Date(`${day}T12:00:00Z`)) / 86400000);
     return { title: n === 0 ? 'Çekiminiz bugün' : n === 1 ? 'Çekiminiz yarın' : `Çekiminize ${n} gün kaldı`, text: `${upcoming.event_type || 'Çekim'} · ${formatDate(upcoming.event_date)}${upcoming.start_time ? `, ${upcoming.start_time}` : ''}. Sizden şu an bir şey beklemiyoruz.` };
@@ -448,6 +451,7 @@ function purgeNote(couple, kind) {
 function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount, view, cover = null, events = [], galleries = [], gal = null, csrf, flash: f }) {
   const multi = galleries.length > 1;
   const isEdited = view === 'edited';
+  const nodl = !require('../access').canDownload(couple);
   const first = events.map((e) => e.event_date).filter(Boolean).sort()[0];
   const place = [couple.venue, couple.city].filter(Boolean)[0] || (events.find((e) => e.venue || e.city) || {}).venue || '';
   const coverBlock = cover ? h`<section class="gcover" aria-label="Kapak">
@@ -468,12 +472,12 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
       <div class="panel-section__head" id="galeri">
         <h${cover ? '2' : '1'} class="panel-section__title" id="gallery-title">Fotoğraflarınız</h${cover ? '2' : '1'}>
         <p class="muted">Renk ve ışık düzenlemesi yapılmış, teslim edilen fotoğraflarınız.</p>
-        <div class="dl-row"><a class="btn btn--primary btn--sm" href="/panel/indir?g=duzenli" download>${icon('download')}Tümünü indir (${editedCount})</a></div>
-        ${purgeNote(couple, 'duzenli')}
+        ${nodl ? '' : h`<div class="dl-row"><a class="btn btn--primary btn--sm" href="/panel/indir?g=duzenli" download>${icon('download')}Tümünü indir (${editedCount})</a></div>
+        ${purgeNote(couple, 'duzenli')}`}
       </div>
       ${sets}
       <ul class="tiles tiles--wall" data-gallery data-wall>
-        ${photos.map((p) => photoTile(p, { csrf, locked: true, noFav: true }))}
+        ${photos.map((p) => photoTile(p, { csrf, locked: true, noFav: true, noSave: nodl }))}
       </ul>
     </section>` : h`
     ${coverBlock}
@@ -495,18 +499,18 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
           <span class="galcard__n">${g.photo_count} fotoğraf${g.fav_count ? ` · ${g.fav_count} seçili` : ''}</span>
         </a></li>`)}</ul>` : photos.length ? h`
       <ul class="tiles tiles--wall" data-gallery data-wall>
-        ${photos.map((p) => photoTile(p, { favEndpoint: '/panel/favori', csrf, locked: Boolean(couple.album_locked), noDownload: true, albumCover: couple.album_cover_id, albumCoverEndpoint: '/panel/kapak' }))}
+        ${photos.map((p) => photoTile(p, { favEndpoint: '/panel/favori', csrf, locked: Boolean(couple.album_locked), noDownload: true, noSave: nodl, albumCover: couple.album_cover_id, albumCoverEndpoint: '/panel/kapak' }))}
       </ul>` : h`<div class="empty-box">${icon('image')}<p>${view === 'fav'
           ? 'Henüz albüm için kare seçmediniz. “Tüm fotoğraflar” sekmesinden kalbe dokunarak ekleyebilirsiniz.'
           : couple.archived_at ? 'Fotoğraflarınız teslim edildi ve sunucumuzdan kaldırıldı. Yeniden ihtiyacınız olursa bize yazın.' : 'Fotoğraflarınız hazırlandığında burada görünecek.'}</p></div>`}
       ${totalCount ? h`<div class="gal-foot">
         ${albumBar(couple, favCount, { admin: false, csrf })}
-        <div class="dl-row">
+        ${nodl ? '' : h`<div class="dl-row">
           ${gal && multi ? h`<a class="btn btn--text btn--sm" href="/panel/indir?gal=${gal.id}" download>${icon('download')}Bu galeriyi indir (${gal.photo_count})</a>` : ''}
           <a class="btn btn--text btn--sm" href="/panel/indir" download>${icon('download')}Tümünü indir (${totalCount})</a>
           ${favCount ? h`<a class="btn btn--text btn--sm" href="/panel/indir?g=fav" download>${icon('download')}Seçimimi indir (${favCount})</a>` : ''}
         </div>
-        ${purgeNote(couple, 'secim')}
+        ${purgeNote(couple, 'secim')}`}
       </div>` : ''}
       ${totalCount && !couple.album_locked ? h`<div class="selpill" data-selpill hidden>
         <a class="selpill__count" href="/panel/fotograflar?g=fav"><span class="selpill__icon">${icon('heart')}</span><strong data-album-count>${favCount}</strong>&nbsp;/ ${couple.album_limit || 35} seçildi</a>
@@ -571,15 +575,16 @@ function coupleAlbum(c, { couple, pages, csrf, flash: f }) {
 }
 
 function coupleVideos(c, { couple, videos, csrf, flash: f }) {
+  const nodl = !require('../access').canDownload(couple);
   const wide = videos.filter((v) => v.kind !== 'Reels');
   const reels = videos.filter((v) => v.kind === 'Reels');
   const item = (v) => h`
     <li class="vid${v.kind === 'Reels' ? ' vid--reel' : ''}">
-      ${v.file_key ? h`<video class="vid__player" src="/v/${v.id}" controls playsinline preload="metadata"></video>`
+      ${v.file_key ? h`<video class="vid__player" src="/v/${v.id}" controls playsinline preload="metadata"${nodl ? raw(' controlslist="nodownload" disablepictureinpicture') : ''}></video>`
         : h`<a class="vid__link" href="${v.link}" target="_blank" rel="noopener">${icon('play')}<span>İzlemek için dokunun</span></a>`}
       <div class="vid__meta">
         <div><p class="vid__title">${v.title || v.kind}</p><p class="vid__sub">${v.kind}${v.size ? ` · ${Math.max(1, Math.round(v.size / 1024 / 1024))} MB` : ''}</p></div>
-        ${v.file_key ? h`<a class="btn btn--outline btn--sm" href="/v/${v.id}?indir=1" download>${icon('download')}İndir</a>`
+        ${v.file_key && !nodl ? h`<a class="btn btn--outline btn--sm" href="/v/${v.id}?indir=1" download>${icon('download')}İndir</a>`
           : h`<a class="btn btn--outline btn--sm" href="${v.link}" target="_blank" rel="noopener">Aç</a>`}
       </div>
     </li>`;
