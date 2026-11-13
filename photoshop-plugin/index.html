@@ -55,6 +55,11 @@ body { margin: 0; padding: 0; background: #12171f; color: #e9e4d8; font-family: 
 .row .star { margin-left: auto; font-size: 10px; color: #6b665c; cursor: pointer; padding-left: 8px; }
 .row .star.on { color: #d7c39a; }
 .tm { margin-top: 5px; font-size: 10px; color: #7c7566; line-height: 1.4; }
+.dir { margin-top: 12px; padding: 9px 10px; background: #19202b; border: 1px solid #252e3c; border-radius: 3px; }
+.dir .dl { font-size: 9px; letter-spacing: 1.6px; text-transform: uppercase; color: #7c7566; }
+.dir .dv { display: flex; align-items: flex-start; margin-top: 4px; font-size: 11px; color: #d9d3c5; word-break: break-all; }
+.dir .dv span:first-child { flex: 1; }
+.dir .lnk { color: #b49a66; margin-left: 8px; cursor: pointer; flex-shrink: 0; }
 .hidden { display: none; }
 </style>
 </head>
@@ -74,6 +79,7 @@ body { margin: 0; padding: 0; background: #12171f; color: #e9e4d8; font-family: 
     <div id="acts"></div>
     <div class="btn" id="closeActs">Kapat</div>
   </div>
+  <div class="dir"><div class="dl">Fotoğraf klasörü</div><div class="dv"><span id="dirText">Seçilmedi</span><span class="lnk" id="pickDir">Klasör seç</span></div></div>
   <div class="label"><span>Fotoğraflar</span><span id="count"></span></div>
   <div id="jobs"></div>
   <div class="foot">Albüm panelinde <span class="k">Photoshop'ta düzenle</span>ye bastığınız fotoğraf burada kendiliğinden açılır. Düzenleyip <span class="k">⌘S</span> ile kaydedin ya da <span class="k">Siteye gönder</span>e basın; yeni hali siteye ve çiftin galerisine gider.<br><span class="lnk" id="editActs">Eylemleri seç</span> · <span class="lnk" id="reset">Bağlantı kodunu değiştir</span></div>

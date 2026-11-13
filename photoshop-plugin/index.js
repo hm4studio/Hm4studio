@@ -126,10 +126,94 @@ async function jobsFolder() {
   try { return await data.getEntry('isler'); } catch (e) { return data.createFolder('isler'); }
 }
 
+// ── Bilgisayardaki fotoğraf klasörü ──
+// Bir kez seçilir (izin kalıcı); alt klasörler dahil dosya adları dizinlenir. Eşleşme: aynı ad + aynı boyut (bayt).
+const DIR_KEY = 'hm4_dir';
+let dirEntry = null, dirName = '', index = null, indexAt = 0, indexing = null;
+const keyOf = (n) => String(n || '').toLowerCase().replace(/\.[a-z0-9]{2,5}$/, '');
+async function loadDir() {
+  try {
+    const tok = localStorage.getItem(DIR_KEY);
+    if (!tok) return;
+    dirEntry = await lfs.getEntryForPersistentToken(tok);
+    dirName = dirEntry.nativePath || dirEntry.name;
+  } catch (e) { dirEntry = null; dirName = ''; }
+}
+async function pickDir() {
+  try {
+    const f = await lfs.getFolder();
+    if (!f) return;
+    const tok = await lfs.createPersistentToken(f);
+    localStorage.setItem(DIR_KEY, tok);
+    dirEntry = f; dirName = f.nativePath || f.name; index = null;
+    renderDir(); buildIndex();
+  } catch (e) { $('dirText').textContent = `Klasör seçilemedi: ${e.message || e}`; }
+}
+async function buildIndex() {
+  if (!dirEntry) return null;
+  if (indexing) return indexing;
+  indexing = (async () => {
+    const map = new Map(); let count = 0;
+    const walk = async (folder, depth) => {
+      let list = [];
+      try { list = await folder.getEntries(); } catch (e) { return; }
+      for (const e of list) {
+        if (count > 60000) return;
+        if (e.isFolder) { if (depth < 6 && !e.name.startsWith('.')) await walk(e, depth + 1); continue; }
+        if (!/\.(jpe?g)$/i.test(e.name)) continue;
+        count++;
+        const k = keyOf(e.name);
+        if (!map.has(k)) map.set(k, []);
+        map.get(k).push(e);
+      }
+    };
+    $('dirText').textContent = `${dirName} · taranıyor…`;
+    await walk(dirEntry, 0);
+    index = map; indexAt = Date.now(); indexing = null;
+    renderDir(count);
+    return map;
+  })();
+  return indexing;
+}
+async function findLocal(j) {
+  if (!dirEntry) return null;
+  try {
+    if (!index) await buildIndex();
+    let cand = (index && index.get(keyOf(j.name))) || [];
+    if (!cand.length && Date.now() - indexAt > 60000) { index = null; await buildIndex(); cand = (index && index.get(keyOf(j.name))) || []; }
+    if (!cand.length) return null;
+    if (j.size) {
+      for (const e of cand) { try { const md = await e.getMetadata(); if (md.size === j.size) return e; } catch (err) { /* bakılamadı */ } }
+      // Sitedeki asıl dosya yoksa (yalnızca ekran boyu) tek eşleşen dosya kullanılır
+      if (!j.orig && cand.length === 1) return cand[0];
+      return null;
+    }
+    return cand.length === 1 ? cand[0] : null;
+  } catch (e) { return null; }
+}
+function renderDir(count) {
+  const t = $('dirText'); if (!t) return;
+  t.textContent = dirEntry ? `${dirName}${count != null ? ` · ${count} fotoğraf` : ''}` : 'Seçilmedi · fotoğraflar siteden indirilir';
+  $('pickDir').textContent = dirEntry ? 'Değiştir' : 'Klasör seç';
+}
+
 async function openJob(j, again) {
   try {
     j.state = 'opening'; j.msg = 'Açılıyor…'; render();
-    if (!j.entry || again) {
+    let local = null;
+    if (!j.entry || again) local = await findLocal(j);
+    if (local) {
+      // Bilgisayardaki dosya kopyalanıp açılır (arşivdeki asıl dosyanın üstüne yazılmaz)
+      const t0 = Date.now();
+      j.msg = 'Bilgisayardan alınıyor…'; render();
+      const buf = await local.read({ format: formats.binary });
+      const folder = await jobsFolder();
+      const safe = j.name.replace(/[^\w.\-]+/g, '_');
+      j.entry = await folder.createFile(`${j.id}-${safe}`, { overwrite: true });
+      await j.entry.write(buf, { format: formats.binary });
+      j.path = j.entry.nativePath;
+      j.timing = `Bilgisayardan açıldı (${(buf.byteLength / 1048576).toFixed(1)} MB · ${((Date.now() - t0) / 1000).toFixed(1)} sn, indirme yok)`;
+    } else if (!j.entry || again) {
       const t0 = Date.now();
       const r = await api(`/api/ps/isler/${j.id}/dosya`);
       const t1 = Date.now();
@@ -169,7 +253,7 @@ async function poll() {
     showSetup(false);
     for (const x of data.jobs) {
       if (jobs.has(x.id)) continue;
-      const j = { id: x.id, couple: x.couple, name: x.name, state: 'new', msg: '' };
+      const j = { id: x.id, couple: x.couple, name: x.name, size: x.size || 0, orig: Boolean(x.orig), state: 'new', msg: '' };
       jobs.set(x.id, j);
       if (x.status === 'bekliyor') { busy = true; await openJob(j); busy = false; }
       else { j.state = 'closed'; j.msg = 'Önceden gönderilmiş · yeniden açabilirsiniz'; render(); }
@@ -468,8 +552,10 @@ $('reset').addEventListener('click', () => { showSetup(true); $('token').value =
 $('editActs').addEventListener('click', () => { const s = $('settings'); const on = s.className.includes('hidden'); s.className = on ? 'set' : 'set hidden'; if (on) renderSettings(); });
 $('closeActs').addEventListener('click', () => { $('settings').className = 'set hidden'; });
 
+$('pickDir').addEventListener('click', pickDir);
 (async () => {
   await loadConfig();
+  await loadDir(); renderDir(); if (dirEntry) buildIndex();
   render();
   if (!TOKEN) { setConn('err', 'Bağlantı kodu girilmedi'); showSetup(true); }
   poll();

@@ -79,7 +79,12 @@ function register(router) {
   router.get('/api/ps/durum', (req, res) => { pluginApi(req); json(res, { ok: true, studio: getContent().brand?.name || 'HM4 Studio' }); });
   router.get('/api/ps/isler', (req, res) => {
     pluginApi(req);
-    json(res, { jobs: ps.openJobs().map((j) => ({ id: j.id, status: j.status, couple: j.couple_name, name: j.original_name || `foto-${j.file_photo_id}.jpg` })) });
+    // size/orig: eklenti fotoğrafı bilgisayardaki klasörde bulursa aynı dosya olduğunu boyutundan doğrular
+    json(res, { jobs: ps.openJobs().map((j) => {
+      const f = ps.jobFile(j);
+      let size = 0; try { size = f ? fs.statSync(path.join(f.dir, f.file)).size : 0; } catch { size = 0; }
+      return { id: j.id, status: j.status, couple: j.couple_name, name: j.original_name || `foto-${j.file_photo_id}.jpg`, size, orig: Boolean(f && f.file.startsWith('original.')) };
+    }) });
   });
   router.get('/api/ps/isler/:id/dosya', (req, res, { params }) => {
     pluginApi(req);
