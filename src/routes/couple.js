@@ -393,7 +393,9 @@ function register(router) {
       const base = (photo.original_name || `foto-${photo.id}`).replace(/\.[^.]+$/, '');
       download = `${base}${path.extname(file)}`;
     }
-    sendFile(req, res, dir, file, { cache: 'private, no-cache', download });
+    // Sürüm numaralı adresler (?v=) dosya değişince değişir: tarayıcı her seferinde sunucuya sormadan önbellekten gösterir
+    const cache = query.get('v') && !download ? 'private, max-age=604800' : 'private, no-cache';
+    sendFile(req, res, dir, file, { cache, download });
   });
 }
 

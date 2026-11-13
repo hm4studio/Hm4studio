@@ -45,11 +45,11 @@ function shotTime(file) {
     const st = fs.statSync(file);
     const key = `${file}:${st.mtimeMs}`;
     if (cache.has(key)) return cache.get(key);
+    // EXIF dosyanın en başındadır: önce 64 KB okunur, bulunamazsa 256 KB
     const fd = fs.openSync(file, 'r');
-    const buf = Buffer.alloc(Math.min(st.size, 256 * 1024));
-    fs.readSync(fd, buf, 0, buf.length, 0);
-    fs.closeSync(fd);
-    const v = parse(buf);
+    const read = (n) => { const buf = Buffer.alloc(Math.min(st.size, n)); fs.readSync(fd, buf, 0, buf.length, 0); return buf; };
+    let v;
+    try { v = parse(read(64 * 1024)); if (!v && st.size > 64 * 1024) v = parse(read(256 * 1024)); } finally { fs.closeSync(fd); }
     if (cache.size > 5000) cache.clear();
     cache.set(key, v);
     return v;

@@ -745,7 +745,7 @@
       const w = Math.min(2 * c.pw, r.x + r.w) - x, hh = Math.min(c.ph, r.y + r.h) - y;
       const e = el(photos && p ? 'img' : 'i');
       Object.assign(e.style, { left: `${x * k}px`, top: `${y * k}px`, width: `${w * k}px`, height: `${hh * k}px` });
-      if (photos && p) { e.src = p.thumb; e.alt = ''; e.draggable = false; e.loading = 'lazy'; }
+      if (photos && p) { e.loading = 'lazy'; e.src = p.thumb; e.alt = ''; e.draggable = false; }
       box.appendChild(e);
     });
   }
@@ -870,13 +870,36 @@
     $('[data-sheet-label]').textContent = `Yaprak ${S.sheet + 1} / ${S.pages.length}`;
   }
 
+  // Şerit yalnızca yapısı değişince baştan kurulur; yaprak değiştirme / seçme gibi işlemlerde sadece işaretler güncellenir
+  let stripSig = '';
+  function stripState() {
+    const marks = S.pages.map((L, i) => { if (!L.length) return ''; const pg = pageOf(i); return `${changedSinceSent(i) ? 'c' : ''}${pg ? pg.status : ''}`; });
+    return `${S.set}#${S.pages.map((L) => L.join(',')).join('/')}#${S.out.join(',')}#${marks.join(',')}`;
+  }
+  function stripFollow(st) {
+    const cur = st.querySelector('.dz-tl__g.is-cur');
+    if (cur && !drag) {
+      const a = cur.offsetLeft, b = a + cur.offsetWidth;
+      if (a < st.scrollLeft || b > st.scrollLeft + st.clientWidth) st.scrollLeft = Math.max(0, a - 40);
+    }
+  }
   function renderStrip() {
-    const st = $('[data-strip]'); const keepX = st.scrollLeft; st.textContent = '';
+    const st = $('[data-strip]');
+    const sig = stripState();
+    if (sig === stripSig && st.firstChild) {
+      st.querySelectorAll('.dz-tl__g[data-drop-leaf]').forEach((g) => g.classList.toggle('is-cur', g.dataset.dropLeaf === String(S.sheet)));
+      st.querySelectorAll('.dz-tl__ph').forEach((t) => t.classList.toggle('is-sel', String(S.sel) === t.dataset.tlId));
+      stripFollow(st);
+      $('[data-sort-label]').textContent = SORT_LABEL[byId('sortMode').value] || '';
+      return;
+    }
+    stripSig = sig;
+    const keepX = st.scrollLeft; st.textContent = '';
     const thumb = (id, leaf, idx) => {
       const p = photoById(id); if (!p) return null;
       const t = el('div', `dz-tl__ph${S.sel === id ? ' is-sel' : ''}`);
       t.dataset.tlId = id; t.dataset.leaf = leaf; t.dataset.idx = idx;
-      const im = el('img'); im.src = p.thumb; im.alt = p.name; im.draggable = false; im.loading = 'lazy';
+      const im = el('img'); im.loading = 'lazy'; im.decoding = 'async'; im.src = p.thumb; im.alt = p.name; im.draggable = false;
       t.appendChild(im);
       if (p.edited && S.set !== 'duzenli') t.appendChild(el('span', 'dz-badge', 'D'));
       t.title = p.shot ? `${p.name} · ${p.shot.slice(11, 16)}` : p.name;
@@ -921,11 +944,7 @@
     if (jump) { jump.hidden = !S.out.length; $('[data-out-count]').textContent = `Kenarda ${S.out.length} fotoğraf`; }
     st.appendChild(out);
     st.scrollLeft = keepX;
-    const cur = st.querySelector('.dz-tl__g.is-cur');
-    if (cur && !drag) {
-      const a = cur.offsetLeft, b = a + cur.offsetWidth;
-      if (a < st.scrollLeft || b > st.scrollLeft + st.clientWidth) st.scrollLeft = Math.max(0, a - 40);
-    }
+    stripFollow(st);
     $('[data-sort-label]').textContent = SORT_LABEL[byId('sortMode').value] || '';
   }
 
@@ -986,7 +1005,7 @@
     grid.textContent = '';
     rest.forEach((p) => {
       const b = el('button', 'dz-pool__ph'); b.type = 'button'; b.title = p.name;
-      const im = el('img'); im.src = p.thumb; im.alt = p.name; im.loading = 'lazy';
+      const im = el('img'); im.loading = 'lazy'; im.decoding = 'async'; im.src = p.thumb; im.alt = p.name;
       b.appendChild(im);
       if (p.edited) b.appendChild(el('span', 'dz-badge', 'D'));
       b.addEventListener('click', () => {
@@ -1039,7 +1058,7 @@
       const data = await r.json();
       [...data.photos, ...(data.pool || [])].forEach((n) => {
         const p = photoById(n.id);
-        if (p) Object.assign(p, { thumb: n.thumb, src: n.src, full: n.full, w: n.w, h: n.h, fileId: n.fileId, edited: n.edited });
+        if (p) Object.assign(p, { thumb: n.thumb, src: n.src, full: n.full, w: n.w, h: n.h, fileId: n.fileId, edited: n.edited }); stripSig = '';
         const q = S.pool.find((x) => x.id === n.id); if (q && q !== p) Object.assign(q, n);
       });
       fullCache.clear(); rankCache.clear();
