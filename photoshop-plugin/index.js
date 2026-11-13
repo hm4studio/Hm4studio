@@ -94,6 +94,8 @@ function render() {
     tx.appendChild(el('div', 'n', j.couple));
     tx.appendChild(el('div', 'm', j.name));
     const s = el('div', 's'); s.appendChild(el('b')); s.appendChild(el('span', '', j.msg)); tx.appendChild(s);
+    if (j.timing) tx.appendChild(el('div', 'tm', j.timing));
+    if (j.upTiming) tx.appendChild(el('div', 'tm', j.upTiming));
     if (j.state === 'open' || (j.state === 'done' && docForJob(j))) {
       const acts = el('div', 'acts');
       const chip = (label, cls, fn) => { const c = el('span', `chip${cls ? ` ${cls}` : ''}`, label); c.addEventListener('click', fn); acts.appendChild(c); };
@@ -128,10 +130,16 @@ async function openJob(j, again) {
   try {
     j.state = 'opening'; j.msg = 'Açılıyor…'; render();
     if (!j.entry || again) {
+      const t0 = Date.now();
       const r = await api(`/api/ps/isler/${j.id}/dosya`);
+      const t1 = Date.now();
       const size = Number(r.headers.get('content-length')) || 0;
       j.msg = size ? `İndiriliyor… (${(size / 1048576).toFixed(1)} MB)` : 'İndiriliyor…'; render();
       const buf = await r.arrayBuffer();
+      const t2 = Date.now();
+      const mb = buf.byteLength / 1048576;
+      // Ölçüm: sunucunun cevap vermesi / indirme süresi ve hızı (gecikmenin kaynağını görmek için)
+      j.timing = `İndirme ${mb.toFixed(1)} MB · ${((t2 - t0) / 1000).toFixed(1)} sn (${(mb / Math.max(0.1, (t2 - t1) / 1000)).toFixed(1)} MB/sn, sunucu cevabı ${t1 - t0} ms)`;
       j.msg = 'Açılıyor…'; render();
       const folder = await jobsFolder();
       const safe = j.name.replace(/[^\w.\-]+/g, '_');
@@ -139,7 +147,9 @@ async function openJob(j, again) {
       await j.entry.write(buf, { format: formats.binary });
       j.path = j.entry.nativePath;
     }
+    const to = Date.now();
     await core.executeAsModal(async () => { await app.open(j.entry); }, { commandName: 'HM4: fotoğrafı aç' });
+    if (j.timing) j.timing += ` · Photoshop'ta açılış ${((Date.now() - to) / 1000).toFixed(1)} sn`;
     await api(`/api/ps/isler/${j.id}/acildi`, { method: 'POST' });
     j.state = 'open'; j.msg = "Photoshop'ta açık · bitince Siteye gönder";
     render();
@@ -410,13 +420,17 @@ async function upload(j, doc) {
       else if (/\.jpe?g$/i.test(String(doc.path || '')) && samePath(doc.path, j.path)) original = new Uint8Array(await j.entry.read({ format: formats.binary }));
       else original = await enc(Math.max(W, H));
     }, { commandName: 'HM4: siteye hazırla' });
-    j.msg = `Siteye yükleniyor… (${((thumb.length + display.length + original.length) / 1048576).toFixed(1)} MB)`; render();
+    const upMb = (thumb.length + display.length + original.length) / 1048576;
+    j.msg = `Siteye yükleniyor… (${upMb.toFixed(1)} MB)`; render();
+    const tu = Date.now();
     const body = new Uint8Array(thumb.length + display.length + original.length);
     body.set(thumb, 0); body.set(display, thumb.length); body.set(original, thumb.length + display.length);
     await api(`/api/ps/isler/${j.id}/yukle`, {
       method: 'POST', body: body.buffer,
       headers: { 'Content-Type': 'application/octet-stream', 'X-Parts': `thumb:${thumb.length},display:${display.length},original:${original.length}` },
     });
+    const us = (Date.now() - tu) / 1000;
+    j.upTiming = `Yükleme ${upMb.toFixed(1)} MB · ${us.toFixed(1)} sn (${(upMb / Math.max(0.1, us)).toFixed(1)} MB/sn)`;
     const t = new Date();
     j.state = 'done'; j.msg = `✓ Siteye yüklendi · ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
   } catch (e) {
