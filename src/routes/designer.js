@@ -7,6 +7,16 @@ const { getContent } = require('../content');
 const { html, json, readJson, redirect, HttpError } = require('../http');
 const { requireAdmin, checkCsrf, toId } = require('./guards');
 const views = require('../views/designer');
+const media = require('../media');
+const exif = require('../exif');
+const path = require('node:path');
+
+// Çekim zamanı: önce orijinal dosyadan, yoksa ekran boyutundan (çoğunlukla EXIF taşımaz)
+const shotOf = (p) => {
+  const dir = media.coupleDir(p.couple_id, p.file_key);
+  if (p.original_ext === 'jpg') { const v = exif.shotTime(path.join(dir, 'original.jpg')); if (v) return v; }
+  return exif.shotTime(path.join(dir, 'display.jpg'));
+};
 
 // Dosya adından eşleştirme anahtarları: "DSC01234-Edit.jpg" → ["dsc01234edit", "01234"]
 const baseKey = (name) => String(name || '').toLowerCase().replace(/\.[a-z0-9]{2,5}$/, '').replace(/[^a-z0-9]/g, '');
@@ -17,7 +27,7 @@ function photoList(couple, set = 'secim') {
     return db.listPhotos(couple.id, 'duzenli').map((e) => ({
       id: e.id, name: e.original_name || `foto-${e.id}`, w: e.w || 3, h: e.h || 2,
       thumb: `/m/${e.id}/thumb`, src: `/m/${e.id}/display`, full: e.original_ext ? `/m/${e.id}/original` : `/m/${e.id}/display`,
-      edited: true, cover: false,
+      edited: true, cover: false, shot: shotOf(e),
     }));
   }
   const favs = db.listFavoritePhotos(couple.id);
@@ -48,6 +58,7 @@ function photoList(couple, set = 'secim') {
       full: use.original_ext ? `/m/${use.id}/original` : `/m/${use.id}/display`,
       edited: Boolean(e),
       cover: p.id === couple.album_cover_id,
+      shot: shotOf(p) || (e ? shotOf(e) : ''),
     };
   });
 }

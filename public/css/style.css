@@ -3053,3 +3053,48 @@ body:has(.dz) { overflow-x: hidden; }
 .dz, .dz-ghost { touch-action: manipulation; }
 .dz-cell, .dz-spread { touch-action: none; }
 .dz img { -webkit-user-drag: none; -webkit-touch-callout: none; }
+/* Albüm paneli v2: şablon çubuğu, yan yapraklar, hikâye şeridi */
+.dz-tpl { margin-top: 16px; padding: 12px 14px; background: #fff; border: 1px solid var(--rule); border-radius: 16px; }
+.dz-tpl__head { display: flex; justify-content: space-between; gap: 10px; font-size: .86rem; color: var(--pencil); margin-bottom: 6px; font-variant-numeric: lining-nums; }
+.dz-tpl__head strong { color: var(--navy); }
+.dz-tpl__row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.dz-tpl__lbl { flex: 0 0 74px; font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--pencil); font-weight: 600; }
+.dz-tpl__list { display: flex; gap: 8px; overflow-x: auto; padding: 3px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.dz-tpl__none { font-size: .82rem; color: var(--faint); padding: 18px 4px; white-space: nowrap; }
+.dz-t { flex: 0 0 auto; position: relative; padding: 0; background: #fff; border: 1px solid #ddd6c8; border-radius: 6px; overflow: hidden; cursor: pointer; scroll-snap-align: start; touch-action: pan-x; }
+.dz-t::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px dashed #e3c3bb; }
+.dz-t i { position: absolute; background: #e2ddd2; }
+.dz-t.is-dim { opacity: .55; }
+.dz-t.is-on { border: 2px solid var(--gold); box-shadow: 0 0 0 3px var(--gold-bg); opacity: 1; }
+.dz-stage { margin-top: 14px; }
+.dz-canvas { position: relative; overflow: hidden; padding: 22px 0; align-items: center; }
+.dz-peek { position: absolute; top: 50%; transform: translateY(-50%); background: #fff; opacity: .45; overflow: hidden; cursor: pointer; }
+.dz-peek[hidden] { display: none; }
+.dz-peek--prev { right: calc(50% + 38%/1 + 18px); }
+.dz-peek--next { left: calc(50% + 38%/1 + 18px); }
+.dz-peek img, .dz-peek i { position: absolute; object-fit: cover; display: block; background: #e2ddd2; }
+.dz-nav { margin: 12px 0 0; }
+.dz-tool--out { color: var(--c-late); border-color: #e5cfc9; }
+.dz-tl { margin-top: 16px; padding: 12px 14px; background: #fff; border: 1px solid var(--rule); border-radius: 16px; }
+.dz-tl__head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: .86rem; margin-bottom: 8px; }
+.dz-tl__hint { font-size: .78rem; }
+.dz-strip { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding: 4px 2px 8px; margin: 0; -webkit-overflow-scrolling: touch; }
+.dz-tl__g { position: relative; flex: 0 0 auto; display: flex; align-items: center; gap: 0; padding: 18px 8px 8px; background: #f3f0e9; border-radius: 10px; cursor: pointer; }
+.dz-tl__g.is-cur { background: var(--gold-bg); box-shadow: inset 0 0 0 2px var(--gold); }
+.dz-tl__g.is-over { box-shadow: inset 0 0 0 2px var(--navy); }
+.dz-tl__g--out { margin-left: 14px; background: #fff; border: 1px dashed var(--rule-2); }
+.dz-tl__n { position: absolute; top: 3px; left: 9px; font-size: .68rem; color: var(--pencil); font-weight: 600; font-variant-numeric: lining-nums; white-space: nowrap; }
+.dz-tl__ph { position: relative; flex: 0 0 auto; touch-action: pan-x; -webkit-touch-callout: none; cursor: grab; border-radius: 4px; }
+.dz-tl__ph img { display: block; height: 62px; width: auto; max-width: 96px; min-width: 40px; object-fit: cover; border-radius: 4px; pointer-events: none; }
+.dz-tl__ph.is-sel img, .dz-tl__ph.is-over img { outline: 2px solid var(--gold); outline-offset: 1px; }
+.dz-tl__ph .dz-badge { top: 3px; right: 3px; font-size: .56rem; padding: 3px 4px; }
+.dz-tl__cut { flex: 0 0 14px; align-self: stretch; margin: 0 1px; border: 0; padding: 0; background: none; cursor: pointer; position: relative; }
+.dz-tl__cut::before { content: ""; position: absolute; left: 50%; top: 18%; bottom: 18%; border-left: 1px dotted #cbbfa8; }
+.dz-tl__cut:hover::before, .dz-tl__cut:focus-visible::before { border-left: 2px solid var(--gold-d); }
+.dz-tl__cut:hover::after { content: "✂"; position: absolute; left: 50%; top: -2px; transform: translateX(-50%); font-size: 11px; color: var(--gold-d); }
+.dz-tl__join { flex: 0 0 18px; border: 0; background: none; padding: 0; cursor: pointer; position: relative; }
+.dz-tl__join::before { content: ""; position: absolute; left: 50%; top: 14%; bottom: 14%; border-left: 2px solid var(--rule-2); }
+.dz-tl__join:hover::before { border-left-color: var(--navy); }
+.dz-tl__add { flex: 0 0 auto; align-self: center; margin-left: 10px; min-height: 40px; padding: 0 12px; border: 1px dashed var(--rule-2); border-radius: 10px; background: #fff; color: var(--pencil); font: 500 .8rem var(--sans); cursor: pointer; white-space: nowrap; }
+.dz-tl__empty { font-size: .76rem; color: var(--faint); padding: 0 10px; white-space: nowrap; min-height: 62px; display: grid; place-items: center; }
+.dz-tl__g--out .dz-tl__empty { white-space: normal; max-width: 130px; text-align: center; line-height: 1.3; }
