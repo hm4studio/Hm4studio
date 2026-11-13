@@ -4,6 +4,9 @@ const { h, raw } = require('./html');
 const { publicLayout, panelLayout, statusBar, flash, icon } = require('./components');
 const config = require('../config');
 const { PLAN_FIELDS, parsePlan } = require('../jobs');
+// Fotoğraf adresleri sürüm numarası taşır (dosya değişince değişir): tarayıcı önbellekten gösterir, her seferinde sunucuya sormaz
+const revOf = (id) => { const r = require('../db').getPhoto(id); return r ? r.rev || 0 : 0; };
+const mv = (p) => `?v=${p.rev || 0}`;
 
 // Demo modunda giriş ekranındaki "tek tıkla dene" kutusu
 function demoTry(kind) {
@@ -95,8 +98,8 @@ function photoTile(p, { favEndpoint, canDelete, csrf, deleteAction, locked, noFa
   const fav = Boolean(p.is_fav);
   return h`
   <li class="tile${fav ? ' is-fav' : ''}${isCover ? ' is-cover' : ''}${albumCover === p.id ? ' is-acover' : ''}" data-tile data-r="${p.w && p.h ? (p.w / p.h).toFixed(3) : ''}">
-    <a class="tile__img" href="/m/${p.id}/display" data-lb data-caption="${p.original_name || ''}"${noSave ? '' : raw(` data-dl="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1"`)}>
-      <img src="/m/${p.id}/thumb" alt="${p.original_name || 'Fotoğraf'}" loading="lazy" decoding="async" width="${p.w || 640}" height="${p.h || 640}">
+    <a class="tile__img" href="/m/${p.id}/display${mv(p)}" data-lb data-caption="${p.original_name || ''}"${noSave ? '' : raw(` data-dl="/m/${p.id}/${p.original_ext ? 'original' : 'display'}?indir=1"`)}>
+      <img src="/m/${p.id}/thumb${mv(p)}" alt="${p.original_name || 'Fotoğraf'}" loading="lazy" decoding="async" width="${p.w || 640}" height="${p.h || 640}">
     </a>
     <div class="tile__bar">
       ${noFav ? h`<span></span>` : h`<button type="button" class="tile__fav" data-fav="${favEndpoint}" data-photo="${p.id}" aria-pressed="${fav ? 'true' : 'false'}" aria-label="${fav ? 'Albümden çıkar' : 'Albüme ekle'}"${locked ? raw(' disabled') : ''}>
@@ -149,7 +152,7 @@ function albumBar(couple, favCount, { admin, csrf, base }) {
   return h`
   <div class="album-bar" data-album data-limit="${limit}">
     <a class="album-bar__cov${cov ? ' is-on' : ''}" data-acov-state href="${admin ? `${base}?g=fav#foto` : '/panel/fotograflar?g=fav#galeri'}" title="Albüm kapağı">
-      <span class="album-bar__covimg">${cov ? h`<img src="/m/${cov}/thumb" alt="">` : icon('book')}</span>
+      <span class="album-bar__covimg">${cov ? h`<img src="/m/${cov}/thumb?v=${revOf(cov)}" alt="">` : icon('book')}</span>
       <span><b>+1 kapak</b><small data-acov-text>${cov ? 'seçildi' : admin ? 'henüz seçilmedi' : 'kitap simgesiyle seçin'}</small></span>
     </a>
     <div class="album-bar__info">
@@ -319,7 +322,7 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
   const [n1, n2] = String(couple.name).split('&').map((x) => x.trim());
   const body = h`
     <section class="chero${cover ? '' : ' chero--plain'}" aria-label="Hoş geldiniz">
-      ${cover ? h`<img class="chero__img" src="/m/${cover.id}/display" alt="" decoding="async" fetchpriority="high">` : ''}
+      ${cover ? h`<img class="chero__img" src="/m/${cover.id}/display?v=${cover.rev ?? revOf(cover.id)}" alt="" decoding="async" fetchpriority="high">` : ''}
       <div class="chero__t">
         <p class="chero__eyebrow">Hoş geldiniz</p>
         <p class="chero__name">${n2 ? h`${n1} <em>&amp;</em> ${n2}` : couple.name}</p>
@@ -351,7 +354,7 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
 
     ${totalCount || editedCount ? h`<section class="panel-section cstrip" aria-labelledby="ph-title">
       <div class="panel-section__head"><h2 class="panel-section__title" id="ph-title">Fotoğraflarınız</h2></div>
-      ${strip.length ? h`<a class="cstrip__row" href="/panel/fotograflar">${strip.map((id, i) => h`<span class="cstrip__ph"><img src="/m/${id}/thumb" alt="" loading="lazy" decoding="async">${i === strip.length - 1 && (editedCount || totalCount) > strip.length + 1 ? h`<b>+${(editedCount || totalCount) - strip.length - 1}</b>` : ''}</span>`)}</a>` : ''}
+      ${strip.length ? h`<a class="cstrip__row" href="/panel/fotograflar">${strip.map((id, i) => h`<span class="cstrip__ph"><img src="/m/${id}/thumb?v=${revOf(id)}" alt="" loading="lazy" decoding="async">${i === strip.length - 1 && (editedCount || totalCount) > strip.length + 1 ? h`<b>+${(editedCount || totalCount) - strip.length - 1}</b>` : ''}</span>`)}</a>` : ''}
       <div class="cstrip__foot">
         ${editedCount ? h`<a class="cstrip__n" href="/panel/fotograflar?g=duzenli"><b>${editedCount}</b>düzenlenmiş</a>` : ''}
         ${totalCount ? h`<a class="cstrip__n" href="/panel/fotograflar?g=secim"><b>${totalCount}</b>seçim fotoğrafı</a>` : ''}
@@ -466,7 +469,7 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
   const first = events.map((e) => e.event_date).filter(Boolean).sort()[0];
   const place = [couple.venue, couple.city].filter(Boolean)[0] || (events.find((e) => e.venue || e.city) || {}).venue || '';
   const coverBlock = cover ? h`<section class="gcover" aria-label="Kapak">
-      <img class="gcover__img" src="/m/${cover.id}/display" alt="" decoding="async" fetchpriority="high">
+      <img class="gcover__img" src="/m/${cover.id}/display?v=${cover.rev ?? revOf(cover.id)}" alt="" decoding="async" fetchpriority="high">
       <div class="gcover__text">
         ${first || place ? h`<p class="gcover__meta">${[first ? formatDate(first) : '', place].filter(Boolean).join(' · ')}</p>` : ''}
         <h1 class="gcover__name">${couple.name}</h1>
@@ -505,7 +508,7 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
       </div>` : galleryTabs('/panel/fotograflar', view, totalCount, favCount)) : ''}
       ${view === 'galleries' ? h`<ul class="galcards">${galleries.map((g) => h`
         <li><a class="galcard" href="/panel/fotograflar?gal=${g.id}#galeri">
-          <span class="galcard__img">${g.first_photo_id ? h`<img src="/m/${g.cover_id || g.first_photo_id}/display" alt="" loading="lazy" decoding="async">` : ''}</span>
+          <span class="galcard__img">${g.first_photo_id ? h`<img src="/m/${g.cover_id || g.first_photo_id}/thumb?v=${revOf(g.cover_id || g.first_photo_id)}" alt="" loading="lazy" decoding="async">` : ''}</span>
           <span class="galcard__name">${g.name}</span>
           <span class="galcard__n">${g.photo_count} fotoğraf${g.fav_count ? ` · ${g.fav_count} seçili` : ''}</span>
         </a></li>`)}</ul>` : photos.length ? h`

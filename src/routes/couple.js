@@ -296,7 +296,7 @@ function register(router) {
     if (couple.album_locked) throw new HttpError(409, 'Albüm seçiminiz tamamlandı. Değişiklik için bize yazın.');
     const on = couple.album_cover_id !== photo.id;
     db.setAlbumCover(couple.id, on ? photo.id : null);
-    json(res, { ok: true, on, coverId: on ? photo.id : null, thumb: on ? `/m/${photo.id}/thumb` : '' });
+    json(res, { ok: true, on, coverId: on ? photo.id : null, thumb: on ? `/m/${photo.id}/thumb?v=${photo.rev || 0}` : '' });
   });
 
   // Albüm seçimini tamamla (kilitle)
