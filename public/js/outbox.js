@@ -1,8 +1,9 @@
 /* HM4 Studio — panel: elle gönderilen WhatsApp mesajları. "Gönder" WhatsApp'ı açar ve mesajı gönderildi sayar. */
 (function () {
   'use strict';
-  const box = document.querySelector('[data-outbox]');
-  if (!box) return;
+  const boxes = [...document.querySelectorAll('[data-outbox]')];
+  if (!boxes.length) return;
+  const box = boxes.find((b) => !b.hasAttribute('data-wa-banner')) || boxes[0];
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const count = box.querySelector('[data-todo-count], [data-outbox-count]');
   async function done(item) {
@@ -13,7 +14,9 @@
     } catch { item.classList.remove('is-done'); return; }
     setTimeout(() => {
       const grp = item.closest('[data-tg-group]');
+      const banner = item.closest('[data-wa-banner]');
       item.remove();
+      if (banner) { if (!banner.querySelector('[data-outbox-item]')) banner.remove(); return; }
       if (grp) {
         const n = grp.querySelectorAll('[data-todo-item]').length;
         box.querySelectorAll(`[data-tg-count="${grp.dataset.tgGroup}"]`).forEach((el) => { el.textContent = n; });
@@ -38,12 +41,12 @@
       if (key && show) g.open = true;
     });
   });
-  box.addEventListener('click', (e) => {
+  boxes.forEach((b) => b.addEventListener('click', (e) => {
     const send = e.target.closest('[data-outbox-send]');
     const skip = e.target.closest('[data-outbox-skip]');
     const item = e.target.closest('[data-outbox-item]');
     if (!item) return;
     if (send) done(item); // bağlantı yeni sekmede açılır, satır işaretlenir
     else if (skip) done(item);
-  });
+  }));
 })();

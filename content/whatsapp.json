@@ -46,6 +46,15 @@
       ],
       "metin": "Merhaba {ad}, yarınki görev listen:\n{liste}\n\nKolay gelsin.\nHM4 Studio"
     },
+    "gorevYeni": {
+      "ad": "hm4_gorev_yeni",
+      "degiskenler": [
+        "ad",
+        "gorev",
+        "tarih"
+      ],
+      "metin": "Merhaba {ad}, sana yeni bir görev verildi:\n• {gorev}\nSon tarih: {tarih}\n\nKolay gelsin.\nHM4 Studio"
+    },
     "sozlesmeOnay": {
       "ad": "hm4_sozlesme_onaylandi",
       "degiskenler": [

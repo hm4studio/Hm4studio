@@ -10,11 +10,11 @@ const { today, daysBetween, addDays } = require('./jobs');
 const { dueReminders } = require('./routes/api');
 
 const LABELS = {
-  sozlesme: 'Sözleşme onaya sunuldu', sozlesmeOnay: 'Sözleşme onaylandı', gorevYarin: 'Yarınki görevler', kapora: 'Kapora hatırlatma', fotograflar: 'Seçim fotoğrafları hazır', teslim: 'Teslim edildi',
+  sozlesme: 'Sözleşme onaya sunuldu', sozlesmeOnay: 'Sözleşme onaylandı', gorevYarin: 'Yarınki görevler', gorevYeni: 'Yeni görev verildi', kapora: 'Kapora hatırlatma', fotograflar: 'Seçim fotoğrafları hazır', teslim: 'Teslim edildi',
   plan: 'Çekim planı hatırlatması', yorum: 'Yorum isteği', gorev: 'Ekip görevi', ekip: 'Ekip hatırlatması',
   indirildi: 'Fotoğraflar indirildi', albumTasarim: 'Albüm tasarımı hazır', albumRevize: 'Albüm değişiklikleri yapıldı', albumSiparis: 'Albüm siparişi onayı', yildonumu: 'Yıl dönümü kutlaması',
 };
-const KEY_RE = /^(sozlesme|sozlesmeonay|kapora|gorevyarin|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|albumsiparis|yildonumu|indirildi):\d+(:[\w-]+)*$/;
+const KEY_RE = /^(sozlesme|sozlesmeonay|kapora|gorevyarin|gorevyeni|fotograflar|teslim|plan|yorum|gorev|ekiphat|albumtasarim|albumsiparis|yildonumu|indirildi):\d+(:[\w-]+)*$/;
 
 // Yıl dönümü için esas tarih: "Düğün" etkinliği, yoksa çiftin ana tarihi
 function anniversaryBase(c) {
@@ -79,6 +79,12 @@ function list() {
     }
   }
 
+  // Görevler sayfasında birine görev verilince: o kişiye bildirim (3 gün listede kalır)
+  for (const x of db.openTasks().filter((x) => x.member_id && x.member_phone && x.member_active && x.member_optin && recent(x.created_at, 3))) {
+    const tarih = new Date(`${x.due_date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
+    add('gorevYeni', `gorevyeni:${x.id}`, { id: x.couple_id || 0, name: x.member_name }, x.member_phone, 'gorevYeni', { ad: x.member_name.split(' ')[0], gorev: x.title, tarih }, x.member_name);
+  }
+
   // Akşam 18:00'den sonra: ekip üyesine yarınki görev listesi
   if (require('./reminders').nowHm() >= '18:00') {
     const tm = addDays(t, 1);
@@ -97,7 +103,7 @@ function list() {
 
   return items.map((x) => {
     const text = wa.templateText(x.tpl, x.vars);
-    return { type: x.type, label: LABELS[x.type] || x.type, to: x.to || x.couple?.name || '', coupleId: x.couple?.id, keys: x.keys, text, href: wa.waLink(x.phone, text), team: x.type === 'gorev' || x.type === 'ekip' || x.type === 'gorevYarin' };
+    return { type: x.type, label: LABELS[x.type] || x.type, to: x.to || x.couple?.name || '', coupleId: x.couple?.id, keys: x.keys, text, href: wa.waLink(x.phone, text), team: x.type === 'gorev' || x.type === 'ekip' || x.type === 'gorevYarin' || x.type === 'gorevYeni' };
   });
 }
 

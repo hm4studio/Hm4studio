@@ -69,7 +69,7 @@ function register(router) {
     html(res, views.tasksPage(getContent(), {
       tasks: db.openTasks(), done: db.doneTasks(20), team: db.listTeam().filter((m) => m.active),
       couples: db.listCouples().filter((c) => !c.delivered_at).map((c) => ({ id: c.id, name: c.name })),
-      who: Number(query.get('kisi')) || 0, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req),
+      who: Number(query.get('kisi')) || 0, notices: require('../whatsapp').autoSend() ? [] : require('../outbox').list().filter((x) => x.type === 'gorevYeni'), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req),
     }));
   });
   router.post('/admin/gorevler', async (req, res) => {
@@ -80,7 +80,7 @@ function register(router) {
     const member = db.listTeam().find((m) => m.id === Number(form.memberId));
     const couple = form.coupleId ? db.getCouple(Number(form.coupleId)) : null;
     db.addTask({ coupleId: couple ? couple.id : null, title: couple ? `${title} · ${couple.name}` : title, memberId: member ? member.id : null, dueDate: okDate(form.due) || addDays(today(), 7) });
-    setFlash(req, { message: 'Görev eklendi.', type: 'success' });
+    setFlash(req, { message: member && member.phone ? `Görev eklendi. ${member.name.split(' ')[0]} kişisine WhatsApp'tan haber verin.` : 'Görev eklendi.', type: 'success' });
     redirect(res, '/admin/gorevler');
   });
   router.post('/admin/gorevler/:id/tamam', async (req, res, { params }) => {

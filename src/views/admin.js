@@ -393,13 +393,27 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
   return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=18'] });
 }
 
+// Görev verilen kişiye WhatsApp bildirimi (Bugün ve Görevler ekranının üstünde)
+function taskNotice(items) {
+  if (!items.length) return '';
+  return h`<section class="wanote" data-outbox data-wa-banner aria-labelledby="wanote-title">
+    <div class="wanote__hd"><span class="wanote__ic" aria-hidden="true">${icon('whatsapp')}</span>
+      <div><h2 id="wanote-title">Görev verilen kişiye haber verin</h2><p>WhatsApp'tan bildirin; gönderince listeden düşer.</p></div></div>
+    <ul class="wanote__list">${items.map((x) => h`<li data-outbox-item data-keys="${x.keys.join(',')}">
+      <span class="wanote__m"><strong>${x.to}</strong><span>${x.text.split('\n').find((l) => l.startsWith('•'))?.slice(2) || x.label}</span></span>
+      <a class="btn btn--primary btn--sm" href="${x.href}" target="_blank" rel="noopener" data-outbox-send>${icon('whatsapp')}Gönder</a>
+      <button type="button" class="btn btn--text btn--sm" data-outbox-skip title="Göndermeden kaldır">Atla</button></li>`)}</ul>
+  </section>`;
+}
+
 function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], orderPrompts = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
   const balance = couples.reduce((s, k) => s + payment(k)[2], 0);
   const late = couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').length;
-  const todo = todoList(c, { couples, outbox, selections, quotes, newLeads, reminders, tasks, csrf });
+  const newTasks = outbox.filter((x) => x.type === 'gorevYeni');
+  const todo = todoList(c, { couples, outbox: outbox.filter((x) => x.type !== 'gorevYeni'), selections, quotes, newLeads, reminders, tasks, csrf });
   const todayN = upcoming.filter((e) => e.event_date === t).length;
   const weekN = upcoming.filter((e) => e.event_date <= addDays(t, 6)).length;
   const o = c.appointments || {};
@@ -412,6 +426,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       <h1 class="ahead__title">${greet()}${adminName ? h`, <em>${adminName}</em>` : ''}</h1>
     </header>
     ${flashBlock(f)}
+    ${taskNotice(newTasks)}
     ${disk && disk.used >= 0.85 ? h`<div class="flash flash--error" role="alert">Sunucu diski %${Math.round(disk.used * 100)} dolu, ${(disk.free / 1024 ** 3).toFixed(1)} GB boş yer kaldı. Disk dolarsa fotoğraf yüklenemez. <a href="/admin/veriler">Veriler ve arşiv</a></div>` : ''}
 
     <section class="ahero is-hidden" data-money aria-label="Özet">
@@ -511,7 +526,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=4'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -706,7 +721,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=4'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -799,7 +814,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=95">
+<link rel="stylesheet" href="/css/style.css?v=96">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -935,7 +950,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=95"></head>
+  <link rel="stylesheet" href="/css/style.css?v=96"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1541,6 +1556,7 @@ const MESSAGE_INFO = [
   ['randevu', 'Randevu oluşturuldu', 'Yeni randevu kaydedilince; panel giriş bilgileriyle birlikte.', ['ad', 'no', 'tarih', 'link', 'kod', 'sifre']],
   ['sozlesme', 'Sözleşme onaya sunuldu', 'Sözleşme çifte gönderilince.', ['ad', 'link']],
   ['gorevYarin', 'Yarınki görevler (ekip)', 'Akşam, görev verilen kişiye ertesi günün listesi.', ['ad', 'liste']],
+  ['gorevYeni', 'Yeni görev (ekip)', 'Görevler sayfasında birine görev verilince ona gider.', ['ad', 'gorev', 'tarih']],
   ['kapora', 'Kapora hatırlatma', 'Kapora sözü verilen gün; kibar ödeme hatırlatması.', ['ad', 'tutar', 'tarih']],
   ['sozlesmeOnay', 'Sözleşme onaylandı', 'Çift sözleşmeyi onaylayınca; teşekkür ve bilgi mesajı.', ['ad', 'link']],
   ['plan', 'Çekim planı hatırlatması', 'Çekimden 3 gün önce, gün planı doldurulmadıysa.', ['ad', 'gun', 'link']],
@@ -1671,7 +1687,7 @@ function checksBlock(checks, team, csrf) {
 }
 
 // Görevler sayfası
-function tasksPage(c, { tasks, done, team, couples, who = 0, csrf, flash: f, demoAdmin }) {
+function tasksPage(c, { tasks, done, team, couples, who = 0, notices = [], csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const wk = addDays(t, 7);
@@ -1706,6 +1722,7 @@ function tasksPage(c, { tasks, done, team, couples, who = 0, csrf, flash: f, dem
         </form>
       </details>
     </div>
+    ${taskNotice(notices)}
     ${require('./guide').hint('tasks')}
     ${flashBlock(f)}
     <nav class="tgf tasks__who" aria-label="Kişiye göre">
@@ -1721,7 +1738,7 @@ function tasksPage(c, { tasks, done, team, couples, who = 0, csrf, flash: f, dem
       <span class="task__m"><b>${x.title}</b><span>${x.member_name || ''}</span></span></li>`)}</ul></details>` : ''}
     <p class="muted tasks__note">Her akşam 20:00'de ertesi günün görevleri telefonunuza ve Telegram'a gelir; görev verilen kişinin mesajı “Gönderilecek mesajlar”a düşer.</p>
   </div>`;
-  return panelLayout(c, { title: 'Görevler', csrf, nav: adminNav('tasks', csrf, demoAdmin), home: '/admin', tabs: adminTabs('tasks', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
+  return panelLayout(c, { title: 'Görevler', csrf, nav: adminNav('tasks', csrf, demoAdmin), home: '/admin', tabs: adminTabs('tasks', demoAdmin), body, scripts: ['/js/admin.js?v=7', '/js/outbox.js?v=4'] });
 }
 
 // Ön randevular: tarihi belli olmayan çekimler
@@ -2282,7 +2299,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=4'] });
 }
 
 module.exports = {
