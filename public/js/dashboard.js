@@ -59,9 +59,9 @@
     const bcards = [...document.querySelectorAll('[data-bcard]')];
     function apply() {
       const q = $('[data-f-q]').value.trim().toLocaleLowerCase('tr-TR');
-      const st = $('[data-f-stage]').value, ty = $('[data-f-type]').value, pay = $('[data-f-pay]').value, sort = $('[data-f-sort]').value;
+      const st = $('[data-f-stage]').value, ty = $('[data-f-type]').value, pay = $('[data-f-pay]').value, sel = $('[data-f-sel]')?.value || '', sort = $('[data-f-sort]').value;
       const match = (c) => (!q || c.dataset.search.includes(q)) && (!st || c.dataset.stage === st)
-        && (!ty || c.dataset.type.split(', ').includes(ty)) && (!pay || c.dataset.pay === pay);
+        && (!ty || c.dataset.type.split(', ').includes(ty)) && (!pay || c.dataset.pay === pay) && (!sel || c.dataset.sel === sel);
       let shown = 0;
       for (const c of cards) {
         const ok = match(c);
@@ -76,7 +76,7 @@
       if (count) count.textContent = String(shown);
       if (empty) empty.hidden = shown > 0;
       try {
-        sessionStorage.setItem(key, JSON.stringify({ '[data-f-q]': $('[data-f-q]').value, '[data-f-stage]': st, '[data-f-type]': ty, '[data-f-pay]': pay, '[data-f-sort]': sort }));
+        sessionStorage.setItem(key, JSON.stringify({ '[data-f-q]': $('[data-f-q]').value, '[data-f-stage]': st, '[data-f-type]': ty, '[data-f-pay]': pay, '[data-f-sel]': sel, '[data-f-sort]': sort }));
       } catch { /* yok say */ }
     }
     // Görünüm: kartlar / aşama panosu

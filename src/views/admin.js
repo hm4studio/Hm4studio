@@ -245,7 +245,7 @@ function coupleCard(c, k) {
   // Sıralama: önce yaklaşanlar (en yakın üstte), sonra geçmiş etkinlikler (en yeni üstte)
   const sortKey = k.next_date ? `0${k.next_date}` : shown ? `1${99999999 - Number(shown.replace(/-/g, ''))}` : '2';
   const urgent = pay[2] > 0 && k.next_date && daysBetween(t, k.next_date) <= 14;
-  return h`<li class="crow${done ? ' is-done' : ''}" data-card data-search="${search}" data-stage="${k.stage}" data-type="${k.types || ''}" data-pay="${pay[0]}" data-date="${sortKey}">
+  return h`<li class="crow${done ? ' is-done' : ''}" data-card data-sel="${k.album_locked ? 'done' : k.fav_count > 0 ? 'doing' : 'none'}" data-search="${search}" data-stage="${k.stage}" data-type="${k.types || ''}" data-pay="${pay[0]}" data-date="${sortKey}">
     <a class="crow__link" href="/admin/ciftler/${k.id}">
       <span class="crow__who"><span class="crow__name">${k.name}</span><span class="crow__sub">${dlv ? [k.event_type, k.season ? `${k.season} sezonu` : ''].filter(Boolean).join(' · ') || 'Önceki sezon' : k.types || 'Etkinlik yok'}</span></span>
       <span class="crow__date">${dlv ? h`<span class="otag otag--dlv">Yalnız teslim</span>` : shown ? h`<span>${shortDate(shown)}</span><span class="crow__sub">${k.next_date ? relDays(daysBetween(t, shown)) : 'tamamlandı'}</span>` : h`<span class="crow__sub">Tarih yok</span>`}</span>
@@ -270,7 +270,7 @@ function stageBoard(c, couples) {
         <h3 class="board__head"><span>${s}</span><span class="board__count">${list.length}</span></h3>
         <ul class="board__list">${list.map((k) => {
           const pay = payment(k);
-          return h`<li data-bcard data-search="${[k.name, k.full_name, k.partner_name, k.ref_no, k.phone, k.types].join(' ').toLocaleLowerCase('tr-TR')}" data-stage="${k.stage}" data-type="${k.types || ''}" data-pay="${pay[0]}">
+          return h`<li data-bcard data-sel="${k.album_locked ? 'done' : k.fav_count > 0 ? 'doing' : 'none'}" data-search="${[k.name, k.full_name, k.partner_name, k.ref_no, k.phone, k.types].join(' ').toLocaleLowerCase('tr-TR')}" data-stage="${k.stage}" data-type="${k.types || ''}" data-pay="${pay[0]}">
             <a class="bcard" href="/admin/ciftler/${k.id}">
               <strong>${k.name}</strong>
               <span class="bcard__meta">${shortDate(k.next_date || k.event_date) || 'Tarih yok'}</span>
@@ -377,6 +377,8 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         <select id="f-type" data-f-type><option value="">Tüm türler</option>${(o.eventTypes || []).map((x) => h`<option>${x}</option>`)}</select>
         <label class="sr-only" for="f-pay">Ödeme</label>
         <select id="f-pay" data-f-pay><option value="">Tüm ödemeler</option><option value="unpaid">Ödeme bekleniyor</option><option value="deposit">Kapora alındı</option><option value="paid">Ödendi</option><option value="none">Tutar girilmedi</option></select>
+        <label class="sr-only" for="f-sel">Seçim</label>
+        <select id="f-sel" data-f-sel><option value="">Seçim: tümü</option><option value="done">Seçim yapan</option><option value="doing">Seçim sürüyor</option><option value="none">Seçim yok</option></select>
         <label class="sr-only" for="f-sort">Sıralama</label>
         <select id="f-sort" data-f-sort><option value="date">Tarihe göre</option><option value="new">En yeni kayıt</option></select>
       </div>
@@ -388,7 +390,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=17'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=18'] });
 }
 
 function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], orderPrompts = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
@@ -509,7 +511,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=17', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=3'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -704,7 +706,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=17', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=3'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -797,7 +799,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=94">
+<link rel="stylesheet" href="/css/style.css?v=95">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -933,7 +935,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=94"></head>
+  <link rel="stylesheet" href="/css/style.css?v=95"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -2280,7 +2282,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=17', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=3'] });
 }
 
 module.exports = {
