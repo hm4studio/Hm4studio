@@ -1331,7 +1331,8 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
       <form method="post" action="${base}/dosyalari-sil" class="form form--compact" data-confirm="${couple.name} için dosyalar sunucudan kalıcı olarak silinsin mi? Arşivi indirdiniz mi?">
         ${csrfField(csrf)}
         <div class="clear-what">
-          <label class="check"><input type="radio" name="ne" value="hepsi" checked><span>Tüm fotoğraflar (seçim + düzenlenmiş)</span></label>
+          <label class="check"><input type="radio" name="ne" value="secilmeyen" checked><span>Sadece yüklenen, seçilmeyen fotoğraflar (seçilenler ve düzenlenmişler kalsın)</span></label>
+          <label class="check"><input type="radio" name="ne" value="hepsi"><span>Tüm fotoğraflar (seçim + düzenlenmiş)</span></label>
           <label class="check"><input type="radio" name="ne" value="secim"><span>Sadece seçim fotoğrafları (düzenlenmişler çiftte kalsın)</span></label>
         </div>
         <label class="check"><input type="checkbox" name="videolar" value="1"><span>Videoları da sil</span></label>
@@ -2084,7 +2085,8 @@ function dataPage(c, { disk = null, storage = [], diskTotal = 0, backups, season
             <span class="store-size">${mb(u.photos)} fotoğraf${u.videos ? h`<br>${mb(u.videos)} video` : ''}</span>
           </li>`)}</ul>
 <div class="clear-what">
-          <label class="check"><input type="radio" name="ne" value="hepsi" checked><span>Tüm fotoğraflar (seçim + düzenlenmiş)</span></label>
+          <label class="check"><input type="radio" name="ne" value="secilmeyen" checked><span>Sadece yüklenen, seçilmeyen fotoğraflar (seçilenler ve düzenlenmişler kalsın)</span></label>
+          <label class="check"><input type="radio" name="ne" value="hepsi"><span>Tüm fotoğraflar (seçim + düzenlenmiş)</span></label>
           <label class="check"><input type="radio" name="ne" value="secim"><span>Sadece seçim fotoğrafları (düzenlenmişler çiftte kalsın)</span></label>
         </div>
         <label class="check"><input type="checkbox" name="videolar" value="1"><span>Videoları da sil</span></label>

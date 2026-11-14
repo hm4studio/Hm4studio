@@ -578,6 +578,12 @@ module.exports = {
     else q('DELETE FROM photos WHERE couple_id = ?').run(id);
     if (withVideos) q('DELETE FROM videos WHERE couple_id = ? AND file_key IS NOT NULL').run(id);
   },
+  // Yalnızca çiftin seçmediği seçim fotoğrafları silinir; seçilenler (favoriler) ve düzenlenmişler kalır
+  archiveUnselected: (id, { photoCount, withVideos }) => {
+    q("UPDATE couples SET archived_at = date('now'), archived_photos = archived_photos + ? WHERE id = ?").run(photoCount, id);
+    q("DELETE FROM photos WHERE couple_id = ? AND kind = 'secim' AND id NOT IN (SELECT photo_id FROM favorites WHERE couple_id = ?)").run(id, id);
+    if (withVideos) q('DELETE FROM videos WHERE couple_id = ? AND file_key IS NOT NULL').run(id);
+  },
   clampStages: (n) => q('UPDATE couples SET stage = ? WHERE stage > ?').run(n - 1, n - 1),
   markAlbumInfoSent: (id) => q("UPDATE couples SET album_info_sent_at = date('now') WHERE id = ?").run(id),
   deleteCouple: (id) => q('DELETE FROM couples WHERE id = ?').run(id),

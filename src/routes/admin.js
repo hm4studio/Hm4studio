@@ -909,7 +909,16 @@ function register(router) {
 
   // ── Sunucu alanı: teslim edilen çiftlerin dosyalarını sil (kart, randevu, ödeme ve seçim listesi kalır) ──
   // onlySelection: seçim fotoğrafları silinir, düzenlenmiş (teslim) fotoğraflar çiftte kalır. Dönüş: açılan alan (bayt)
-  function clearFiles(couple, withVideos, onlySelection) {
+  function clearFiles(couple, withVideos, mode) {
+    const onlySelection = mode === 'secim';
+    if (mode === 'secilmeyen') {
+      const sel = db.listPhotos(couple.id, 'secim').filter((p) => !p.is_fav);
+      let freed = media.photosSize(couple.id, sel);
+      media.removePhotoDirs(couple.id, sel);
+      if (withVideos) { freed += media.coupleUsage(couple.id).videos; media.removeCoupleVideos(couple.id); }
+      db.archiveUnselected(couple.id, { photoCount: sel.length, withVideos });
+      return freed;
+    }
     const favs = db.listFavoritePhotos(couple.id);
     const prev = couple.archived_selection ? couple.archived_selection.split('\n').filter(Boolean) : [];
     const selection = [...prev, ...appt.selectionNames(favs)].join('\n');
@@ -935,7 +944,7 @@ function register(router) {
     if (!form) return;
     const couple = getCoupleOr404(params.id);
     const withVideos = form.videolar === '1';
-    const freed = clearFiles(couple, withVideos, form.ne === 'secim');
+    const freed = clearFiles(couple, withVideos, form.ne);
     setFlash(req, { message: freed ? `${couple.name}: ${gb(freed)} yer açıldı. Kart, randevular, ödemeler ve seçim listesi duruyor.` : `${couple.name}: silinecek dosya yoktu.`, type: 'success' });
     redirect(res, `/admin/ciftler/${couple.id}`);
   });
@@ -949,7 +958,7 @@ function register(router) {
     for (const id of ids) {
       const couple = db.getCouple(id);
       if (!couple) continue;
-      freed += clearFiles(couple, withVideos, form.ne === 'secim'); n++;
+      freed += clearFiles(couple, withVideos, form.ne); n++;
     }
     setFlash(req, { message: n ? `${n} çiftin dosyaları silindi, ${gb(freed)} yer açıldı.` : 'Çift seçmediniz.', type: n ? 'success' : 'error' });
     redirect(res, '/admin/veriler#alan');
