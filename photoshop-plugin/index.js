@@ -101,12 +101,12 @@ function render() {
       const chip = (label, cls, fn) => { const c = el('span', `chip${cls ? ` ${cls}` : ''}`, label); c.addEventListener('click', fn); acts.appendChild(c); };
       chip('Gelinlik beyazı', isAuto('beyaz') ? 'auto' : '', () => whiteFix(j));
       chip('Kızarıklık', isAuto('kizariklik') ? 'auto' : '', () => redFix(j));
-      chip('Cilt · Hafif', isAuto('cilt:hafif') ? 'auto' : '', () => skinSmooth(j, 'hafif'));
-      chip('Orta', isAuto('cilt:orta') ? 'auto' : '', () => skinSmooth(j, 'orta'));
-      chip('Güçlü', isAuto('cilt:guclu') ? 'auto' : '', () => skinSmooth(j, 'guclu'));
+      if (j.skinWait) {
+        chip('Cilt yumuşat · Uygula', 'run', () => { j.skinWait = false; skinSmooth(j, 'orta', true); });
+        chip('Vazgeç', '', () => { j.skinWait = false; j.msg = j.skinPrev || ''; render(); });
+      } else chip('Cilt yumuşat', isAuto('cilt:orta') ? 'auto' : '', () => skinStart(j));
       favActs.forEach((id) => chip(id.split('\u241f')[1], isAuto(id) ? 'auto' : '', () => runAction(j, id)));
       tx.appendChild(acts);
-      tx.appendChild(el('div', 'tm', 'İpucu: yüzü dikdörtgenle seçip Cilt’e basarsanız ölçü o yüze göre ayarlanır.'));
       const send = el('div', 'btn solid', 'Siteye gönder');
       send.addEventListener('click', () => { const d = docForJob(j); if (d) upload(j, d); });
       tx.appendChild(send);
@@ -345,9 +345,9 @@ async function faceFromSkin(doc) {
   } catch (e) { return 0; }
 }
 
-async function skinSmooth(j, level) {
+async function skinSmooth(j, level, paint = false) {
   const doc = docForJob(j); if (!doc) { j.msg = 'Belge açık değil'; render(); return; }
-  const st = STRENGTH[level] || STRENGTH.orta;
+  const st = paint ? { ...STRENGTH.orta, op: 100, label: 'Fırçayla' } : (STRENGTH[level] || STRENGTH.orta);
   const prev = j.msg; j.msg = `Cilt yumuşatılıyor (${st.label})…`; render();
   let skinFound = false, byUser = false;
   try {
@@ -365,13 +365,13 @@ async function skinSmooth(j, level) {
         else await bp([{ _obj: 'duplicate', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], version: 5 }]);
         await bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', name: TON } }]);
         // 2) Ten seçimi (yüz algılamalı; yüz seçildiyse yalnızca o bölgede)
-        try {
+        if (!paint) try {
           await bp([{ _obj: 'colorRange', colors: { _enum: 'colors', _value: 'skinTone' }, UseFacesKey: true, skinToneFuzziness: 40 }]);
           await bp([{ _obj: 'duplicate', _target: [{ _ref: 'channel', _property: 'selection' }], name: `HM4 ten ${tag}` }]);
           skinFound = true;
         } catch (e) { skinFound = false; }
         // 3) Yüz boyutu → ölçüler
-        let F = userSel ? Math.min(userSel.w, userSel.h * 0.8) : (skinFound ? await faceFromSkin(doc) : 0);
+        let F = userSel ? (paint ? Math.max(userSel.w, userSel.h) * 0.85 : Math.min(userSel.w, userSel.h * 0.8)) : (skinFound ? await faceFromSkin(doc) : 0);
         F = Math.max(edge / 14, Math.min(edge / 2.2, F || edge / 5));
         const Rt = Math.max(0.8, Math.round(F / 180 * 10) / 10);          // gözenek ölçüsü: bunun altı dokuya kalır
         const Rb = Math.max(3, Math.min(100, Math.round(F / st.rb)));    // leke/ton ölçüsü
@@ -399,14 +399,27 @@ async function skinSmooth(j, level) {
         } else {
           await bp([{ _obj: 'make', new: { _class: 'channel' }, at: { _ref: 'channel', _enum: 'channel', _value: 'mask' }, using: { _enum: 'userMaskEnabled', _value: 'hideAll' } }]);
         }
+        if (paint) { // boyamaya hazır: fırça + beyaz ön renk (maske seçili)
+          await bp([{ _obj: 'select', _target: [{ _ref: 'paintbrushTool' }] }]).catch(() => {});
+          await bp([{ _obj: 'set', _target: [{ _ref: 'color', _property: 'foregroundColor' }], to: { _obj: 'RGBColor', red: 255, grn: 255, blue: 255 } }]).catch(() => {});
+        }
       } finally { await ctx.hostControl.resumeHistory(hist); }
     }, { commandName: 'HM4: cilt yumuşat' });
-    j.msg = skinFound
+    j.msg = paint ? 'Hazır · yumuşatma %100 · beyaz fırça (Akış ~%10) ile istediğiniz yere boyayın' : skinFound
       ? `Cilt yumuşatıldı (${st.label}${byUser ? ', seçtiğiniz yüze göre' : ''}) · doku korundu; fazla yerleri maskeden silin`
       : 'Grup eklendi · ten bulunamadı: maskeye beyaz fırçayla teni boyayın';
   } catch (e) { j.msg = `Cilt yumuşatılamadı: ${e.message || e}`; }
   render();
   return prev;
+}
+
+// 1. adım: yüz seçili değilse elips seçim aracını açar ve yüze çember çizilmesini bekler
+async function skinStart(j) {
+  const doc = docForJob(j); if (!doc) { j.msg = 'Belge açık değil'; render(); return; }
+  if (await selectionBounds(doc)) return skinSmooth(j, 'orta', true);
+  try { await core.executeAsModal(async () => { app.activeDocument = doc; await bp([{ _obj: 'select', _target: [{ _ref: 'marqueeEllipTool' }] }]); }, { commandName: 'HM4: elips seçim' }); } catch (e) {}
+  j.skinPrev = j.msg; j.skinWait = true; j.msg = 'Yüzün üstüne bir çember çizin (alından çeneye), sonra Uygula’ya basın';
+  render();
 }
 
 // Ortak: belgede, tek geri alma adımı olarak çalıştır
