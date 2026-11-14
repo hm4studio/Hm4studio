@@ -388,7 +388,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=16'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=17'] });
 }
 
 function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], orderPrompts = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
@@ -401,43 +401,68 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
   const todayN = upcoming.filter((e) => e.event_date === t).length;
   const weekN = upcoming.filter((e) => e.event_date <= addDays(t, 6)).length;
   const o = c.appointments || {};
+  const nChecks = checks.reduce((n, g) => n + g.items.length, 0);
+  const top = todo.slice(0, 3);
   const body = h`
-  <div class="container dashboard">
-    <header class="dash-head">
-      <div>
-        <p class="dash-head__date">${longDay(t)}</p>
-        <h1 class="dash-head__title">${greet()}${adminName ? h`, <em>${adminName}</em>` : ''}</h1>
-        <p class="dash-head__sub">${todayN ? `Bugün ${todayN} çekim` : 'Bugün çekim yok'}${weekN > todayN ? ` · 7 günde ${weekN} çekim` : ''} · ${todo.length ? `${todo.length} iş bekliyor` : 'bekleyen iş yok'}</p>
-      </div>
-      <div class="dash-head__actions">
-        <a class="btn btn--outline" href="/admin/hatirlatma/yeni">${icon('bell')}Hatırlatma</a>
-        <a class="btn btn--primary" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a>
-      </div>
+  <div class="container dashboard adash">
+    <header class="ahead">
+      <p class="ahead__date">${longDay(t)}</p>
+      <h1 class="ahead__title">${greet()}${adminName ? h`, <em>${adminName}</em>` : ''}</h1>
     </header>
     ${flashBlock(f)}
     ${disk && disk.used >= 0.85 ? h`<div class="flash flash--error" role="alert">Sunucu diski %${Math.round(disk.used * 100)} dolu, ${(disk.free / 1024 ** 3).toFixed(1)} GB boş yer kaldı. Disk dolarsa fotoğraf yüklenemez. <a href="/admin/veriler">Veriler ve arşiv</a></div>` : ''}
-    ${signed.length ? h`<section class="signed" aria-label="Sözleşme onayları">${signed.map((k) => h`
-      <div class="signed__item">
-        <span class="signed__icon" aria-hidden="true">${icon('check')}</span>
-        <p class="signed__text"><a href="/admin/ciftler/${k.couple_id}#odeme"><strong>${k.name}</strong></a> sözleşmeyi onayladı
-          <span class="signed__when">${seenText(k.signed_at)}${k.signer_name && k.signer_name !== k.name ? ` · imzalayan: ${k.signer_name}` : ''}</span></p>
-        <form method="post" action="/admin/sozlesme/${k.id}/gordum" class="inline-form">${csrfField(csrf)}<button class="btn btn--outline btn--sm" type="submit">Tamam</button></form>
-      </div>`)}</section>` : ''}
 
-    <div class="dstats">
-      <a class="dstat" href="/admin/takvim"><span class="dstat__k">${MONTHS[Number(ym.slice(5)) - 1]} çekimleri</span><b class="dstat__v">${monthEvents.length}</b><span class="dstat__n">${(() => { const nx = upcoming[0]; return nx ? `Sıradaki ${new Date(`${nx.event_date}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}` : 'Yaklaşan çekim yok'; })()}</span></a>
-      <div class="dstat dstat--money is-hidden" data-money><a class="dstat__cover" href="/admin/rapor" aria-label="Bekleyen ödemeler raporu"></a><span class="dstat__k">Bekleyen ödeme</span><b class="dstat__v"><span class="dstat__real">${tl(balance).replace(/\s?₺$/, '')}</span><span class="dstat__mask" aria-hidden="true">•••••</span><small>₺</small></b><span class="dstat__n">${couples.filter((k) => payment(k)[2] > 0).length} çiftte</span>
-        <button type="button" class="dstat__eye" data-money-toggle aria-pressed="false" aria-label="Tutarı göster">${icon('eye')}${icon('eyeOff')}</button></div>
-      <a class="dstat" href="/admin/talepler"><span class="dstat__k">Yeni talep</span><b class="dstat__v">${newLeads}</b><span class="dstat__n">${newLeads ? 'Yanıt bekliyor' : 'Hepsi yanıtlandı'}</span></a>
-      <a class="dstat${late ? ' dstat--late' : ''}" href="/admin/takvim#teslimler"><span class="dstat__k">Geciken teslim</span><b class="dstat__v">${late}</b><span class="dstat__n">${late ? `En eskisi ${Math.max(...couples.filter((k) => jobStatus(k, c.stages)[0] === 'late').map((k) => daysBetween(k.due_date, t)))} gün` : 'Hepsi zamanında'}</span></a>
+    <section class="ahero is-hidden" data-money aria-label="Özet">
+      <div class="ahero__money">
+        <a class="ahero__k" href="/admin/rapor">Bekleyen ödemeler</a>
+        <p class="ahero__v"><span class="dstat__real">${tl(balance)}</span><span class="dstat__mask" aria-hidden="true">••••• ₺</span>
+          <button type="button" class="ahero__eye" data-money-toggle aria-pressed="false" aria-label="Tutarı göster">${icon('eye')}${icon('eyeOff')}</button></p>
+        <p class="ahero__s">${couples.filter((k) => payment(k)[2] > 0).length} çiftte · ${todayN ? `bugün ${todayN} çekim` : 'bugün çekim yok'}${weekN > todayN ? ` · 7 günde ${weekN}` : ''}</p>
+      </div>
+      <div class="ahero__stats">
+        <a href="/admin/takvim"><b>${monthEvents.length}</b><span>${MONTHS[Number(ym.slice(5)) - 1]} çekimi</span></a>
+        <a href="/admin/talepler"><b>${newLeads}</b><span>Yeni talep</span></a>
+        <a href="/admin/takvim#teslimler"${late ? raw(' class="is-late"') : ''}><b>${late}</b><span>Geciken teslim</span></a>
+        <a href="/admin/ciftler" class="ahero__wide"><b>${couples.filter((k) => k.stage < c.stages.length - 1).length}</b><span>Aktif çift</span></a>
+      </div>
+    </section>
+
+    <nav class="aqa" aria-label="Hızlı işlemler">
+      <a class="is-pri" href="/admin/randevu/yeni"><i>${icon('plus')}</i>Randevu</a>
+      <a href="/admin/hatirlatma/yeni"><i>${icon('bell')}</i>Hatırlatma</a>
+      <a href="/admin/album"><i>${icon('book')}</i>Albüm</a>
+      <a href="/admin/takvim"><i>${icon('calendar')}</i>Takvim</a>
+    </nav>
+
+    <div class="agrid">
+    <section class="acol" aria-labelledby="att-title">
+      <div class="ahd"><h2 id="att-title">Dikkat</h2>${todo.length > top.length ? h`<a href="#yapilacaklar" data-open-all>Tümü (${todo.length})</a>` : ''}</div>
+      <ul class="abox alist">
+        ${top.length ? top.map((x) => h`<li><a class="aitem${x.level >= 3 ? ' is-urgent' : ''}" href="${x.href || '#yapilacaklar'}">
+          <span class="aitem__av av--${(TAG_ICON[x.tag] || ['', 'soz'])[1]}">${/^\/admin\/ciftler\//.test(x.href || '') ? initials(x.name) : icon((TAG_ICON[x.tag] || ['alert'])[0])}</span>
+          <span class="aitem__m"><strong>${x.name}</strong><span>${x.text}</span></span>${icon('right')}</a></li>`) : h`<li><span class="aitem"><span class="aitem__av av--ok">${icon('check')}</span><span class="aitem__m"><strong>Bekleyen iş yok</strong><span>Her şey yolunda</span></span></span></li>`}
+        ${nChecks ? h`<li><a class="aitem" href="#kontrol" data-open-checks><span class="aitem__av av--cek">${icon('check')}</span><span class="aitem__m"><strong>Yapıldı mı? ${nChecks} iş</strong><span>${checks.map((g) => g.coupleName).slice(0, 3).join(', ')}${checks.length > 3 ? '…' : ''}</span></span>${icon('right')}</a></li>` : ''}
+      </ul>
+      ${signed.length ? h`<section class="signed" aria-label="Sözleşme onayları">${signed.map((k) => h`
+        <div class="signed__item">
+          <span class="signed__icon" aria-hidden="true">${icon('check')}</span>
+          <p class="signed__text"><a href="/admin/ciftler/${k.couple_id}#odeme"><strong>${k.name}</strong></a> sözleşmeyi onayladı
+            <span class="signed__when">${seenText(k.signed_at)}${k.signer_name && k.signer_name !== k.name ? ` · imzalayan: ${k.signer_name}` : ''}</span></p>
+          <form method="post" action="/admin/sozlesme/${k.id}/gordum" class="inline-form">${csrfField(csrf)}<button class="btn btn--outline btn--sm" type="submit">Tamam</button></form>
+        </div>`)}</section>` : ''}
+    </section>
+    <section class="acol aprog">
+      ${programBlock(c, upcoming, tomorrowDue, reminders)}
+    </section>
     </div>
 
     ${require('./orders').promptsBlock(orderPrompts)}
-    ${checksBlock(checks, team, csrf)}
+    ${nChecks ? h`<details class="achk" id="kontrol-wrap"><summary>${icon('check')}<span>Yapıldı mı? <b>${nChecks} iş</b></span><span class="achk__more">Göster</span></summary>${checksBlock(checks, team, csrf)}</details>` : ''}
+    <details class="achk aall" id="isler-wrap"><summary>${icon('tasks')}<span>Tüm işler <b>${todo.length}</b></span><span class="achk__more">Göster</span></summary>
     <div class="dgrid">
     <section class="todo" id="yapilacaklar" aria-labelledby="todo-title" data-outbox>
       <header class="sec-head">
-        <h2 class="sec-title" id="todo-title">Yapılacaklar <span class="sec-count" data-todo-count>${todo.length}</span></h2>
+        <h2 class="sec-title" id="todo-title">Tüm işler <span class="sec-count" data-todo-count>${todo.length}</span></h2>
         <span class="sec-note">Bekleyen işler ve gönderilecek mesajlar</span>
       </header>
       ${todo.length ? (() => {
@@ -473,7 +498,6 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     </section>
 
     <aside class="dgrid__side">
-      ${programBlock(c, upcoming, tomorrowDue, reminders)}
       <div class="dmini">
         <a href="/admin/on-randevu"><b>${prebookings.length}</b>Ön randevu</a>
         <a href="/admin/hatirlatma/yeni"><b>${reminders.length}</b>Hatırlatma</a>
@@ -481,10 +505,11 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       </div>
     </aside>
     </div>
+    </details>
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=16', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=17', '/js/outbox.js?v=3'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -679,7 +704,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=16', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=17', '/js/outbox.js?v=3'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -772,7 +797,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=93">
+<link rel="stylesheet" href="/css/style.css?v=94">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -908,7 +933,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=93"></head>
+  <link rel="stylesheet" href="/css/style.css?v=94"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -2231,7 +2256,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=16', '/js/outbox.js?v=3'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=17', '/js/outbox.js?v=3'] });
 }
 
 module.exports = {

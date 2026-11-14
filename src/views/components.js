@@ -154,7 +154,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=93">
+<link rel="stylesheet" href="/css/style.css?v=94">
 <link rel="stylesheet" href="/css/tema.css">
 </head>
 <body class="${bodyClass}">
@@ -195,7 +195,7 @@ function tabbar(items) {
 
 // Çift ve admin panelleri için sade iskelet
 function panelLayout(c, { title, csrf, nav, body, scripts = [], tabs = [], home = '/', side = '' }) {
-  return String(h`${head({ title: `${title} — ${c.brand.name}`, csrf, bodyClass: home === '/admin' ? 'panel-body pui is-admin' : `panel-body pui${side ? ' cui' : ''}` })}
+  return String(h`${head({ title: `${title} — ${c.brand.name}`, csrf, bodyClass: home === '/admin' ? 'panel-body pui is-admin aui' : `panel-body pui${side ? ' cui' : ''}` })}
 ${demoBanner()}
 ${side}
 <header class="panel-header">

@@ -50,7 +50,7 @@ function contractDoc(c, { k, data, back }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${data.title} ${data.randevuNo || ''} — ${data.musteri}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=93">
+<link rel="stylesheet" href="/css/style.css?v=94">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -61,7 +61,7 @@ function contractDoc(c, { k, data, back }) {
   ${body(k, data)}
   ${k ? auditBlock(k) : ''}
 </main>
-<script src="/js/dashboard.js?v=16" defer></script>
+<script src="/js/dashboard.js?v=17" defer></script>
 </body></html>`);
 }
 
@@ -195,7 +195,7 @@ function settingsPage(c, { adminNav, adminTabs, flashBlock, csrf, flash, demoAdm
       </form>
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Sözleşme ve KVKK', csrf, nav: adminNav('contract', csrf, demoAdmin), home: '/admin', tabs: adminTabs('contract', demoAdmin), body: page, scripts: ['/js/dashboard.js?v=16', '/js/contract.js?v=2'] });
+  return panelLayout(c, { title: 'Sözleşme ve KVKK', csrf, nav: adminNav('contract', csrf, demoAdmin), home: '/admin', tabs: adminTabs('contract', demoAdmin), body: page, scripts: ['/js/dashboard.js?v=17', '/js/contract.js?v=2'] });
 }
 
 module.exports = { contractDoc, signPage, adminSection, settingsPage, trTime };

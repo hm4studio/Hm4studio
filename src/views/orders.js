@@ -130,7 +130,7 @@ function formPage(c, { couple, order, pages, options, csrf, flash: f, demoAdmin 
       </aside>
     </div>
   </div>`;
-  return layout(c, { title: `${couple.name} · albüm siparişi`, csrf, demoAdmin, body, scripts: ['/js/dashboard.js?v=16'] });
+  return layout(c, { title: `${couple.name} · albüm siparişi`, csrf, demoAdmin, body, scripts: ['/js/dashboard.js?v=17'] });
 }
 
 function optionsPage(c, { options, csrf, flash: f, demoAdmin }) {
@@ -184,7 +184,7 @@ function doc(c, { couple, order, back }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Albüm siparişi ${orders.orderNo(order)} — ${couple.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=93">
+<link rel="stylesheet" href="/css/style.css?v=94">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -202,7 +202,7 @@ function doc(c, { couple, order, back }) {
   </table>
   <p class="muted">${order.state === 'onaylandi' ? `Çift onayladı: ${trDate(order.approved_at)}` : order.state === 'onay' ? `Çiftin onayına gönderildi: ${trDate(order.sent_at)}` : 'Çift değişiklik istedi.'}${order.lab_at ? ` · Laba gönderildi: ${trDate(order.lab_at)}` : ''}${order.arrived_at ? ` · Geldi: ${trDate(order.arrived_at)}` : ''}</p>
 </main>
-<script src="/js/dashboard.js?v=16" defer></script>
+<script src="/js/dashboard.js?v=17" defer></script>
 </body></html>`);
 }
 

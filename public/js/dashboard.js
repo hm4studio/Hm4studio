@@ -289,3 +289,15 @@
     try { localStorage.setItem('hm4-money', show ? '1' : '0'); } catch { /* yok say */ }
   });
 })();
+
+// "Yapıldı mı?" satırına dokununca kapalı listeyi aç
+(() => {
+  const open = () => { const d = document.getElementById('kontrol-wrap'); if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
+  const openAll = () => { const d = document.getElementById('isler-wrap'); if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'start' }); } };
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-open-checks]')) { e.preventDefault(); open(); }
+    if (e.target.closest('[data-open-all]')) { e.preventDefault(); openAll(); }
+  });
+  if (location.hash === '#kontrol') open();
+  if (location.hash === '#yapilacaklar') openAll();
+})();
