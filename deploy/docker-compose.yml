@@ -2,8 +2,17 @@
 # site  : HM4 Studio web sitesi + paneller (veriler: hm4-data biriminde, kalıcı)
 # n8n   : WhatsApp otomasyonları (veriler: n8n-data biriminde, kalıcı)
 # caddy : HTTPS (ücretsiz SSL, kendiliğinden yenilenir) ve yönlendirme
+x-logs: &logs
+  # Kayıt dosyaları sınırsız büyümesin (her servis için en fazla 3 × 10 MB)
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 services:
   site:
+    <<: *logs
     build: ..
     restart: unless-stopped
     env_file: ../.env
@@ -17,6 +26,7 @@ services:
       - "3000"
 
   n8n:
+    <<: *logs
     image: docker.n8n.io/n8nio/n8n:latest
     restart: unless-stopped
     environment:
@@ -27,12 +37,17 @@ services:
       TZ: Europe/Istanbul
       N8N_SECURE_COOKIE: "true"
       N8N_RUNNERS_ENABLED: "true"
+      # Eski otomasyon kayıtları silinsin (3 gün / en fazla 5000 kayıt)
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: "72"
+      EXECUTIONS_DATA_PRUNE_MAX_COUNT: "5000"
     volumes:
       - n8n-data:/home/node/.n8n
     expose:
       - "5678"
 
   caddy:
+    <<: *logs
     image: caddy:2
     restart: unless-stopped
     ports:

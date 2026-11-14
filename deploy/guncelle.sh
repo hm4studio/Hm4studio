@@ -20,4 +20,5 @@ if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
   chmod +x deploy/*.sh
   cd deploy && docker compose --env-file "$DIR/.env" up -d --build site
   docker image prune -f >/dev/null
+  docker builder prune -f >/dev/null 2>&1 || true # eski derleme önbelleği diski doldurmasın
 fi
