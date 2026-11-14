@@ -74,6 +74,7 @@ async function loadThumb(j) {
 // ── İş listesi ──
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 function render() {
+  renderRetouch();
   const box = $('jobs');
   box.innerHTML = '';
   const list = [...jobs.values()].sort((a, b) => b.id - a.id).slice(0, 12);
@@ -305,7 +306,7 @@ const STRENGTH = {
   orta: { rb: 10, thr: 26, op: 80, label: 'Orta' },
   guclu: { rb: 8, thr: 32, op: 95, label: 'Güçlü' },
 };
-const docForJob = (j) => { try { return app.documents.find((d) => { try { return samePath(d.path, j.path); } catch (e) { return false; } }); } catch (e) { return null; } };
+const docForJob = (j) => { if (j && j.__active) { try { return app.activeDocument || null; } catch (e) { return null; } } try { return app.documents.find((d) => { try { return samePath(d.path, j.path); } catch (e) { return false; } }); } catch (e) { return null; } };
 // batchPlay hata fırlatmaz, sonuçta { _obj: 'error' } döner: burada hataya çevrilir
 async function bp(list) {
   const res = await action.batchPlay(list, { synchronousExecution: true });
@@ -422,7 +423,7 @@ async function skinStart(j) {
   const doc = docForJob(j); if (!doc) { j.msg = 'Belge açık değil'; render(); return; }
   if (await selectionBounds(doc)) return skinSmooth(j, 'orta', true);
   try { await core.executeAsModal(async () => { app.activeDocument = doc; await bp([{ _obj: 'select', _target: [{ _ref: 'marqueeEllipTool' }] }]); }, { commandName: 'HM4: elips seçim' }); } catch (e) {}
-  j.skinPrev = j.msg; j.skinWait = true; j.msg = 'Yüzün üstüne bir çember çizin (alından çeneye), sonra Uygula’ya basın';
+  j.skinPrev = j.msg; j.skinWait = true; j.msg = 'Yüzün üstüne bir çember çizin (alından çeneye), sonra butona tekrar basın';
   render();
 }
 
@@ -518,7 +519,7 @@ function stampVisible(j) {
 }
 
 // Gelinlik beyazı: parlak ve renksiz bölgelerin ortalama rengi ölçülür; Seçici Renk (yalnızca Beyazlar) ile nötr beyaza çekilir
-async function whiteFix(j) {
+async function whiteFix(j, k = 1) {
   j.msg = 'Beyazlar ölçülüyor…'; render();
   try {
     const res = await asStep(j, 'HM4 gelinlik beyazı', async (doc) => {
@@ -533,9 +534,9 @@ async function whiteFix(j) {
       px.imageData.dispose();
       if (c < 200) return { none: true };
       R /= c; G /= c; B /= c; const m = (R + G + B) / 3;
-      const pct = (v) => Math.max(-15, Math.min(15, Math.round((v - m) / 255 * 100 * 2.2)));
+      const cap = Math.round(15 * k), pct = (v) => Math.max(-cap, Math.min(cap, Math.round((v - m) / 255 * 100 * 2.2 * k)));
       const cy = pct(R), mg = pct(G), ye = pct(B);
-      const bl = m < 225 ? -Math.min(8, Math.round((225 - m) / 6)) : 0;
+      const bl = m < 225 ? -Math.min(Math.round(8 * k), Math.round((225 - m) / 6 * k)) : 0;
       await selFront();
       await bp([{ _obj: 'make', _target: [{ _ref: 'adjustmentLayer' }], using: { _obj: 'adjustmentLayer', name: 'Gelinlik beyazı (HM4)', type: { _obj: 'selectiveColor', presetKind: { _enum: 'presetKindType', _value: 'presetKindCustom' }, method: { _enum: 'correctionMethod', _value: 'absolute' }, colorCorrection: [{ _obj: 'colorCorrection', colors: { _enum: 'colors', _value: 'whites' }, cyan: { _unit: 'percentUnit', _value: cy }, magenta: { _unit: 'percentUnit', _value: mg }, yellowColor: { _unit: 'percentUnit', _value: ye }, black: { _unit: 'percentUnit', _value: bl } }] } } }]);
       return { cy, mg, ye, bl };
@@ -634,6 +635,104 @@ function renderSettings() {
   }
 }
 
+// ── Retouch sekmesi: açık belgede çalışan araçlar ──
+const RJ = { __active: true, msg: '' };
+let tab = 'jobs';
+function contrast(j) {
+  return runTool(j, 'HM4 kontrast', 'Kontrast ekleniyor…', 'Kontrast eklendi · etkiyi katman opaklığıyla ayarlayın', async () => {
+    await deselectQuiet(); await selFront();
+    await bp([{ _obj: 'make', _target: [{ _ref: 'adjustmentLayer' }], using: { _obj: 'adjustmentLayer', name: 'Contrast (HM4)', mode: { _enum: 'blendMode', _value: 'luminosity' },
+      type: { _obj: 'curves', presetKind: { _enum: 'presetKindType', _value: 'presetKindCustom' }, adjustment: [{ _obj: 'curvesAdjustment', channel: { _ref: 'channel', _enum: 'channel', _value: 'composite' },
+        curve: [{ _obj: 'paint', horizontal: 0, vertical: 0 }, { _obj: 'paint', horizontal: 64, vertical: 54 }, { _obj: 'paint', horizontal: 192, vertical: 203 }, { _obj: 'paint', horizontal: 255, vertical: 255 }] }] } } }]);
+  });
+}
+function autoTone(j) {
+  return runTool(j, 'HM4 oto ton', 'Ton ayarlanıyor…', 'Otomatik ton uygulandı (ayrı katman) · fazla gelirse opaklığı düşürün', async (doc) => {
+    await deselectQuiet(); await selFront();
+    if (doc.layers.length > 1) await bp([{ _obj: 'mergeVisible', duplicate: true }]);
+    else await bp([{ _obj: 'duplicate', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], version: 5 }]);
+    await renameActive('Auto Tone (HM4)');
+    await bp([{ _obj: 'levels', auto: true }]);
+  });
+}
+const selectSubject = () => bp([{ _obj: 'autoCutout', sampleAllLayers: true }]);
+function darkenBg(j, strong) {
+  return runTool(j, 'HM4 arka plan karart', 'Model seçiliyor, arka plan karartılıyor…', 'Arka plan karartıldı · maskeyi fırçayla düzeltebilirsiniz', async (doc) => {
+    await deselectQuiet(); await selFront();
+    await selectSubject();
+    await bp([{ _obj: 'inverse' }]);
+    await curvesLayer('Darken Background (HM4)', 128, strong ? 88 : 104);
+    await bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', userMaskFeather: px(Math.max(4, Math.round(Math.max(doc.width, doc.height) / 150))) } }]).catch(() => {});
+    await deselectQuiet();
+  });
+}
+function selSubject(j, bg) {
+  return runTool(j, 'HM4 seçim', bg ? 'Arka plan seçiliyor…' : 'Model seçiliyor…', bg ? 'Arka plan seçildi' : 'Model seçildi', async () => {
+    await selectSubject(); if (bg) await bp([{ _obj: 'inverse' }]);
+  });
+}
+function newLayer(j, soft) {
+  return runTool(j, 'HM4 katman', 'Katman ekleniyor…', soft ? 'Yumuşak ışık katmanı eklendi · siyah/beyaz düşük akışlı fırçayla boyayın' : 'Boş katman eklendi', async () => {
+    await selFront();
+    await bp([{ _obj: 'make', _target: [{ _ref: 'layer' }], using: soft ? { _obj: 'layer', name: 'Soft Light (HM4)', mode: { _enum: 'blendMode', _value: 'softLight' }, fillNeutral: true } : { _obj: 'layer', name: 'Layer (HM4)' } }]);
+    if (soft) await paintReady();
+  });
+}
+async function undoStep(j) {
+  try { await core.executeAsModal(async () => { await bp([{ _obj: 'select', _target: [{ _ref: 'historyState', _enum: 'ordinal', _value: 'previous' }] }]); }, { commandName: 'HM4: geri al' }); j.msg = 'Geri alındı'; }
+  catch (e) { j.msg = 'Geri alınamadı'; }
+  render();
+}
+function sendActive() {
+  let doc = null; try { doc = app.activeDocument; } catch (e) { doc = null; }
+  if (!doc) { RJ.msg = 'Açık belge yok'; return render(); }
+  const j = jobForDoc(doc);
+  if (!j) { RJ.msg = 'Bu belge sitedeki bir albüm işine ait değil'; return render(); }
+  upload(j, doc).then(() => { RJ.msg = j.msg; render(); });
+}
+const wLevel = { white: 0, dark: 0 };
+function renderRetouch() {
+  const box = $('ret'); if (!box) return;
+  let doc = null; try { doc = app.activeDocument; } catch (e) { doc = null; }
+  const j = doc ? jobForDoc(doc) : null;
+  $('rdocName').textContent = doc ? doc.name : '—';
+  $('rdocCouple').textContent = j ? (j.couple || '') : '';
+  $('rst').textContent = RJ.msg || 'Photoshop’ta bir fotoğraf açın, araca basın.';
+  box.innerHTML = '';
+  const cap = (t) => box.appendChild(el('div', 'rcap', t));
+  const row = (...items) => { const r = el('div', 'rrow'); items.forEach((x) => r.appendChild(x)); box.appendChild(r); };
+  const btn = (label, cls, fn, extra) => { const b = el('div', `rb ${cls}`); b.appendChild(el('span', '', label)); if (extra) { b.appendChild(el('span', 'sp')); b.appendChild(extra); } b.addEventListener('click', fn); return b; };
+  const seg = (key, labels) => { const o = el('div', 'o'); labels.forEach((t, i) => { const sp = el('span', wLevel[key] === i ? 'on' : '', t); sp.addEventListener('click', (e) => { e.stopPropagation(); wLevel[key] = i; render(); }); o.appendChild(sp); }); return o; };
+  cap('Skin & Face');
+  const ring = el('div', 'ring', '○');
+  const sk = btn(RJ.skinWait ? 'Skin Smoothing · Apply' : 'Skin Smoothing', `c1${RJ.skinWait ? ' wait' : ''}`, () => { if (RJ.skinWait) { RJ.skinWait = false; skinSmooth(RJ, 'orta', true); } else skinStart(RJ); }, ring);
+  row(sk);
+  row(btn('Dodge & Burn', 'c1', () => dodgeBurn(RJ)), btn('Eyes', 'c1', () => eyes(RJ)));
+  row(btn('Teeth Whitening', 'c1', () => teeth(RJ)), btn('Remove Redness', 'c1', () => redFix(RJ)));
+  cap('Color & Light');
+  row(btn('Dress White', 'c2', () => whiteFix(RJ, wLevel.white ? 1.6 : 1), seg('white', ['Soft', 'Medium'])));
+  row(btn('Contrast', 'c2', () => contrast(RJ)), btn('Auto Tone', 'c2', () => autoTone(RJ)));
+  row(btn('Darken Background', 'c2', () => darkenBg(RJ, wLevel.dark === 1), seg('dark', ['Soft', 'Medium'])));
+  cap('Selection');
+  row(btn('Select Subject', 'c3', () => selSubject(RJ, false)), btn('Select Background', 'c3', () => selSubject(RJ, true)));
+  cap('Layers');
+  row(btn('New Layer', 'c4', () => newLayer(RJ, false)), btn('Soft Light', 'c4', () => newLayer(RJ, true)));
+  row(btn('Stamp Visible', 'c4', () => stampVisible(RJ)));
+  cap('Finish');
+  row(btn('Undo', 'c5', () => undoStep(RJ)), btn('Send to Site', 'c6', sendActive));
+}
+function showTab(t) {
+  tab = t;
+  document.querySelectorAll('#tabs .tb').forEach((b) => { b.className = `tb${b.getAttribute('data-tab') === t ? ' on' : ''}`; });
+  $('tabJobs').className = t === 'jobs' ? '' : 'hidden';
+  $('tabRet').className = t === 'ret' ? '' : 'hidden';
+  $('settings').className = t === 'acts' ? 'set' : 'set hidden';
+  if (t === 'acts') renderSettings();
+  render();
+}
+document.querySelectorAll('#tabs .tb').forEach((b) => b.addEventListener('click', () => showTab(b.getAttribute('data-tab'))));
+action.addNotificationListener(['select', 'open', 'make'], () => { if (tab === 'ret') renderRetouch(); });
+
 async function upload(j, doc) {
   j.state = 'uploading'; j.msg = 'Siteye yükleniyor…'; render();
   try {
@@ -700,8 +799,8 @@ $('save').addEventListener('click', () => {
   poll();
 });
 $('reset').addEventListener('click', () => { showSetup(true); $('token').value = ''; });
-$('editActs').addEventListener('click', () => { const s = $('settings'); const on = s.className.includes('hidden'); s.className = on ? 'set' : 'set hidden'; if (on) renderSettings(); });
-$('closeActs').addEventListener('click', () => { $('settings').className = 'set hidden'; });
+$('editActs').addEventListener('click', () => showTab('acts'));
+$('closeActs').addEventListener('click', () => showTab('jobs'));
 
 $('pickDir').addEventListener('click', pickDir);
 (async () => {
