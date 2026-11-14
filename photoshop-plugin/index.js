@@ -106,6 +106,7 @@ function render() {
       chip('Güçlü', isAuto('cilt:guclu') ? 'auto' : '', () => skinSmooth(j, 'guclu'));
       favActs.forEach((id) => chip(id.split('\u241f')[1], isAuto(id) ? 'auto' : '', () => runAction(j, id)));
       tx.appendChild(acts);
+      tx.appendChild(el('div', 'tm', 'İpucu: yüzü dikdörtgenle seçip Cilt’e basarsanız ölçü o yüze göre ayarlanır.'));
       const send = el('div', 'btn solid', 'Siteye gönder');
       send.addEventListener('click', () => { const d = docForJob(j); if (d) upload(j, d); });
       tx.appendChild(send);
@@ -292,7 +293,14 @@ async function saveJpegCopy(doc, j) {
 
 // ── Rötuş: cilt yumuşatma ve kendi eylemleriniz ──
 // Doğal görünüm: küçük yarıçap, düşük opaklık; ince doku (gözenek) korunur
-const STRENGTH = { hafif: { div: 1000, op: 45, label: 'Hafif' }, orta: { div: 800, op: 60, label: 'Orta' }, guclu: { div: 650, op: 75, label: 'Güçlü' } };
+// Doğal cilt yumuşatma (frekans ayırma): gözenek ve doku katmanı aynen korunur,
+// yalnızca alttaki ton/leke katmanı kenarları koruyan Yüzey Bulanıklaştırma ile eşitlenir.
+// Ölçüler yüz boyutuna göre: yüz önceden dikdörtgenle seçilirse ona göre, seçilmezse ten seçiminden tahmin edilir.
+const STRENGTH = {
+  hafif: { rb: 14, thr: 20, op: 65, label: 'Hafif' },
+  orta: { rb: 10, thr: 26, op: 80, label: 'Orta' },
+  guclu: { rb: 8, thr: 32, op: 95, label: 'Güçlü' },
+};
 const docForJob = (j) => { try { return app.documents.find((d) => { try { return samePath(d.path, j.path); } catch (e) { return false; } }); } catch (e) { return null; } };
 // batchPlay hata fırlatmaz, sonuçta { _obj: 'error' } döner: burada hataya çevrilir
 async function bp(list) {
@@ -301,50 +309,101 @@ async function bp(list) {
   if (bad) throw new Error(bad.message || 'Photoshop komutu çalışmadı');
   return res;
 }
+const px = (v) => ({ _unit: 'pixelsUnit', _value: v });
+const unitVal = (v) => (v && typeof v === 'object' ? v._value : v) || 0;
+
+// Etkin seçimin sınırları (yoksa null)
+async function selectionBounds(doc) {
+  try {
+    const r = await action.batchPlay([{ _obj: 'get', _target: [{ _property: 'selection' }, { _ref: 'document', _id: doc.id }] }], { synchronousExecution: true });
+    const b = r && r[0] && r[0].selection; if (!b) return null;
+    const w = unitVal(b.right) - unitVal(b.left), h = unitVal(b.bottom) - unitVal(b.top);
+    return w > 10 && h > 10 ? { w, h } : null;
+  } catch (e) { return null; }
+}
+
+// Ten seçiminden yüz genişliği tahmini: en büyük ten parçasının üst kısmının genişliği
+async function faceFromSkin(doc) {
+  try {
+    const k = Math.min(1, 400 / Math.max(doc.width, doc.height));
+    const W = Math.max(1, Math.round(doc.width * k)), H = Math.max(1, Math.round(doc.height * k));
+    const sel = await imaging.getSelection({ documentID: doc.id, targetSize: { width: W, height: H } });
+    const d = await sel.imageData.getData(); const w = sel.imageData.width, h = sel.imageData.height; sel.imageData.dispose();
+    const lab = new Int32Array(w * h); let best = 0, bestN = 0, id = 0; const stack = [];
+    for (let i = 0; i < w * h; i++) {
+      if (d[i] < 128 || lab[i]) continue;
+      id++; let n = 0; stack.push(i); lab[i] = id;
+      while (stack.length) { const p = stack.pop(); n++; const x = p % w, y = (p / w) | 0;
+        for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) if (q >= 0 && !lab[q] && d[q] >= 128) { lab[q] = id; stack.push(q); } }
+      if (n > bestN) { bestN = n; best = id; }
+    }
+    if (!best || bestN < 30) return 0;
+    let top = h, bot = 0; for (let i = 0; i < w * h; i++) if (lab[i] === best) { const y = (i / w) | 0; if (y < top) top = y; if (y > bot) bot = y; }
+    const rows = []; const lim = top + Math.max(1, Math.round((bot - top) / 4));
+    for (let y = top; y <= lim; y++) { let c = 0; for (let x = 0; x < w; x++) if (lab[y * w + x] === best) c++; if (c) rows.push(c); }
+    rows.sort((a, b) => a - b); return rows[Math.floor(rows.length * 0.8)] / k;
+  } catch (e) { return 0; }
+}
 
 async function skinSmooth(j, level) {
   const doc = docForJob(j); if (!doc) { j.msg = 'Belge açık değil'; render(); return; }
   const st = STRENGTH[level] || STRENGTH.orta;
   const prev = j.msg; j.msg = `Cilt yumuşatılıyor (${st.label})…`; render();
-  let skinFound = false;
+  let skinFound = false, byUser = false;
   try {
     await core.executeAsModal(async (ctx) => {
       app.activeDocument = doc;
       const hist = await ctx.hostControl.suspendHistory({ documentID: doc.id, name: `HM4 cilt yumuşat · ${st.label}` });
       try {
         const edge = Math.max(doc.width, doc.height);
-        const R = Math.max(2, Math.round(edge / st.div)), G = Math.max(1, Math.round(R / 2 * 10) / 10);
-        // 1) Görünen her şeyin birleşik kopyası
-        if (doc.layers.length > 1) {
-          await bp([{ _obj: 'select', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'front' }], makeVisible: false }]);
-          await bp([{ _obj: 'mergeVisible', duplicate: true }]);
-        } else {
-          await bp([{ _obj: 'duplicate', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], version: 5 }]);
-        }
-        await bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', name: `Cilt yumuşatma · ${st.label} (HM4)` } }]);
-        // 2) Ten seçimi (yüz algılamalı); bulunamazsa maske kapalı başlar, fırçayla açılır
+        const userSel = await selectionBounds(doc); byUser = !!userSel;
+        const tag = Date.now().toString(36).slice(-4);
+        const TON = `Ton ${tag} (HM4)`, DOKU = `Doku ${tag} (HM4)`;
+        // 1) Görünen her şeyin birleşik kopyası (Ton)
+        await bp([{ _obj: 'select', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'front' }], makeVisible: false }]);
+        if (doc.layers.length > 1) await bp([{ _obj: 'mergeVisible', duplicate: true }]);
+        else await bp([{ _obj: 'duplicate', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], version: 5 }]);
+        await bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', name: TON } }]);
+        // 2) Ten seçimi (yüz algılamalı; yüz seçildiyse yalnızca o bölgede)
         try {
           await bp([{ _obj: 'colorRange', colors: { _enum: 'colors', _value: 'skinTone' }, UseFacesKey: true, skinToneFuzziness: 40 }]);
-          await bp([{ _obj: 'duplicate', _target: [{ _ref: 'channel', _property: 'selection' }], name: 'HM4 ten' }]);
+          await bp([{ _obj: 'duplicate', _target: [{ _ref: 'channel', _property: 'selection' }], name: `HM4 ten ${tag}` }]);
           skinFound = true;
         } catch (e) { skinFound = false; }
+        // 3) Yüz boyutu → ölçüler
+        let F = userSel ? Math.min(userSel.w, userSel.h * 0.8) : (skinFound ? await faceFromSkin(doc) : 0);
+        F = Math.max(edge / 14, Math.min(edge / 2.2, F || edge / 5));
+        const Rt = Math.max(0.8, Math.round(F / 180 * 10) / 10);          // gözenek ölçüsü: bunun altı dokuya kalır
+        const Rb = Math.max(3, Math.min(100, Math.round(F / st.rb)));    // leke/ton ölçüsü
         await bp([{ _obj: 'set', _target: [{ _ref: 'channel', _property: 'selection' }], to: { _enum: 'ordinal', _value: 'none' } }]);
-        // 3) Dokuyu koruyan yumuşatma (ters yüksek geçiren)
-        await bp([{ _obj: 'invert' }]);
-        await bp([{ _obj: 'highPass', radius: { _unit: 'pixelsUnit', _value: R } }]);
-        await bp([{ _obj: 'gaussianBlur', radius: { _unit: 'pixelsUnit', _value: G } }]);
-        await bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', mode: { _enum: 'blendMode', _value: 'vividLight' }, opacity: { _unit: 'percentUnit', _value: st.op } } }]);
-        // 4) Maske: yalnızca ten
+        // 4) Doku katmanı = görüntü − bulanık görüntü (Doğrusal Işık)
+        await bp([{ _obj: 'duplicate', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], name: DOKU, version: 5 }]);
+        await bp([{ _obj: 'select', _target: [{ _ref: 'layer', _name: TON }], makeVisible: false }]);
+        await bp([{ _obj: 'gaussianBlur', radius: px(Rt) }]);
+        await bp([{ _obj: 'select', _target: [{ _ref: 'layer', _name: DOKU }], makeVisible: false }]);
+        const b16 = String(doc.bitsPerChannel || '').includes('16') || doc.bitsPerChannel === 16;
+        await bp([{ _obj: 'applyImageEvent', with: { _obj: 'calculation', to: { _ref: [{ _ref: 'channel', _enum: 'channel', _value: 'RGB' }, { _ref: 'layer', _name: TON }] },
+          invert: b16, calculation: { _enum: 'calculationType', _value: b16 ? 'add' : 'subtract' }, scale: 2, offset: b16 ? 0 : 128 } }]);
+        await bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', mode: { _enum: 'blendMode', _value: 'linearLight' } } }]);
+        // 5) Ton katmanı: kenarları koruyarak eşitle (yüz hatları, burun, dudak keskin kalır)
+        await bp([{ _obj: 'select', _target: [{ _ref: 'layer', _name: TON }], makeVisible: false }]);
+        await bp([{ _obj: 'surfaceBlur', radius: px(Rb), threshold: st.thr }]);
+        // 6) İkisini bir grupta topla: opaklık = etki gücü, maske = ten
+        await bp([{ _obj: 'select', _target: [{ _ref: 'layer', _name: DOKU }], selectionModifier: { _enum: 'selectionModifierType', _value: 'addToSelection' }, makeVisible: false }]);
+        await bp([{ _obj: 'make', _target: [{ _ref: 'layerSection' }], from: { _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }, using: { _obj: 'layerSection', name: `Cilt yumuşatma · ${st.label} (HM4)` } }]);
+        await bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', opacity: { _unit: 'percentUnit', _value: st.op } } }]);
         if (skinFound) {
-          await bp([{ _obj: 'set', _target: [{ _ref: 'channel', _property: 'selection' }], to: { _ref: 'channel', _name: 'HM4 ten' } }]);
+          await bp([{ _obj: 'set', _target: [{ _ref: 'channel', _property: 'selection' }], to: { _ref: 'channel', _name: `HM4 ten ${tag}` } }]);
           await bp([{ _obj: 'make', new: { _class: 'channel' }, at: { _ref: 'channel', _enum: 'channel', _value: 'mask' }, using: { _enum: 'userMaskEnabled', _value: 'revealSelection' } }]);
-          await bp([{ _obj: 'delete', _target: [{ _ref: 'channel', _name: 'HM4 ten' }] }]).catch(() => {});
+          await bp([{ _obj: 'delete', _target: [{ _ref: 'channel', _name: `HM4 ten ${tag}` }] }]).catch(() => {});
         } else {
           await bp([{ _obj: 'make', new: { _class: 'channel' }, at: { _ref: 'channel', _enum: 'channel', _value: 'mask' }, using: { _enum: 'userMaskEnabled', _value: 'hideAll' } }]);
         }
       } finally { await ctx.hostControl.resumeHistory(hist); }
     }, { commandName: 'HM4: cilt yumuşat' });
-    j.msg = skinFound ? `Cilt yumuşatıldı (${st.label}) · fazla yerleri maskeden silin` : `Katman eklendi · ten bulunamadı: beyaz fırçayla teni boyayın`;
+    j.msg = skinFound
+      ? `Cilt yumuşatıldı (${st.label}${byUser ? ', seçtiğiniz yüze göre' : ''}) · doku korundu; fazla yerleri maskeden silin`
+      : 'Grup eklendi · ten bulunamadı: maskeye beyaz fırçayla teni boyayın';
   } catch (e) { j.msg = `Cilt yumuşatılamadı: ${e.message || e}`; }
   render();
   return prev;
