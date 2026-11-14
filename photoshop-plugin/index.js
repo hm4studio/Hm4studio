@@ -101,6 +101,10 @@ function render() {
       const chip = (label, cls, fn) => { const c = el('span', `chip${cls ? ` ${cls}` : ''}`, label); c.addEventListener('click', fn); acts.appendChild(c); };
       chip('Gelinlik beyazı', isAuto('beyaz') ? 'auto' : '', () => whiteFix(j));
       chip('Kızarıklık', isAuto('kizariklik') ? 'auto' : '', () => redFix(j));
+      chip('Dodge & Burn', '', () => dodgeBurn(j));
+      chip('Göz', '', () => eyes(j));
+      chip('Diş', '', () => teeth(j));
+      chip('Birleştir', '', () => stampVisible(j));
       if (j.skinWait) {
         chip('Cilt yumuşat · Uygula', 'run', () => { j.skinWait = false; skinSmooth(j, 'orta', true); });
         chip('Vazgeç', '', () => { j.skinWait = false; j.msg = j.skinPrev || ''; render(); });
@@ -437,6 +441,81 @@ const selFront = () => bp([{ _obj: 'select', _target: [{ _ref: 'layer', _enum: '
 const selBack = () => bp([{ _obj: 'select', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'back' }], makeVisible: false }]);
 const deselect = () => bp([{ _obj: 'set', _target: [{ _ref: 'channel', _property: 'selection' }], to: { _enum: 'ordinal', _value: 'none' } }]);
 const renameActive = (name) => bp([{ _obj: 'set', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], to: { _obj: 'layer', name } }]);
+
+// Fırçayla boyamaya hazırla: fırça aracı + beyaz ön renk
+const paintReady = async () => {
+  await bp([{ _obj: 'select', _target: [{ _ref: 'paintbrushTool' }] }]).catch(() => {});
+  await bp([{ _obj: 'set', _target: [{ _ref: 'color', _property: 'foregroundColor' }], to: { _obj: 'RGBColor', red: 255, grn: 255, blue: 255 } }]).catch(() => {});
+};
+const deselectQuiet = () => deselect().catch(() => {});
+// Etkin ayar katmanının (beyaz) maskesini siyaha çevir
+const maskToBlack = async () => {
+  await bp([{ _obj: 'select', _target: [{ _ref: 'channel', _enum: 'channel', _value: 'mask' }], makeVisible: false }]);
+  await bp([{ _obj: 'invert' }]);
+};
+const curvesLayer = (name, mid, out, lum = true) => bp([{ _obj: 'make', _target: [{ _ref: 'adjustmentLayer' }], using: { _obj: 'adjustmentLayer', name, mode: { _enum: 'blendMode', _value: lum ? 'luminosity' : 'normal' },
+  type: { _obj: 'curves', presetKind: { _enum: 'presetKindType', _value: 'presetKindCustom' }, adjustment: [{ _obj: 'curvesAdjustment', channel: { _ref: 'channel', _enum: 'channel', _value: 'composite' },
+    curve: [{ _obj: 'paint', horizontal: 0, vertical: 0 }, { _obj: 'paint', horizontal: mid, vertical: out }, { _obj: 'paint', horizontal: 255, vertical: 255 }] }] } } }]);
+const groupSelected = (name) => bp([{ _obj: 'make', _target: [{ _ref: 'layerSection' }], from: { _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }, using: { _obj: 'layerSection', name } }]);
+const addSel = (name) => bp([{ _obj: 'select', _target: [{ _ref: 'layer', _name: name }], selectionModifier: { _enum: 'selectionModifierType', _value: 'addToSelection' }, makeVisible: false }]);
+async function runTool(j, title, busy, done, fn) {
+  j.msg = busy; render();
+  try { const r = await asStep(j, title, fn); if (r === null) return; j.msg = typeof done === 'function' ? done(r) : done; }
+  catch (e) { j.msg = `${title.replace('HM4 ', '')} yapılamadı: ${e.message || e}`; }
+  render();
+}
+
+// Dodge & Burn: iki Eğri katmanı (Açma / Karartma), siyah maskeli, ışıklılık modunda (renk kaymaz)
+function dodgeBurn(j) {
+  return runTool(j, 'HM4 dodge & burn', 'Dodge & Burn hazırlanıyor…', 'Dodge & Burn hazır · Açma katmanı seçili; beyaz fırça (Akış ~%5–10) ile boyayın, karartmak için Karartma katmanına geçin', async () => {
+    const t = Date.now().toString(36).slice(-4), A = `Açma ${t}`, K = `Karartma ${t}`;
+    await deselectQuiet(); await selFront();
+    await curvesLayer(K, 128, 100); await maskToBlack();
+    await curvesLayer(A, 128, 158); await maskToBlack();
+    await addSel(K); await groupSelected('Dodge & Burn (HM4)');
+    await bp([{ _obj: 'select', _target: [{ _ref: 'layer', _name: A }], makeVisible: false }]);
+    await bp([{ _obj: 'select', _target: [{ _ref: 'channel', _enum: 'channel', _value: 'mask' }], makeVisible: false }]).catch(() => {});
+    await paintReady();
+  });
+}
+
+// Göz: netleştirilmiş kopya + hafif aydınlatma, siyah maskeli grup
+function eyes(j) {
+  return runTool(j, 'HM4 göz', 'Göz katmanı hazırlanıyor…', 'Göz hazır · beyaz fırçayla irislere boyayın; fazla gelirse grubun opaklığını düşürün', async (doc) => {
+    const t = Date.now().toString(36).slice(-4), N = `Göz netlik ${t}`, L = `Göz ışık ${t}`;
+    const r = Math.max(0.8, Math.round(Math.max(doc.width, doc.height) / 3000 * 10) / 10);
+    await deselectQuiet(); await selFront();
+    if (doc.layers.length > 1) await bp([{ _obj: 'mergeVisible', duplicate: true }]);
+    else await bp([{ _obj: 'duplicate', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], version: 5 }]);
+    await renameActive(N);
+    await bp([{ _obj: 'unsharpMask', amount: { _unit: 'percentUnit', _value: 120 }, radius: px(r), threshold: 1 }]);
+    await curvesLayer(L, 128, 150);
+    await addSel(N); await groupSelected('Göz (HM4)');
+    await bp([{ _obj: 'make', new: { _class: 'channel' }, at: { _ref: 'channel', _enum: 'channel', _value: 'mask' }, using: { _enum: 'userMaskEnabled', _value: 'hideAll' } }]);
+    await paintReady();
+  });
+}
+
+// Diş beyazlatma: sarıların doygunluğu azalır, hafif aydınlanır; siyah maske
+function teeth(j) {
+  return runTool(j, 'HM4 diş beyazlat', 'Diş katmanı hazırlanıyor…', 'Diş hazır · beyaz fırçayla dişlere boyayın', async () => {
+    await deselectQuiet(); await selFront();
+    await bp([{ _obj: 'make', _target: [{ _ref: 'adjustmentLayer' }], using: { _obj: 'adjustmentLayer', name: 'Diş beyazlat (HM4)', type: { _obj: 'hueSaturation', presetKind: { _enum: 'presetKindType', _value: 'presetKindCustom' }, colorize: false,
+      adjustment: [{ _obj: 'hueSatAdjustmentV2', localRange: 2, beginRamp: 15, beginSustain: 45, endSustain: 75, endRamp: 105, hue: 0, saturation: -65, lightness: 12 }] } } }]);
+    await maskToBlack();
+    await paintReady();
+  });
+}
+
+// Birleştir ve kopya al: görünen her şey üstte tek katman (alttakiler bozulmaz)
+function stampVisible(j) {
+  return runTool(j, 'HM4 birleştir', 'Birleştiriliyor…', 'Birleşik kopya en üste eklendi', async (doc) => {
+    await deselectQuiet(); await selFront();
+    if (doc.layers.length > 1) await bp([{ _obj: 'mergeVisible', duplicate: true }]);
+    else await bp([{ _obj: 'duplicate', _target: [{ _ref: 'layer', _enum: 'ordinal', _value: 'targetEnum' }], version: 5 }]);
+    await renameActive('Birleşik (HM4)');
+  });
+}
 
 // Gelinlik beyazı: parlak ve renksiz bölgelerin ortalama rengi ölçülür; Seçici Renk (yalnızca Beyazlar) ile nötr beyaza çekilir
 async function whiteFix(j) {
