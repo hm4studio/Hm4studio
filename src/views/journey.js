@@ -73,10 +73,10 @@ function forAdmin(c, { couple, card, contract: ct, events, totalCount, favCount 
   return { st, todo };
 }
 
-function adminBlock(c, args) {
+function adminBlock(c, args, { showRoad = true } = {}) {
   const { st, todo } = forAdmin(c, args);
-  return h`<section class="cd-road" aria-label="İşin yolu">
-    ${road(st)}
+  return h`<section class="cd-road${showRoad ? '' : ' cd-road--next'}" aria-label="İşin yolu">
+    ${showRoad ? road(st) : ''}
     <div class="nextjob${st.current ? '' : ' is-done'}">
       <p class="nextjob__text"><span class="nextjob__k">${st.current ? 'Sıradaki iş' : 'Durum'}</span>${todo.text}</p>
       <a class="btn btn--text btn--sm" href="#${todo.tab}">${todo.btn}${icon('right')}</a>

@@ -1061,23 +1061,44 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
   const body = h`
   <div class="container">
     <a class="back-link" href="/admin">${icon('left')}Bugün</a>
-    <div class="panel-title-row">
-      <div>
-        <h1 class="page-title">${couple.name}</h1>
-        <p class="muted">${(() => {
-          const pay = payment(card);
-          const first = evs.map((e) => e.event_date).filter(Boolean).sort()[0];
-          if (couple.delivery_only) return ['Yalnız teslim', [couple.event_type, couple.season].filter(Boolean).join(' '), panelSeen(couple)].filter(Boolean).join(' · ');
-          return [couple.ref_no, first ? `${card.types ? card.types.split(', ')[0] + ' ' : ''}${formatDate(card.next_date || first)}` : card.types, card.total ? (pay[2] ? `Kalan ödeme ${tl(pay[2])}` : 'Ödendi') : '', panelSeen(couple)].filter(Boolean).join(' · ');
-        })()}</p>
-        <p class="cd-app${couple.app_last_at ? ' is-on' : ''}">${icon('phone')}<span>${appSeen(couple, { push: require('../db').listPushSubs('couple', couple.id).length > 0 })}</span></p>
-      </div>
-    </div>
+    ${(() => {
+      const pay = payment(card);
+      const first = evs.map((e) => e.event_date).filter(Boolean).sort()[0];
+      const meta = couple.delivery_only
+        ? ['Yalnız teslim', [couple.event_type, couple.season].filter(Boolean).join(' ')].filter(Boolean).join(' · ')
+        : [couple.ref_no, first ? `${card.types ? card.types.split(', ')[0] + ' ' : ''}${formatDate(card.next_date || first)}` : card.types].filter(Boolean).join(' · ');
+      const { st } = journey.forAdmin(c, { couple, card, contract: ct, events: evs, totalCount, favCount });
+      const steps = st.list || [];
+      const done = steps.filter((x) => x.state === 'done').length;
+      const pct = card.total ? Math.round(Math.min((card.paid || 0) / card.total, 1) * 100) : 0;
+      return h`<section class="cdhero" aria-label="Özet">
+        <div class="cdhero__top"><span class="cdhero__pill">${c.stages[couple.stage] || ''}</span><span class="cdhero__seen">${panelSeen(couple)}</span></div>
+        <h1 class="cdhero__name">${couple.name}</h1>
+        <p class="cdhero__meta">${meta}</p>
+        <div class="cdhero__row">
+          ${!couple.delivery_only && card.total ? h`<div class="cdhero__money">
+            <span class="cdhero__k">${pay[2] ? 'Kalan ödeme' : 'Ödeme'}</span>
+            <b class="cdhero__v${pay[2] ? '' : ' is-done'}">${pay[2] ? tl(pay[2]) : 'Tamamlandı'}</b>
+            <span class="cdhero__s">Toplam ${tl(card.total)} · ödenen ${tl(card.paid || 0)}</span>
+            <progress class="cdhero__bar" max="100" value="${pct}">%${pct}</progress>
+          </div>` : ''}
+          ${steps.length ? h`<div class="cdhero__steps">
+            <span class="cdhero__k">İşin yolu · ${done} / ${steps.length}</span>
+            <ol class="cdhero__road">${steps.map((x) => h`<li class="is-${x.state}" title="${x.label}"></li>`)}</ol>
+            <span class="cdhero__s">${st.current ? h`Şu an: <b>${st.current.label}</b>` : 'Tamamlandı'}</span>
+          </div>` : ''}
+        </div>
+        <p class="cdhero__app${couple.app_last_at ? ' is-on' : ''}">${icon('phone')}<span>${appSeen(couple, { push: require('../db').listPushSubs('couple', couple.id).length > 0 })}</span></p>
+      </section>
+      <nav class="aqa aqa--cd" aria-label="Hızlı işlemler">
+        ${couple.phone ? h`<a href="tel:+${couple.phone}"><i>${icon('phone')}</i>Ara</a><a href="https://wa.me/${couple.phone}" target="_blank" rel="noopener"><i>${icon('whatsapp')}</i>WhatsApp</a>` : ''}
+        <a href="#foto" data-tab-go="foto"><i>${icon('upload')}</i>Fotoğraf</a>
+        <a class="is-pri" href="/admin/album?cift=${couple.id}"><i>${icon('book')}</i>Albüm</a>
+      </nav>`;
+    })()}
     ${flashBlock(f)}
     ${downloadAccess(couple, csrf)}
     ${downloadNotes(couple)}
-
-    ${journey.adminBlock(c, { couple, card, contract: ct, events: evs, totalCount, favCount })}
 
     <nav class="cd-tabs" data-cd-tabs aria-label="Çift sayfası bölümleri" hidden>
       ${[['ozet', 'Özet'], ...(couple.delivery_only ? [] : [['odeme', 'Sözleşme ve ödeme']]), ['foto', `Fotoğraflar${totalCount + edited.length ? ` ${totalCount + edited.length}` : ''}`], ['album', 'Albüm'], ['video', `Video${videos.length ? ` ${videos.length}` : ''}`], ['teslim', 'Teslim'], ['ayar', 'Ayarlar']]
@@ -1085,6 +1106,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
     </nav>
 
     <div class="cd-pane" data-pane="ozet">
+    ${journey.adminBlock(c, { couple, card, contract: ct, events: evs, totalCount, favCount }, { showRoad: false })}
     ${orderRow(couple)}
     ${couple.delivery_only ? '' : appointmentSummary(c, card, evs, payments, csrf)}
 
