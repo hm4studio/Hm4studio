@@ -301,3 +301,14 @@
   if (location.hash === '#kontrol') open();
   if (location.hash === '#yapilacaklar') openAll();
 })();
+
+// Bugünün hatırlatmaları: saati geçince ekrandan kalkar
+(() => {
+  const hm = () => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+  const sweep = () => {
+    const now = hm();
+    document.querySelectorAll('[data-until]').forEach((li) => { if (now >= li.dataset.until) li.remove(); });
+    document.querySelectorAll('.remnote').forEach((s) => { if (!s.querySelector('li')) s.remove(); });
+  };
+  sweep(); setInterval(sweep, 30000);
+})();

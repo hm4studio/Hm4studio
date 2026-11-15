@@ -396,6 +396,11 @@ if (!db.prepare('PRAGMA table_info(contracts)').all().some((c) => c.name === 'ad
   db.exec('ALTER TABLE contracts ADD COLUMN admin_seen_at TEXT');
   db.exec('UPDATE contracts SET admin_seen_at = signed_at WHERE signed_at IS NOT NULL');
 }
+// Hatırlatmanın 1 gün önceki bildirimi (eski kayıtlar bildirilmiş sayılır)
+if (!db.prepare('PRAGMA table_info(reminders)').all().some((c) => c.name === 'pre_notified_at')) {
+  db.exec('ALTER TABLE reminders ADD COLUMN pre_notified_at TEXT');
+  db.exec("UPDATE reminders SET pre_notified_at = datetime('now') WHERE notified_at IS NOT NULL OR done_at IS NOT NULL");
+}
 
 
 const q = (sql) => db.prepare(sql);
@@ -707,7 +712,7 @@ module.exports = {
   // ── Hatırlatıcılar (stüdyonun kendi girdiği: "yarın 14:00 Ayşe ile görüşme") ──
   addReminder: (x) => Number(q('INSERT INTO reminders(title, due_date, due_time, person, phone, note, couple_id, lead_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)')
     .run(x.title, x.dueDate, x.dueTime || null, x.person || null, x.phone || null, x.note || null, x.coupleId || null, x.leadId || null).lastInsertRowid),
-  updateReminder: (id, x) => q('UPDATE reminders SET title = ?, due_date = ?, due_time = ?, person = ?, phone = ?, note = ?, notified_at = NULL WHERE id = ?')
+  updateReminder: (id, x) => q('UPDATE reminders SET title = ?, due_date = ?, due_time = ?, person = ?, phone = ?, note = ?, notified_at = NULL, pre_notified_at = NULL WHERE id = ?')
     .run(x.title, x.dueDate, x.dueTime || null, x.person || null, x.phone || null, x.note || null, id),
   getReminder: (id) => q('SELECT r.*, c.name AS couple_name FROM reminders r LEFT JOIN couples c ON c.id = r.couple_id WHERE r.id = ?').get(id),
   openReminders: () => q("SELECT r.*, c.name AS couple_name FROM reminders r LEFT JOIN couples c ON c.id = r.couple_id WHERE r.done_at IS NULL ORDER BY r.due_date, COALESCE(r.due_time, '99:99'), r.id").all(),
@@ -715,6 +720,7 @@ module.exports = {
   deleteReminder: (id) => q('DELETE FROM reminders WHERE id = ?').run(id),
   // Saati gelmiş (ya da saatsizse sabah 9'u geçmiş), henüz bildirilmemiş hatırlatıcılar
   remindersToNotify: (day, hm) => q("SELECT * FROM reminders WHERE done_at IS NULL AND notified_at IS NULL AND (due_date < ? OR (due_date = ? AND COALESCE(due_time, '09:00') <= ?))").all(day, day, hm),
+  markReminderPreNotified: (id) => q("UPDATE reminders SET pre_notified_at = datetime('now') WHERE id = ?").run(id),
   markReminderNotified: (id) => q("UPDATE reminders SET notified_at = datetime('now') WHERE id = ?").run(id),
 
   // Ön randevular: tarihi belli olmayan çekimler (ör. dış çekim). Kesinleşince gerçek randevuya çevrilir.

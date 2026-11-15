@@ -322,10 +322,10 @@ function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders 
       actions: h`<form method="post" action="/admin/gorevler/${x.id}/tamam" class="inline-form">${csrfField(csrf)}<input type="hidden" name="back" value="/admin#yapilacaklar"><button class="btn btn--outline btn--sm" type="submit">${icon('check')}Yapıldı</button></form>` });
   }
   const t = today();
-  for (const r of reminders.filter((x) => x.due_date <= t)) {
-    const late = r.due_date < t;
-    rows.push({ grp: 'hatirlatma', level: late ? 3 : 2, tag: 'Hatırlatma', name: r.title, href: `/admin/hatirlatma/${r.id}`,
-      text: [late ? `${formatDate(r.due_date)} (geçti)` : r.due_time ? `Bugün ${r.due_time}` : 'Bugün', r.person, r.couple_name, r.note].filter(Boolean).join(' · '),
+  const hmNow = require('../reminders').nowHm();
+  for (const r of reminders.filter((x) => x.due_date < t || (x.due_date === t && x.due_time && x.due_time <= hmNow))) {
+    rows.push({ grp: 'hatirlatma', level: 0, past: true, tag: 'Hatırlatma', name: r.title, href: `/admin/hatirlatma/${r.id}`,
+      text: [r.due_date < t ? `${formatDate(r.due_date)} (geçti)` : `Bugün ${r.due_time} (geçti)`, r.person, r.couple_name, r.note].filter(Boolean).join(' · '),
       actions: h`${r.phone ? h`<a class="btn btn--text btn--sm" href="https://wa.me/${r.phone}" target="_blank" rel="noopener" aria-label="WhatsApp">${icon('whatsapp')}</a><a class="btn btn--text btn--sm" href="tel:+${r.phone}" aria-label="Ara">${icon('phone')}</a>` : ''}
         <form method="post" action="/admin/hatirlatma/${r.id}/ertele" class="inline-form">${csrfField(csrf)}<button class="btn btn--text btn--sm" type="submit" title="Yarına ertele">Yarın</button></form>
         <form method="post" action="/admin/hatirlatma/${r.id}/tamam" class="inline-form">${csrfField(csrf)}<button class="btn btn--primary btn--sm" type="submit">${icon('check')}Tamam</button></form>` });
@@ -390,7 +390,19 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=18'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=19'] });
+}
+
+// Bugünün hatırlatmaları: saati geçene kadar Bugün ekranının en üstünde
+function remNotice(list, csrf) {
+  if (!list.length) return '';
+  return h`<section class="remnote" aria-labelledby="remnote-title">
+    <div class="remnote__hd"><span class="remnote__ic" aria-hidden="true">${icon('bell')}</span><h2 id="remnote-title">Bugün hatırlatma</h2></div>
+    <ul class="remnote__list">${list.map((r) => h`<li${r.due_time ? raw(` data-until="${r.due_time}"`) : ''}>
+      <a class="remnote__m" href="/admin/hatirlatma/${r.id}"><b>${r.due_time || 'Gün içi'}</b><span><strong>${r.title}</strong>${[r.person, r.couple_name, r.note].filter(Boolean).length ? h`<em>${[r.person, r.couple_name, r.note].filter(Boolean).join(' · ')}</em>` : ''}</span></a>
+      <span class="remnote__a">${r.phone ? h`<a class="remnote__ib" href="https://wa.me/${r.phone}" target="_blank" rel="noopener" aria-label="WhatsApp">${icon('whatsapp')}</a><a class="remnote__ib" href="tel:+${r.phone}" aria-label="Ara">${icon('phone')}</a>` : ''}
+        <form method="post" action="/admin/hatirlatma/${r.id}/tamam" class="inline-form">${csrfField(csrf)}<button class="remnote__ok" type="submit" aria-label="Tamam, yapıldı" title="Tamam">${icon('check')}</button></form></span></li>`)}</ul>
+  </section>`;
 }
 
 // Görev verilen kişiye WhatsApp bildirimi (Bugün ve Görevler ekranının üstünde)
@@ -418,7 +430,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
   const weekN = upcoming.filter((e) => e.event_date <= addDays(t, 6)).length;
   const o = c.appointments || {};
   const nChecks = checks.reduce((n, g) => n + g.items.length, 0);
-  const top = todo.slice(0, 3);
+  const top = todo.filter((x) => !x.past).slice(0, 3);
   const body = h`
   <div class="container dashboard adash">
     <header class="ahead">
@@ -426,6 +438,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
       <h1 class="ahead__title">${greet()}${adminName ? h`, <em>${adminName}</em>` : ''}</h1>
     </header>
     ${flashBlock(f)}
+    ${remNotice(reminders.filter((r) => r.due_date === t && (!r.due_time || r.due_time > require('../reminders').nowHm())), csrf)}
     ${taskNotice(newTasks)}
     ${disk && disk.used >= 0.85 ? h`<div class="flash flash--error" role="alert">Sunucu diski %${Math.round(disk.used * 100)} dolu, ${(disk.free / 1024 ** 3).toFixed(1)} GB boş yer kaldı. Disk dolarsa fotoğraf yüklenemez. <a href="/admin/veriler">Veriler ve arşiv</a></div>` : ''}
 
@@ -526,7 +539,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=19', '/js/outbox.js?v=4'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -721,7 +734,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=19', '/js/outbox.js?v=4'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -814,7 +827,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=96">
+<link rel="stylesheet" href="/css/style.css?v=97">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -950,7 +963,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=96"></head>
+  <link rel="stylesheet" href="/css/style.css?v=97"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -2299,7 +2312,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=18', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=19', '/js/outbox.js?v=4'] });
 }
 
 module.exports = {

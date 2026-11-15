@@ -23,15 +23,31 @@ function tasksTomorrow() {
 
 async function tick() {
   try { tasksTomorrow(); } catch (err) { console.error('Görev listesi:', err.message); }
-  let due;
-  try { due = db.remindersToNotify(today(), nowHm()); } catch (err) { console.error('Hatırlatıcı:', err.message); return; }
-  for (const r of due) {
-    db.markReminderNotified(r.id);
-    const when = r.due_time ? `${r.due_time} ` : '';
+  try { preNotify(); } catch (err) { console.error('Hatırlatıcı:', err.message); }
+}
+
+// Hatırlatma: belirlenen günden 1 gün önce, aynı saatte (saat yoksa 09:00) telefona bildirim + Telegram.
+// Günü gelince saati geçene kadar Bugün ekranının üstünde durur (bildirim tekrar gelmez).
+function preNotify() {
+  const { addDays } = require('./jobs');
+  const t = today(), hm = nowHm();
+  for (const r of db.openReminders()) {
+    if (r.pre_notified_at) continue;
+    const at = r.due_time || '09:00';
+    const pre = addDays(r.due_date, -1);
+    const passed = r.due_date < t || (r.due_date === t && hm >= at);
+    // Bildirim anından sonra eklenen hatırlatma için bildirim gönderilmez (zaten yeni eklendi, Bugün ekranında görünür)
+    const created = r.created_at ? new Date(`${String(r.created_at).replace(' ', 'T')}Z`) : null;
+    const createdIst = created ? new Date(created.getTime() + 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ') : '';
+    if (passed || (createdIst && createdIst >= `${pre} ${at}`)) { db.markReminderPreNotified(r.id); continue; }
+    if (t < pre || (t === pre && hm < at)) continue;
+    db.markReminderPreNotified(r.id);
+    const dayWord = r.due_date === t ? 'Bugün' : 'Yarın';
+    const when = `${dayWord}${r.due_time ? ` ${r.due_time}` : ''}`;
     const who = [r.person, r.phone ? `+${r.phone}` : ''].filter(Boolean).join(' · ');
-    const body = [`${when}${r.title}`, who, r.note].filter(Boolean).join('\n');
-    push.toAdmin({ title: 'Hatırlatma', body, url: '/admin#yapilacaklar' }).catch(() => {});
-    require('./telegram').notifyAll(`⏰ Hatırlatma\n${body}\n\n${config.siteUrl}/admin`).catch(() => {});
+    const body = [`${when} · ${r.title}`, who, r.note].filter(Boolean).join('\n');
+    push.toAdmin({ title: `Hatırlatma · ${dayWord.toLowerCase()}`, body, url: '/admin' }).catch(() => {});
+    require('./telegram').notifyAll(`⏰ Hatırlatma (${dayWord.toLowerCase()})\n${body}\n\n${config.siteUrl}/admin`).catch(() => {});
   }
 }
 
