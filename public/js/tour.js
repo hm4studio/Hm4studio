@@ -9,6 +9,7 @@
 
   const steps = [
     { el: () => pick('.cnext'), t: 'Sıradaki adımınız', hi: 'hep burada', p: 'Ne yapmanız gerektiğini buradan takip edin; düğmeye dokunmanız yeterli.' },
+    { el: () => pick('.aibot__fab'), t: 'Sorunuz mu var?', hi: 'Asistanımıza sorun', p: 'Yapay zekâ asistanımız 7/24 yanıt verir: fotoğraflarınız ne zaman hazır, albüm nasıl seçilir, sözleşme nasıl onaylanır…', round: true, act: 'Hemen sor' },
     { el: () => pick('.ctiles'), t: 'Fotoğraflar, albüm ve video', hi: 'tek yerde', p: 'Hazır oldukça burada açılır. Albüm seçiminizi de buradan yaparsınız.' },
     { el: () => pick('#c-durum'), t: 'İşiniz', hi: 'hangi aşamada?', p: 'Çekimden teslime kadar nerede olduğumuzu buradan görün.' },
     { el: () => pick('#c-odeme', '#c-belgeler'), t: 'Ödeme ve', hi: 'belgeleriniz', p: 'Sözleşmeniz, ödemeleriniz ve randevu belgeniz burada.' },
@@ -30,7 +31,8 @@
   const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('class', 'tour__arrow'); svg.setAttribute('aria-hidden', 'true');
   const path = document.createElementNS(NS, 'path'); const head = document.createElementNS(NS, 'path');
   svg.append(path, head);
-  const btns = mk('span', 'tour__btns'); btns.append(skip, next);
+  const act = mk('button', 'tour__act'); act.type = 'button';
+  const btns = mk('span', 'tour__btns'); btns.append(skip, act, next);
   foot.append(dots, btns);
   box.append(title, text, foot);
   root.append(ring, svg, box);
@@ -48,6 +50,7 @@
     const r = el.getBoundingClientRect();
     const pad = 8, vw = window.innerWidth, vh = window.innerHeight;
     Object.assign(ring.style, { left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px` });
+    ring.classList.toggle('is-round', Boolean(s.round));
     // Yazı kutusu: hedefin üstünde yer varsa üste, yoksa alta
     const bw = Math.min(340, vw - 32);
     box.style.width = `${bw}px`;
@@ -75,6 +78,7 @@
     dots.textContent = ''; steps.forEach((_, k) => dots.appendChild(mk('i', k === i ? 'on' : '')));
     next.textContent = i === steps.length - 1 ? 'Başlayalım' : 'İleri';
     skip.hidden = i === steps.length - 1;
+    act.hidden = !s.act; act.textContent = s.act || '';
     const el = s.el();
     const r = el.getBoundingClientRect();
     if (r.top < 70 || r.bottom > window.innerHeight - 90) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(place, 420); } else place();
@@ -83,6 +87,7 @@
   }
   next.addEventListener('click', () => { if (i < steps.length - 1) { i++; show(); } else finish(); });
   skip.addEventListener('click', finish);
+  act.addEventListener('click', () => { const el = steps[i].el(); finish(); if (el) el.click(); });
   document.addEventListener('keydown', (e) => { if (!document.body.contains(root)) return; if (e.key === 'Escape') finish(); if (e.key === 'ArrowRight' || e.key === 'Enter') next.click(); });
   window.addEventListener('resize', () => document.body.contains(root) && place());
   window.addEventListener('scroll', () => document.body.contains(root) && place(), { passive: true });

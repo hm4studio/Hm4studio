@@ -3562,9 +3562,14 @@ body.is-sheet { overflow: hidden; }
 .tour__dots { display: flex; gap: 6px; }
 .tour__dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .35); }
 .tour__dots i.on { background: #e2c98f; width: 20px; border-radius: 4px; }
-.tour__next { border: 0; border-radius: 999px; padding: 11px 22px; background: #b49a66; color: #12171f; font-weight: 700; font-size: .92rem; cursor: pointer; }
+.tour__next { white-space: nowrap; border: 0; border-radius: 999px; padding: 11px 22px; background: #b49a66; color: #12171f; font-weight: 700; font-size: .92rem; cursor: pointer; }
 .tour__btns { display: flex; align-items: center; gap: 6px; }
-.tour__skip { border: 0; background: none; color: rgba(255, 255, 255, .7); padding: 10px 12px; font-size: .88rem; cursor: pointer; }
+.tour__skip { white-space: nowrap; border: 0; background: none; color: rgba(255, 255, 255, .7); padding: 10px 12px; font-size: .88rem; cursor: pointer; }
+.tour__ring.is-round { border-radius: 50%; animation: tourPulse 1.6s ease-in-out infinite; }
+@keyframes tourPulse { 0%, 100% { outline-color: rgba(201, 173, 115, .95); outline-offset: 0; } 50% { outline-color: rgba(226, 201, 143, .5); outline-offset: 6px; } }
+@media (prefers-reduced-motion: reduce) { .tour__ring.is-round { animation: none; } }
+.tour__act { white-space: nowrap; border: 1px solid rgba(226, 201, 143, .6); background: none; color: #e2c98f; border-radius: 999px; padding: 10px 14px; font-weight: 600; font-size: .88rem; cursor: pointer; }
+.tour__act[hidden] { display: none; }
 body.is-touring { overflow: hidden; }
 body.is-touring .install { display: none !important; }
 
@@ -3577,3 +3582,4 @@ body.is-touring .install { display: none !important; }
   .cui .install [data-install-btn] { order: 0; width: auto; flex: none; border-radius: 999px; }
   .cui .install__close { order: -1; width: 28px; height: 28px; }
 }
+.tour__act:not([hidden]) ~ .tour__next { padding: 11px 18px; } .tour__btns .tour__act:not([hidden]) { order: 0; } .tour__foot:has(.tour__act:not([hidden])) .tour__skip { display: none; }

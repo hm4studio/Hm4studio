@@ -469,7 +469,7 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
     </section>` : pushbox}
 
     <div class="cout">${logoutForm(csrf, 'Çıkış yap')}</div>`;
-  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=6', '/js/push.js?v=2', ...(couple.tour_seen_at ? [] : ['/js/tour.js?v=1'])] });
+  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=6', '/js/push.js?v=2', ...(couple.tour_seen_at ? [] : ['/js/tour.js?v=2'])] });
 }
 
 // Fotoğraflar: galeri, albüm seçimi, indirme
