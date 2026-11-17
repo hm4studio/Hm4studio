@@ -154,7 +154,7 @@ ${csrf ? h`<meta name="csrf-token" content="${csrf}">` : ''}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Geist:wght@300;400;500;600&display=swap">
-<link rel="stylesheet" href="/css/style.css?v=103">
+<link rel="stylesheet" href="/css/style.css?v=104">
 <link rel="stylesheet" href="/css/tema.css">
 </head>
 <body class="${bodyClass}">
@@ -177,7 +177,7 @@ ${siteBanner(c)}
 ${siteHeader(c, active, overlayHeader)}
 <main id="main">${body}</main>
 ${siteFooter(c)}
-<script src="/js/site.js?v=13" defer></script>
+<script src="/js/site.js?v=14" defer></script>
 <script src="/js/pwa.js?v=3" defer></script>
 </body>
 </html>`);
@@ -206,7 +206,7 @@ ${side}
 </header>
 <main id="main" class="panel-main${tabs.length ? ' has-tabbar' : ''}">${body}</main>
 ${tabbar(tabs)}
-<script src="/js/site.js?v=13" defer></script>
+<script src="/js/site.js?v=14" defer></script>
 <script src="/js/pwa.js?v=3" defer></script>
 ${scripts.map((s) => h`<script src="${s}" defer></script>`)}
 </body>
