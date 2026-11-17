@@ -149,8 +149,10 @@ const shortDate = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
 // Mac'in "Görüntüyü dönüştür"ü adın başına/sonuna boyut ibaresi ekler ("BÜYÜK DSC00176.jpeg"); seri numarası için atılır.
 const SIZE_WORDS = /(^|[\s_\-.()]+)(büyük|buyuk|orta|küçük|kucuk|gerçek boyut|gercek boyut|large|medium|small|actual size)(?=$|[\s_\-.()]+)/giu;
 function serialOf(name) {
-  let s = String(name || '').trim().replace(/\.[a-z0-9]{2,5}$/i, '');
+  let s = String(name || '').normalize('NFC').trim().replace(/\.[a-z0-9]{2,5}$/i, ''); // Mac dosya adlarını ayrık harfle (u + ¨) yazar
   s = s.replace(SIZE_WORDS, ' ').replace(/[\s_\-]*\(\d+\)$/, '').replace(/^[\s_\-.]+|[\s_\-.]+$/g, '').trim();
+  const cam = /(?:^|[\s_\-.])([a-z]{2,4}_?\d{3,6})(?=$|[\s_\-.])/i.exec(` ${s} `); // ad başka kelime içerse de makine numarası alınır
+  if (cam && s.split(/[\s]+/).length > 1) s = cam[1];
   return /^[a-z_]{2,5}\d{3,6}$/i.test(s) ? s.toUpperCase() : s; // dsc00176 → DSC00176
 }
 function selectionNames(favPhotos) {

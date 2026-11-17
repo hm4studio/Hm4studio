@@ -11,9 +11,9 @@
   const RAW = new Set(['arw', 'cr2', 'cr3', 'nef', 'raf', 'dng', 'orf', 'rw2', 'pef', 'srw']);
   const JPG = new Set(['jpg', 'jpeg', 'heic', 'png', 'tif', 'tiff']);
   const SIZE_WORDS = /(^|[\s_\-.()]+)(büyük|buyuk|orta|küçük|kucuk|gerçek boyut|gercek boyut|large|medium|small|actual size)(?=$|[\s_\-.()]+)/giu;
-  const key = (name) => String(name).replace(/\.[a-z0-9]{2,5}$/i, '').replace(SIZE_WORDS, ' ').replace(/[\s_\-]*\(\d+\)$/, '').replace(/^[\s_\-.]+|[\s_\-.]+$/g, '').trim().toUpperCase();
+  const key = (name) => { const s = String(name).normalize('NFC').replace(/\.[a-z0-9]{2,5}$/i, '').replace(SIZE_WORDS, ' ').replace(/[\s_\-]*\(\d+\)$/, '').replace(/^[\s_\-.]+|[\s_\-.]+$/g, '').trim(); const cam = /(?:^|[\s_\-.])([a-z]{2,4}_?\d{3,6})(?=$|[\s_\-.])/i.exec(` ${s} `); return (cam && /\s/.test(s) ? cam[1] : s).toUpperCase(); };
   const ext = (name) => (/\.([a-z0-9]{2,5})$/i.exec(name) || [])[1]?.toLowerCase() || '';
-  const gb = (n) => (n >= 1e9 ? `${(n / 1e9).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} GB` : `${Math.max(1, Math.round(n / 1e6)).toLocaleString('tr-TR')} MB`);
+  const gb = (n) => (!n ? '0 MB' : n >= 1e9 ? `${(n / 1e9).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} GB` : `${Math.max(1, Math.round(n / 1e6)).toLocaleString('tr-TR')} MB`);
   const safe = (s) => s.replace(/[\\/:*?"<>|]+/g, '-').trim();
   const ascii = (s) => safe(s).replace(/[çÇğĞıİöÖşŞüÜ–—]/g, (ch) => ({ ç: 'c', Ç: 'C', ğ: 'g', Ğ: 'G', ı: 'i', İ: 'I', ö: 'o', Ö: 'O', ş: 's', Ş: 'S', ü: 'u', Ü: 'U', '–': '-', '—': '-' })[ch]); // indirme adı her tarayıcıda düzgün çıksın
 

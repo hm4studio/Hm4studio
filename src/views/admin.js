@@ -1849,7 +1849,7 @@ function arwPage(c, { couple, names, sample, csrf, demoAdmin }) {
     <p class="arw__warn" data-arw-safari hidden><b>Bu tarayıcıda</b> klasöre doğrudan kopyalama yapılamıyor; dosyalar ZIP olarak indirilir (daha yavaş). En iyisi Chrome veya Edge.</p>
     ` : h`<p class="sec-empty">Çift henüz fotoğraf seçmedi.</p>`}
   </div>`;
-  return panelLayout(c, { title: `ARW Bulucu · ${couple.name}`, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/arw.js?v=1'] });
+  return panelLayout(c, { title: `ARW Bulucu · ${couple.name}`, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/arw.js?v=2'] });
 }
 
 // Ön randevular: tarihi belli olmayan çekimler
