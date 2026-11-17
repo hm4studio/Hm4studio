@@ -81,8 +81,31 @@
   // ── Onay isteyen formlar (silme vb.) ──
   document.addEventListener('submit', (e) => {
     const form = e.target.closest('form[data-confirm]');
-    if (form && !window.confirm(form.dataset.confirm)) e.preventDefault();
+    if (!form) return;
+    if (form.hasAttribute('data-pass')) { // silme: admin şifresiyle onay
+      if (form.querySelector('input[name="adminSifre"]')) return;
+      e.preventDefault(); askPass(form); return;
+    }
+    if (!window.confirm(form.dataset.confirm)) e.preventDefault();
   });
+  function askPass(form) {
+    const d = document.createElement('dialog');
+    d.className = 'passdlg';
+    d.innerHTML = '<form method="dialog" class="passdlg__f"><h2>Silmeyi onaylayın</h2><p class="passdlg__m"></p><label class="passdlg__l">Admin şifreniz<input type="password" autocomplete="current-password" required></label><div class="passdlg__b"><button type="button" class="btn btn--text" value="iptal">Vazgeç</button><button type="submit" class="btn btn--danger">Sil</button></div></form>';
+    d.querySelector('.passdlg__m').textContent = form.dataset.confirm;
+    document.body.appendChild(d);
+    const inp = d.querySelector('input');
+    d.querySelector('[value="iptal"]').addEventListener('click', () => d.close());
+    d.addEventListener('close', () => d.remove());
+    d.querySelector('form').addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      if (!inp.value) return;
+      const h = Object.assign(document.createElement('input'), { type: 'hidden', name: 'adminSifre', value: inp.value });
+      form.appendChild(h); d.close();
+      form.requestSubmit ? form.requestSubmit() : form.submit();
+    });
+    d.showModal(); inp.focus();
+  }
 
   // ── Portfolyo etiketleri: sayfa yenilenmeden süzer, adres çubuğu etiket bağlantısını gösterir ──
   const tagNav = document.querySelector('[data-pf-tags]');

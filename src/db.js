@@ -478,6 +478,7 @@ module.exports = {
   getAdminByUsername: (u) => q('SELECT * FROM admins WHERE username = ?').get(u),
   findAdminLogin: (u) => q("SELECT * FROM admins WHERE lower(username) = lower(?) AND username <> 'demo'").get(u),
   getAdmin: (id) => q('SELECT id, username FROM admins WHERE id = ?').get(id),
+  adminHash: (id) => q('SELECT password_hash FROM admins WHERE id = ?').get(id)?.password_hash || '',
   upsertAdmin: (username, hash) =>
     q('INSERT INTO admins(username, password_hash) VALUES(?, ?) ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash').run(username, hash),
   setAdminPassword: (id, hash) => q('UPDATE admins SET password_hash = ? WHERE id = ?').run(hash, id),

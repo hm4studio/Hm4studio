@@ -868,7 +868,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=105">
+<link rel="stylesheet" href="/css/style.css?v=106">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -1004,7 +1004,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=105"></head>
+  <link rel="stylesheet" href="/css/style.css?v=106"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1273,7 +1273,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
           <input id="gal-name" name="name" maxlength="60" value="${gal.name}" placeholder="Ör. Sokak çekimi">
           <button class="btn btn--outline btn--sm" type="submit">Adı kaydet</button>
         </form>
-        <form method="post" action="${base}/galeri/${gal.id}/sil" class="inline-form" data-confirm="“${gal.name}” galerisi ve içindeki ${gal.photo_count} fotoğraf kalıcı olarak silinsin mi?">${csrfField(csrf)}
+        <form method="post" action="${base}/galeri/${gal.id}/sil" class="inline-form" data-pass data-confirm="“${gal.name}” galerisi ve içindeki ${gal.photo_count} fotoğraf kalıcı olarak silinsin mi?">${csrfField(csrf)}
           <button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Galeriyi sil</button>
         </form>
       </div>` : ''}
@@ -1400,7 +1400,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
       <h2 class="card__title" id="files-title">Sunucudan dosyaları sil</h2>
       ${couple.archived_at ? h`<p class="muted">Dosyalar ${shortDate(couple.archived_at)} tarihinde temizlendi (${couple.archived_photos} fotoğraf). Seçim listesi hâlâ indirilebilir: <a href="${base}/secim.txt">Listeyi indir</a></p>` : ''}
       <p class="muted">Teslim bittiyse yer açmak için yalnızca fotoğraf ve video dosyalarını silin. Çift kartı, randevular, ödemeler ve albüm seçim listesi kalır.</p>
-      <form method="post" action="${base}/dosyalari-sil" class="form form--compact" data-confirm="${couple.name} için dosyalar sunucudan kalıcı olarak silinsin mi? Arşivi indirdiniz mi?">
+      <form method="post" action="${base}/dosyalari-sil" class="form form--compact" data-pass data-confirm="${couple.name} için dosyalar sunucudan kalıcı olarak silinsin mi? Arşivi indirdiniz mi?">
         ${csrfField(csrf)}
         <div class="clear-what">
           <label class="check"><input type="radio" name="ne" value="secilmeyen" checked><span>Sadece yüklenen, seçilmeyen fotoğraflar (seçilenler ve düzenlenmişler kalsın)</span></label>
@@ -1415,7 +1415,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
     <section class="danger-zone" aria-labelledby="danger-title">
       <h2 class="card__title" id="danger-title">Çifti sil</h2>
       <p class="muted">Çift, tüm fotoğrafları ve favorileri kalıcı olarak silinir.</p>
-      <form method="post" action="${base}/sil" data-confirm="${couple.name} ve tüm fotoğrafları kalıcı olarak silinsin mi? Bu işlem geri alınamaz.">
+      <form method="post" action="${base}/sil" data-pass data-confirm="${couple.name} ve tüm fotoğrafları kalıcı olarak silinsin mi? Bu işlem geri alınamaz.">
         ${csrfField(csrf)}
         <button class="btn btn--danger" type="submit">${icon('trash')}Çifti sil</button>
       </form>
@@ -2204,7 +2204,7 @@ function dataPage(c, { disk = null, storage = [], diskTotal = 0, backups, season
         })() : h`<p class="muted">Fotoğraf ve videolar: ${mb(diskTotal)}</p>`}
         <p class="muted">Teslimi biten çiftlerin fotoğraf (ve isterseniz video) dosyalarını sunucudan silin. Çift kartı, randevular, ödemeler ve albüm seçim listesi (seri numaraları) silinmez. Silmeden önce sezon arşivini indirmeyi unutmayın.</p>
       </div>
-      ${storage.length ? h`<form method="post" action="/admin/veriler/temizle" data-confirm="Seçilen çiftlerin dosyaları sunucudan kalıcı olarak silinsin mi? Sezon arşivini indirdiniz mi?">
+      ${storage.length ? h`<form method="post" action="/admin/veriler/temizle" data-pass data-confirm="Seçilen çiftlerin dosyaları sunucudan kalıcı olarak silinsin mi? Sezon arşivini indirdiniz mi?">
         ${csrfField(csrf)}
         <ul class="data-list store-list">${storage.map(({ k, u, done }) => h`
           <li>

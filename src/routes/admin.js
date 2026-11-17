@@ -948,12 +948,23 @@ function register(router) {
     }
     return freed;
   }
+  // Silme işlemleri admin şifresiyle onaylanır (güvenlik: açık unutulan oturumda yanlışlıkla/başkasınca silinmesin)
+  async function passGuard(req, res, form, back) {
+    if (config.demoMode) return true;
+    const ok = form.adminSifre && require('../auth').verifyPassword(String(form.adminSifre), db.adminHash(req.session.userId));
+    if (ok) return true;
+    await new Promise((r) => setTimeout(r, 800)); // tahmin denemelerini yavaşlat
+    setFlash(req, { message: 'Admin şifresi yanlış; silme yapılmadı.', type: 'error' });
+    redirect(res, back);
+    return false;
+  }
   const gb = (n) => (n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1).replace('.', ',')} GB` : `${Math.max(1, Math.round(n / 1024 ** 2))} MB`);
 
   router.post('/admin/ciftler/:id/dosyalari-sil', async (req, res, { params }) => {
     const form = await formGuard(req, res);
     if (!form) return;
     const couple = getCoupleOr404(params.id);
+    if (!(await passGuard(req, res, form, `/admin/ciftler/${couple.id}#dosyalar`))) return;
     const withVideos = form.videolar === '1';
     const freed = clearFiles(couple, withVideos, form.ne);
     setFlash(req, { message: freed ? `${couple.name}: ${gb(freed)} yer açıldı. Kart, randevular, ödemeler ve seçim listesi duruyor.` : `${couple.name}: silinecek dosya yoktu.`, type: 'success' });
@@ -963,6 +974,7 @@ function register(router) {
   router.post('/admin/veriler/temizle', async (req, res) => {
     const form = await formGuard(req, res);
     if (!form) return;
+    if (!(await passGuard(req, res, form, '/admin/veriler#alan'))) return;
     const ids = [].concat(form.cift || []).map(Number).filter((n) => Number.isInteger(n) && n > 0);
     const withVideos = form.videolar === '1';
     let freed = 0, n = 0;
@@ -1255,6 +1267,7 @@ function register(router) {
     const form = await formGuard(req, res);
     if (!form) return;
     const couple = getCoupleOr404(params.id);
+    if (!(await passGuard(req, res, form, `/admin/ciftler/${couple.id}`))) return;
     db.deleteSessionsFor('couple', couple.id);
     db.deleteCouple(couple.id);
     media.removeCoupleFolder(couple.id);
@@ -1351,6 +1364,7 @@ function register(router) {
     if (!form) return;
     const couple = getCoupleOr404(params.id);
     const g = galleryOr404(couple, params.gid);
+    if (!(await passGuard(req, res, form, `/admin/ciftler/${couple.id}#foto`))) return;
     for (const p of db.galleryPhotos(g.id)) { db.deletePhoto(p.id); media.removeCouplePhoto(couple.id, p.file_key); }
     db.deleteGallery(g.id);
     setFlash(req, { message: `“${g.name}” galerisi silindi.`, type: 'success' });

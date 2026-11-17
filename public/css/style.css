@@ -3664,3 +3664,13 @@ body.is-touring .install { display: none !important; }
 .arw__two { display: flex; gap: 8px; margin-top: 14px; } .arw__two .btn { flex: 1; }
 .arw__warn { background: #fbe9e7; color: #7d1f19; border-radius: 12px; padding: 10px 12px; font-size: .8rem; line-height: 1.45; margin-top: 12px; }
 .arw [hidden] { display: none !important; }
+
+/* Silme onayı: admin şifresi */
+.passdlg { border: 0; border-radius: 18px; padding: 0; width: min(420px, calc(100vw - 32px)); box-shadow: 0 24px 60px rgba(20, 25, 35, .3); }
+.passdlg::backdrop { background: rgba(14, 19, 27, .55); }
+.passdlg__f { padding: 22px 22px 18px; margin: 0; }
+.passdlg h2 { margin: 0 0 6px; font-family: inherit; font-size: 1.1rem; font-weight: 600; letter-spacing: 0; color: #a3271f; }
+.passdlg__m { margin: 0 0 14px; font-size: .9rem; color: var(--ink-2); line-height: 1.5; }
+.passdlg__l { display: flex; flex-direction: column; gap: 6px; font-size: .84rem; font-weight: 600; }
+.passdlg__l input { font: inherit; padding: 11px 12px; border: 1px solid var(--line, #ebe7e1); border-radius: 10px; }
+.passdlg__b { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
