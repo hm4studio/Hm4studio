@@ -159,6 +159,23 @@
     if (!g.hasAttribute('data-wall')) g.classList.add('is-flow');
   });
 
+  // ── Bellek koruması: çok fotoğraflı galeride ekrandan uzaklaşan küçük resimler bırakılır ──
+  // (Telefonda yüzlerce fotoğraf kaydırınca Safari'nin bellek dolup sayfayı yeniden yüklemesini ve ısınmayı önler.)
+  if ('IntersectionObserver' in window) {
+    document.querySelectorAll('[data-gallery]').forEach((g) => {
+      const imgs = [...g.querySelectorAll('.tile__img img')];
+      if (imgs.length < 40) return;
+      const io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          const img = e.target;
+          if (e.isIntersecting) { if (img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; } }
+          else if (img.getAttribute('src') && img.complete) { img.dataset.src = img.getAttribute('src'); img.removeAttribute('src'); }
+        }
+      }, { rootMargin: '1000px 0px' });
+      imgs.forEach((img) => io.observe(img));
+    });
+  }
+
   // ── Büyük görüntüleme (lightbox) ──
   // Yalnızca X düğmesi, Esc ya da telefonun geri tuşu kapatır; kaydırırken yanlışlıkla kapanmaz.
   let lb, imgEl, countEl, favBtn, items = [], index = 0, lastFocus = null, pushed = false;

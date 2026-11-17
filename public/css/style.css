@@ -3583,3 +3583,7 @@ body.is-touring .install { display: none !important; }
   .cui .install__close { order: -1; width: 28px; height: 28px; }
 }
 .tour__act:not([hidden]) ~ .tour__next { padding: 11px 18px; } .tour__btns .tour__act:not([hidden]) { order: 0; } .tour__foot:has(.tour__act:not([hidden])) .tour__skip { display: none; }
+
+/* Dokunmatik ekranda galeri: hover büyütmesi ve fazladan katman yok (bellek/ısınma) */
+@media (hover: none) { .tile__img img { transition: none; } .tile:hover .tile__img img { transform: none; } }
+.tile__img img:not([src]) { visibility: hidden; }

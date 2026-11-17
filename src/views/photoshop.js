@@ -34,7 +34,7 @@ function setupPage(c, { info, token, csrf, flash: f, demoAdmin, site }) {
     </form>
     <p class="muted ps-note">Yeni kod oluşturunca eskisi geçersiz olur. Kod, bu bilgisayardaki Photoshop'un sitenize fotoğraf yüklemesine izin verir; başkasıyla paylaşmayın.</p>
   </div>`;
-  return panelLayout(c, { title: 'Photoshop bağlantısı', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
+  return panelLayout(c, { title: 'Photoshop bağlantısı', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
 }
 
 module.exports = { setupPage };

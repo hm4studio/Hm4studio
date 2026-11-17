@@ -868,7 +868,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=102">
+<link rel="stylesheet" href="/css/style.css?v=103">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -1004,7 +1004,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=102"></head>
+  <link rel="stylesheet" href="/css/style.css?v=103"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1421,7 +1421,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
     </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/panel.js?v=6', '/js/admin.js?v=7', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/panel.js?v=6', '/js/admin.js?v=8', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
 function calendar(c, { couples, monthEvents = [], prebookings = [], monthCounts = {}, ym = today().slice(0, 7), csrf, demoAdmin }) {
@@ -1551,7 +1551,7 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       </ul>` : h`<div class="empty-box">${icon('image')}<p>Henüz portfolyo fotoğrafı yok.</p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
+  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
 }
 
 // Ekip: personel ekle, düzenle, sil; her kişinin görevleri
@@ -1699,7 +1699,7 @@ function reminderForm(c, { id, values: v = {}, action, title, errors = [], csrf,
       <form method="post" action="/admin/hatirlatma/${id}/sil" class="inline-form" data-confirm="Bu hatırlatma silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
     </div>` : ''}
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
 }
 
 
@@ -1792,7 +1792,7 @@ function tasksPage(c, { tasks, done, team, couples, who = 0, notices = [], csrf,
       <span class="task__m"><b>${x.title}</b><span>${x.member_name || ''}</span></span></li>`)}</ul></details>` : ''}
     <p class="muted tasks__note">Her akşam 20:00'de ertesi günün görevleri telefonunuza ve Telegram'a gelir; görev verilen kişinin mesajı “Gönderilecek mesajlar”a düşer.</p>
   </div>`;
-  return panelLayout(c, { title: 'Görevler', csrf, nav: adminNav('tasks', csrf, demoAdmin), home: '/admin', tabs: adminTabs('tasks', demoAdmin), body, scripts: ['/js/admin.js?v=7', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Görevler', csrf, nav: adminNav('tasks', csrf, demoAdmin), home: '/admin', tabs: adminTabs('tasks', demoAdmin), body, scripts: ['/js/admin.js?v=8', '/js/outbox.js?v=4'] });
 }
 
 // Ön randevular: tarihi belli olmayan çekimler
@@ -1868,7 +1868,7 @@ function prebookForm(c, { id, values: v = {}, action, title, errors = [], csrf, 
       <form method="post" action="/admin/on-randevu/${id}/sil" class="inline-form" data-confirm="Bu ön randevu silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
     </div>` : ''}
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
 }
 
 // Sayfa başlıkları: her sayfanın Google'da görünen başlığı ve açıklaması, canlı önizlemeyle
@@ -1912,7 +1912,7 @@ function portfolioTagsPage(c, { counts = {}, csrf, flash: f, demoAdmin }) {
       <button class="btn btn--primary" type="submit">${icon('check')}Kaydet</button>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo etiketleri', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
+  return panelLayout(c, { title: 'Portfolyo etiketleri', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
 }
 
 function sourcesPage(c, { counts = {}, csrf, flash: f, demoAdmin }) {
@@ -1964,7 +1964,7 @@ function seoTitlesPage(c, { csrf, flash: f, demoAdmin }) {
       <button class="btn btn--primary" type="submit">Kaydet</button>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Sayfa başlıkları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
+  return panelLayout(c, { title: 'Sayfa başlıkları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
 }
 
 function deliverySettingsPage(c, { csrf, flash: f, demoAdmin }) {
@@ -2307,7 +2307,7 @@ function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
       <div class="appt-actions"><button class="btn btn--primary" type="submit">Siteyi güncelle</button></div>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=7'] });
+  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
 }
 
 // Paketler: ad, fiyat, içerik; randevu formunda seçilince fiyat ve içerik dolar

@@ -21,7 +21,7 @@
     if (del) { row.querySelector('input:not([type=hidden])').value = ''; row.hidden = true; }
   });
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-  const THUMB = { edge: 900, quality: 0.8 };      // ızgara görünümü
+  const THUMB = { edge: 640, quality: 0.8 };      // ızgara görünümü (telefonda bellek dostu)
   const DISPLAY = { edge: 2400, quality: 0.86 };  // büyük görüntüleme
   const CONCURRENCY = 2;
 
