@@ -399,6 +399,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin, prebookings = [] }
           <button type="button" class="seg__btn is-on" data-view="cards" role="tab" aria-selected="true">Liste</button>
           <button type="button" class="seg__btn" data-view="board" role="tab" aria-selected="false">Aşamalar</button>
         </div>
+        <a class="btn btn--text btn--sm" href="/admin/arw" title="Eski seçim listesiyle ARW'leri bul">${icon('folder')}ARW Bulucu</a>
         <a class="btn btn--text btn--sm" href="/admin/randevular.csv">${icon('download')}Excel</a>
       </header>
       <div class="card-filters" data-card-filters>
@@ -868,7 +869,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=106">
+<link rel="stylesheet" href="/css/style.css?v=107">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -1004,7 +1005,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=106"></head>
+  <link rel="stylesheet" href="/css/style.css?v=107"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1798,22 +1799,31 @@ function tasksPage(c, { tasks, done, team, couples, who = 0, notices = [], csrf,
 
 // ARW Bulucu: çiftin seçtiği karelerin RAW dosyalarını bilgisayardaki klasörde bulup tek klasöre kopyalar.
 // Dosyalar siteye yüklenmez; eşleştirme ve kopyalama tarayıcıda yapılır (public/js/arw.js).
-function arwPage(c, { couple, names, sample, csrf, demoAdmin }) {
-  const base = `/admin/ciftler/${couple.id}`;
+function arwPage(c, { couple, names, sample, manual = false, csrf, demoAdmin }) {
+  const base = manual ? '/admin/ciftler' : `/admin/ciftler/${couple.id}`;
   const body = h`
-  <div class="container arw" data-arw data-names="${JSON.stringify(names)}" data-couple="${couple.name}">
-    <a class="back-link" href="${base}#secim">${icon('left')}${couple.name}</a>
+  <div class="container arw" data-arw data-names="${JSON.stringify(names)}" data-couple="${couple.name}"${manual ? raw(' data-manual') : ''}>
+    <a class="back-link" href="${manual ? base : `${base}#secim`}">${icon('left')}${manual ? 'Çiftler' : couple.name}</a>
     <h1 class="page-title">ARW Bulucu</h1>
-    <p class="page-lead">Çiftin seçtiği karelerin RAW dosyalarını bulup tek klasörde toplar.</p>
-    <ol class="arw__steps" aria-label="Adımlar"><li class="is-on" data-step="1"><b>1</b>Klasör</li><li data-step="2"><b>2</b>Kontrol</li><li data-step="3"><b>3</b>Kopyala</li></ol>
-    ${names.length ? h`
-    <section class="arw__card">
-      <div class="arw__sel"><span class="arw__n">${names.length}</span><span>kare seçildi<br><span class="muted">${couple.name} · Albüm seçimi${couple.album_locked ? '' : ' (çift seçmeye devam ediyor)'}</span></span></div>
+    <p class="page-lead">${manual ? 'Elinizdeki seri numarası listesiyle RAW dosyalarını bulup tek klasörde toplar (eski seçimler için).' : 'Çiftin seçtiği karelerin RAW dosyalarını bulup tek klasörde toplar.'}</p>
+    <ol class="arw__steps" aria-label="Adımlar">${manual ? h`<li class="is-on" data-step="0"><b>1</b>Liste</li>` : ''}<li class="${manual ? '' : 'is-on'}" data-step="1"><b>${manual ? 2 : 1}</b>Klasör</li><li data-step="2"><b>${manual ? 3 : 2}</b>Kontrol</li><li data-step="3"><b>${manual ? 4 : 3}</b>Kopyala</li></ol>
+    ${manual ? h`<section class="arw__card" data-arw-list>
+      <label class="arw__lbl" for="arw-name">Çift / iş adı <span class="muted">(kopyalanacak klasörün adı olur)</span></label>
+      <input id="arw-name" class="arw__in" type="text" data-arw-name placeholder="ör. Ayşe & Mehmet" autocomplete="off">
+      <label class="arw__lbl" for="arw-txt">Seri numaraları</label>
+      <textarea id="arw-txt" class="arw__ta" rows="9" data-arw-text placeholder="Not defterinizdeki listeyi buraya yapıştırın&#10;DSC03204&#10;DSC03238&#10;HM307409&#10;…"></textarea>
+      <p class="arw__note">Her satıra bir numara ya da boşluk/virgülle ayrılmış olabilir. "BÜYÜK", uzantı ve fazladan boşluklar temizlenir; aynı numara iki kez yazıldıysa bir sayılır.</p>
+      <p class="arw__count" data-arw-count></p>
+      <button type="button" class="btn btn--primary" data-arw-use disabled>Listeyi kullan</button>
+    </section>` : ''}
+    ${names.length || manual ? h`
+    <section class="arw__card" data-arw-summary${manual ? raw(' hidden') : ''}>
+      <div class="arw__sel"><span class="arw__n" data-arw-n>${names.length}</span><span>kare seçildi<br><span class="muted" data-arw-who>${manual ? '' : `${couple.name} · Albüm seçimi${couple.album_locked ? '' : ' (çift seçmeye devam ediyor)'}`}</span></span></div>
       ${sample ? h`<p class="arw__clean"><s>${sample.from}</s> → <b>${sample.to}</b></p>` : ''}
-      <div class="arw__chips">${names.slice(0, 8).map((n) => h`<span>${n}</span>`)}${names.length > 8 ? h`<span>+${names.length - 8}</span>` : ''}</div>
+      <div class="arw__chips" data-arw-chips>${names.slice(0, 8).map((n) => h`<span>${n}</span>`)}${names.length > 8 ? h`<span>+${names.length - 8}</span>` : ''}</div>
     </section>
 
-    <section data-arw-pick>
+    <section data-arw-pick${manual ? raw(' hidden') : ''}>
       <div class="arw__drop">
         <span class="arw__ic">${icon('folder')}</span>
         <h2>Düğünün ARW klasörünü seçin</h2>
@@ -1849,7 +1859,7 @@ function arwPage(c, { couple, names, sample, csrf, demoAdmin }) {
     <p class="arw__warn" data-arw-safari hidden><b>Bu tarayıcıda</b> klasöre doğrudan kopyalama yapılamıyor; dosyalar ZIP olarak indirilir (daha yavaş). En iyisi Chrome veya Edge.</p>
     ` : h`<p class="sec-empty">Çift henüz fotoğraf seçmedi.</p>`}
   </div>`;
-  return panelLayout(c, { title: `ARW Bulucu · ${couple.name}`, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/arw.js?v=2'] });
+  return panelLayout(c, { title: `ARW Bulucu · ${couple.name}`, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/arw.js?v=3'] });
 }
 
 // Ön randevular: tarihi belli olmayan çekimler

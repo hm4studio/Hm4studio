@@ -892,6 +892,12 @@ function register(router) {
     res.end(names.join('\r\n') + (names.length ? '\r\n' : ''));
   });
 
+  // ARW Bulucu: elle yapıştırılan liste ile (eski seçimler için)
+  router.get('/admin/arw', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    html(res, views.arwPage(getContent(), { couple: { id: 0, name: '' }, names: [], sample: null, manual: true, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
   // ARW Bulucu sayfası (dosyalar tarayıcıda eşleştirilir/kopyalanır, siteye gelmez)
   router.get('/admin/ciftler/:id/arw', (req, res, { params }) => {
     if (!requireAdmin(req, res)) return;

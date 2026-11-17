@@ -3674,3 +3674,8 @@ body.is-touring .install { display: none !important; }
 .passdlg__l { display: flex; flex-direction: column; gap: 6px; font-size: .84rem; font-weight: 600; }
 .passdlg__l input { font: inherit; padding: 11px 12px; border: 1px solid var(--line, #ebe7e1); border-radius: 10px; }
 .passdlg__b { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.arw__lbl { display: block; font-size: .84rem; font-weight: 600; margin: 4px 0 6px; }
+.arw__in, .arw__ta { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid var(--line, #ebe7e1); border-radius: 10px; background: #fff; margin-bottom: 12px; }
+.arw__ta { font-variant-numeric: tabular-nums; resize: vertical; min-height: 160px; }
+.arw__count { margin: 8px 0; font-size: .86rem; font-weight: 600; color: #2f6b3f; }
+.arw__count:empty { display: none; }

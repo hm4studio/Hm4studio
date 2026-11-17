@@ -5,8 +5,8 @@
   const root = document.querySelector('[data-arw]');
   if (!root) return;
   const $ = (s) => root.querySelector(s);
-  const want = [...new Set(JSON.parse(root.dataset.names || '[]'))];
-  const couple = root.dataset.couple || 'Çift';
+  let want = [...new Set(JSON.parse(root.dataset.names || '[]'))];
+  let couple = root.dataset.couple || 'Çift';
   const canFS = typeof window.showDirectoryPicker === 'function';
   const RAW = new Set(['arw', 'cr2', 'cr3', 'nef', 'raf', 'dng', 'orf', 'rw2', 'pef', 'srw']);
   const JPG = new Set(['jpg', 'jpeg', 'heic', 'png', 'tif', 'tiff']);
@@ -23,6 +23,25 @@
   const step = (n) => root.querySelectorAll('[data-step]').forEach((li) => { const k = Number(li.dataset.step); li.className = k < n ? 'is-ok' : k === n ? 'is-on' : ''; });
   const show = (sel) => ['[data-arw-pick]', '[data-arw-check]', '[data-arw-run]', '[data-arw-done]'].forEach((s) => { $(s).hidden = s !== sel; });
   if (!canFS) $('[data-arw-safari]').hidden = false;
+
+  // Elle liste (eski seçimler): not defterinden yapıştırılan numaralar
+  if (root.hasAttribute('data-manual')) {
+    const ta = $('[data-arw-text]'), nameIn = $('[data-arw-name]'), use = $('[data-arw-use]'), cnt = $('[data-arw-count]');
+    const parse = () => { const seen = new Set(), out = []; for (const t of ta.value.split(/[\s,;]+/)) { const k = key(t); if (k && !seen.has(k)) { seen.add(k); out.push(k); } } return out; };
+    const upd = () => { const l = parse(); cnt.textContent = l.length ? `${l.length} numara okundu` : ''; use.disabled = !l.length; };
+    ta.addEventListener('input', upd); upd();
+    use.addEventListener('click', () => {
+      want = parse(); if (!want.length) return;
+      couple = nameIn.value.trim() || 'Seçim';
+      $('[data-arw-n]').textContent = String(want.length);
+      $('[data-arw-who]').textContent = `${couple} · elle girilen liste`;
+      const ch = $('[data-arw-chips]'); ch.textContent = '';
+      for (const n of want.slice(0, 8)) ch.appendChild(Object.assign(document.createElement('span'), { textContent: n }));
+      if (want.length > 8) ch.appendChild(Object.assign(document.createElement('span'), { textContent: `+${want.length - 8}` }));
+      $('[data-arw-list]').hidden = true; $('[data-arw-summary]').hidden = false;
+      step(1); show('[data-arw-pick]');
+    });
+  }
 
   async function walk(dir, path) {
     for await (const [name, h] of dir.entries()) {
