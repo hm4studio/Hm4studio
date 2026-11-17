@@ -868,7 +868,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=104">
+<link rel="stylesheet" href="/css/style.css?v=105">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -1004,7 +1004,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=104"></head>
+  <link rel="stylesheet" href="/css/style.css?v=105"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1304,7 +1304,8 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
         <div class="sel-box__head">
           <span><strong>Seçilen karelerin seri numaraları</strong> <span class="muted">(${selection.length}${couple.album_locked ? ', seçim tamamlandı' : ', çift seçmeye devam ediyor'})</span></span>
           <span class="sel__actions">
-            <button type="button" class="btn btn--text btn--sm" data-copy="${selection.join(' ')}">Kopyala</button>
+            <a class="btn btn--primary btn--sm" href="${base}/arw">${icon('folder')}ARW'leri bul ve topla</a>
+            <button type="button" class="btn btn--text btn--sm" data-copy="${selection.join(' ')}" title="Seri numaralarını boşlukla ayrılmış kopyalar; Lightroom'da Metin › Dosya adı › İçerir alanına yapıştırın">Lightroom için kopyala</button>
             <a class="btn btn--outline btn--sm" href="${base}/secim.txt">${icon('download')}Listeyi indir</a>
           </span>
         </div>
@@ -1793,6 +1794,62 @@ function tasksPage(c, { tasks, done, team, couples, who = 0, notices = [], csrf,
     <p class="muted tasks__note">Her akşam 20:00'de ertesi günün görevleri telefonunuza ve Telegram'a gelir; görev verilen kişinin mesajı “Gönderilecek mesajlar”a düşer.</p>
   </div>`;
   return panelLayout(c, { title: 'Görevler', csrf, nav: adminNav('tasks', csrf, demoAdmin), home: '/admin', tabs: adminTabs('tasks', demoAdmin), body, scripts: ['/js/admin.js?v=8', '/js/outbox.js?v=4'] });
+}
+
+// ARW Bulucu: çiftin seçtiği karelerin RAW dosyalarını bilgisayardaki klasörde bulup tek klasöre kopyalar.
+// Dosyalar siteye yüklenmez; eşleştirme ve kopyalama tarayıcıda yapılır (public/js/arw.js).
+function arwPage(c, { couple, names, sample, csrf, demoAdmin }) {
+  const base = `/admin/ciftler/${couple.id}`;
+  const body = h`
+  <div class="container arw" data-arw data-names="${JSON.stringify(names)}" data-couple="${couple.name}">
+    <a class="back-link" href="${base}#secim">${icon('left')}${couple.name}</a>
+    <h1 class="page-title">ARW Bulucu</h1>
+    <p class="page-lead">Çiftin seçtiği karelerin RAW dosyalarını bulup tek klasörde toplar.</p>
+    <ol class="arw__steps" aria-label="Adımlar"><li class="is-on" data-step="1"><b>1</b>Klasör</li><li data-step="2"><b>2</b>Kontrol</li><li data-step="3"><b>3</b>Kopyala</li></ol>
+    ${names.length ? h`
+    <section class="arw__card">
+      <div class="arw__sel"><span class="arw__n">${names.length}</span><span>kare seçildi<br><span class="muted">${couple.name} · Albüm seçimi${couple.album_locked ? '' : ' (çift seçmeye devam ediyor)'}</span></span></div>
+      ${sample ? h`<p class="arw__clean"><s>${sample.from}</s> → <b>${sample.to}</b></p>` : ''}
+      <div class="arw__chips">${names.slice(0, 8).map((n) => h`<span>${n}</span>`)}${names.length > 8 ? h`<span>+${names.length - 8}</span>` : ''}</div>
+    </section>
+
+    <section data-arw-pick>
+      <div class="arw__drop">
+        <span class="arw__ic">${icon('folder')}</span>
+        <h2>Düğünün ARW klasörünü seçin</h2>
+        <p>Harici disk de olur. Alt klasörlerin hepsine bakılır (ör. "Kamera 1", "Kamera 2").</p>
+        <button type="button" class="btn btn--primary" data-arw-folder>Klasör seç</button>
+        <input type="file" data-arw-input webkitdirectory directory multiple hidden>
+      </div>
+      <p class="arw__note">${icon('lock')}<span><b>Dosyalar internete yüklenmez.</b> Eşleştirme ve kopyalama bilgisayarınızda, tarayıcının içinde yapılır.</span></p>
+    </section>
+
+    <section data-arw-check hidden>
+      <p class="arw__scanned" data-arw-scanned></p>
+      <p class="arw__info">${icon('check')}<span>Dosya adlarındaki <b>BÜYÜK / ORTA / KÜÇÜK</b> ibareleri temizlendi; eşleştirme yalnızca seri numarasıyla yapıldı.</span></p>
+      <div class="arw__res"><div class="is-ok"><b data-arw-found>0</b><span data-arw-size>ARW bulundu</span></div><div class="is-miss"><b data-arw-missn>0</b><span>bulunamadı</span></div></div>
+      <div class="arw__card arw__miss" data-arw-misswrap hidden><h3>Bulunamayanlar</h3><ul data-arw-miss></ul>
+        <p class="arw__note">Başka bir klasörde olabilirler (ör. 2. kamera kartı). <button type="button" class="arw__link" data-arw-more>Başka klasör ekle</button></p></div>
+      <div class="arw__card arw__dup" data-arw-dupwrap hidden><h3>Aynı numaradan birden fazla dosya</h3><p class="muted">İki makine aynı numarayı vermiş olabilir. Hepsi kopyalanır; ikincisinin adına "(2)" eklenir.</p><ul data-arw-dup></ul></div>
+      <button type="button" class="btn btn--gold btn--block" data-arw-copy>ARW'leri kopyala</button>
+      <p class="arw__note" data-arw-howto></p>
+    </section>
+
+    <section data-arw-run hidden>
+      <div class="arw__card"><b data-arw-runt>Kopyalanıyor…</b>
+        <progress class="arw__prog" data-arw-prog max="1" value="0"></progress>
+        <div class="arw__pt"><span data-arw-pt></span><span data-arw-eta></span></div>
+        <p class="arw__note">Bu sekmeyi kapatmayın.</p></div>
+    </section>
+
+    <section data-arw-done hidden>
+      <div class="arw__card arw__ok"><span class="arw__ck">${icon('check')}</span><h2 data-arw-donet></h2><p data-arw-donep></p>
+        <div class="arw__two"><button type="button" class="btn btn--outline" data-arw-copymiss hidden>Bulunamayanları kopyala</button><a class="btn btn--primary" href="${base}#secim">Bitti</a></div></div>
+    </section>
+    <p class="arw__warn" data-arw-safari hidden><b>Bu tarayıcıda</b> klasöre doğrudan kopyalama yapılamıyor; dosyalar ZIP olarak indirilir (daha yavaş). En iyisi Chrome veya Edge.</p>
+    ` : h`<p class="sec-empty">Çift henüz fotoğraf seçmedi.</p>`}
+  </div>`;
+  return panelLayout(c, { title: `ARW Bulucu · ${couple.name}`, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/arw.js?v=1'] });
 }
 
 // Ön randevular: tarihi belli olmayan çekimler
@@ -2359,7 +2416,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
 module.exports = {
   tasksPage,
   portfolioTagsPage,
-  prebookList, prebookForm,
+  prebookList, prebookForm, arwPage,
   sourcesPage,
   seoTitlesPage,
   seoPages,

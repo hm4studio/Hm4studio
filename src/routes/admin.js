@@ -892,6 +892,16 @@ function register(router) {
     res.end(names.join('\r\n') + (names.length ? '\r\n' : ''));
   });
 
+  // ARW Bulucu sayfası (dosyalar tarayıcıda eşleştirilir/kopyalanır, siteye gelmez)
+  router.get('/admin/ciftler/:id/arw', (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    const couple = getCoupleOr404(params.id);
+    const favs = db.listFavoritePhotos(couple.id);
+    const names = favs.length ? appt.selectionNames(favs) : (couple.archived_selection ? couple.archived_selection.split('\n').filter(Boolean).map(appt.serialOf) : []);
+    const ex = favs.find((p) => p.original_name && appt.serialOf(p.original_name) !== String(p.original_name).replace(/\.[a-z0-9]{2,5}$/i, ''));
+    html(res, views.arwPage(getContent(), { couple, names, sample: ex ? { from: ex.original_name, to: appt.serialOf(ex.original_name) } : null, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+  });
+
   // Seçimini tamamlamış tüm çiftler tek tabloda: Randevu No; Çift; Seri No
   router.get('/admin/secimler.csv', (req, res) => {
     if (!requireAdmin(req, res)) return;

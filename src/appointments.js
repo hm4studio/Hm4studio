@@ -146,10 +146,17 @@ const shortDate = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
 
 // Albüm seçimi: fotoğrafların seri numaraları (dosya adı, uzantısız), sıralı.
 // Örn. "DSC01234.jpg" → "DSC01234"; RAW (ARW) orijinaller bu adla eşleştirilir.
+// Mac'in "Görüntüyü dönüştür"ü adın başına/sonuna boyut ibaresi ekler ("BÜYÜK DSC00176.jpeg"); seri numarası için atılır.
+const SIZE_WORDS = /(^|[\s_\-.()]+)(büyük|buyuk|orta|küçük|kucuk|gerçek boyut|gercek boyut|large|medium|small|actual size)(?=$|[\s_\-.()]+)/giu;
+function serialOf(name) {
+  let s = String(name || '').trim().replace(/\.[a-z0-9]{2,5}$/i, '');
+  s = s.replace(SIZE_WORDS, ' ').replace(/[\s_\-]*\(\d+\)$/, '').replace(/^[\s_\-.]+|[\s_\-.]+$/g, '').trim();
+  return /^[a-z_]{2,5}\d{3,6}$/i.test(s) ? s.toUpperCase() : s; // dsc00176 → DSC00176
+}
 function selectionNames(favPhotos) {
-  const names = favPhotos.map((p, i) => String(p.original_name || '').replace(/\.[a-z0-9]{2,5}$/i, '').trim() || `foto-${String(i + 1).padStart(4, '0')}`);
+  const names = favPhotos.map((p, i) => serialOf(p.original_name) || `foto-${String(i + 1).padStart(4, '0')}`);
   // Aynı adla iki dosya varsa ikisi de listede kalır (hiçbir kare sessizce düşmesin)
   return names.sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
 }
 
-module.exports = { selectionNames, readForm, payment, tl, displayName, formValues, eventIndexes, money, shortDate, EVENT_FIELDS, cleanDate, FLEX, isOutdoor, flexLabel, preWhen };
+module.exports = { selectionNames, serialOf, readForm, payment, tl, displayName, formValues, eventIndexes, money, shortDate, EVENT_FIELDS, cleanDate, FLEX, isOutdoor, flexLabel, preWhen };
