@@ -441,7 +441,7 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
 
     <div class="install" data-install hidden>
       <img class="install__icon" src="/images/icon-192.png" alt="" width="48" height="48">
-      <div class="install__copy"><p class="install__title">HM4 Studio’yu telefonunuza ekleyin</p><p class="install__text" data-install-text></p></div>
+      <div class="install__copy"><p class="install__title">HM4 Studio uygulaması</p><p class="install__text" data-install-text></p></div>
       <button type="button" class="btn btn--primary btn--sm" data-install-btn hidden>Ekle</button>
       <button type="button" class="install__close" data-install-close aria-label="Kapat">${icon('close')}</button>
     </div>
@@ -469,7 +469,7 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
     </section>` : pushbox}
 
     <div class="cout">${logoutForm(csrf, 'Çıkış yap')}</div>`;
-  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=6', '/js/push.js?v=2'] });
+  return coupleShell(c, { couple, page: 'durum', csrf, flash: f, body, scripts: ['/js/panel.js?v=6', '/js/push.js?v=2', ...(couple.tour_seen_at ? [] : ['/js/tour.js?v=1'])] });
 }
 
 // Fotoğraflar: galeri, albüm seçimi, indirme

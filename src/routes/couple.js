@@ -61,6 +61,14 @@ function register(router) {
     json(res, { ok: true });
   });
 
+  // İlk giriş kılavuzu görüldü (tour.js); başka cihazda tekrar çıkmaz
+  router.post('/panel/tur', (req, res) => {
+    if (!requireCouple(req, res)) return;
+    checkCsrf(req);
+    db.markTourSeen(me(req).id);
+    json(res, { ok: true });
+  });
+
   router.post('/panel/whatsapp', async (req, res) => {
     if (!requireCouple(req, res)) return;
     const form = await readForm(req);
