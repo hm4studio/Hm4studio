@@ -210,7 +210,7 @@
     // Parmakla kaydırma: fotoğraf parmağı izler; yeterince kaydırılınca sonrakine geçer, yoksa yerine döner.
     // Yakınlaştırılmışken parmak fotoğrafı gezdirir. İki parmakla ya da çift dokunuşla yakınlaştırılır.
     const pts = new Map();
-    let sx = 0, sy = 0, st = 0, moved = false, pinch0 = 0, zoom0 = 1, lastTap = 0, basePan = [0, 0];
+    let sx = 0, sy = 0, st = 0, moved = false, pinch0 = 0, zoom0 = 1, lastTap = 0, basePan = [0, 0], tapTimer = 0;
     const stage = lb.querySelector('.lb__stage');
     stage.addEventListener('pointerdown', (e) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -240,8 +240,8 @@
       lb.classList.remove('is-dragging');
       const dx = e.clientX - sx, dy = e.clientY - sy, dt = Date.now() - st;
       if (!moved) { // dokunuş: çift dokunuşta yakınlaştır / uzaklaştır
-        if (Date.now() - lastTap < 300) { zoom = zoom > 1 ? 1 : 2.5; panX = 0; panY = 0; anim(); lastTap = 0; }
-        else lastTap = Date.now();
+        if (Date.now() - lastTap < 300) { clearTimeout(tapTimer); zoom = zoom > 1 ? 1 : 2.5; panX = 0; panY = 0; anim(); lastTap = 0; }
+        else { lastTap = Date.now(); clearTimeout(tapTimer); tapTimer = setTimeout(() => lb.classList.toggle('is-clean'), 290); } // tek dokunuş: düğmeleri gizle/göster
         return;
       }
       if (zoom > 1) return;
