@@ -5,8 +5,11 @@ const { publicLayout, panelLayout, statusBar, flash, icon } = require('./compone
 const config = require('../config');
 const { PLAN_FIELDS, parsePlan } = require('../jobs');
 // Fotoğraf adresleri sürüm numarası taşır (dosya değişince değişir): tarayıcı önbellekten gösterir, her seferinde sunucuya sormaz
-const revOf = (id) => { const r = require('../db').getPhoto(id); return r ? r.rev || 0 : 0; };
-const mv = (p) => `?v=${p.rev || 0}`;
+// Önbellek sürümü: fotoğrafın kendi dosya anahtarı + rötuş sayısı. Silinen bir fotoğrafın numarası yeni
+// fotoğrafa verilse bile adres farklı olur; tarayıcı eski (başka çiftin) resmini göstermez.
+const ver = (p) => (p ? `${p.rev || 0}.${String(p.file_key || '').slice(0, 8)}` : '0');
+const revOf = (id) => ver(require('../db').getPhoto(id));
+const mv = (p) => `?v=${p.file_key ? ver(p) : revOf(p.id)}`;
 
 // Demo modunda giriş ekranındaki "tek tıkla dene" kutusu
 function demoTry(kind) {
@@ -331,7 +334,7 @@ function couplePanel(c, { couple, cover = null, strip = [], card = null, events 
   const [n1, n2] = String(couple.name).split('&').map((x) => x.trim());
   const body = h`
     <section class="chero${cover ? '' : ' chero--plain'}" aria-label="Hoş geldiniz">
-      ${cover ? h`<img class="chero__img" src="/m/${cover.id}/display?v=${cover.rev ?? revOf(cover.id)}" alt="" decoding="async" fetchpriority="high">` : ''}
+      ${cover ? h`<img class="chero__img" src="/m/${cover.id}/display?v=${cover.file_key ? ver(cover) : revOf(cover.id)}" alt="" decoding="async" fetchpriority="high">` : ''}
       <div class="chero__t">
         <p class="chero__eyebrow">Hoş geldiniz</p>
         <p class="chero__name">${n2 ? h`${n1} <em>&amp;</em> ${n2}` : couple.name}</p>
@@ -488,7 +491,7 @@ function couplePhotos(c, { couple, photos, totalCount, editedCount = 0, favCount
   const first = events.map((e) => e.event_date).filter(Boolean).sort()[0];
   const place = [couple.venue, couple.city].filter(Boolean)[0] || (events.find((e) => e.venue || e.city) || {}).venue || '';
   const coverBlock = cover ? h`<section class="gcover" aria-label="Kapak">
-      <img class="gcover__img" src="/m/${cover.id}/display?v=${cover.rev ?? revOf(cover.id)}" alt="" decoding="async" fetchpriority="high">
+      <img class="gcover__img" src="/m/${cover.id}/display?v=${cover.file_key ? ver(cover) : revOf(cover.id)}" alt="" decoding="async" fetchpriority="high">
       <div class="gcover__text">
         ${first || place ? h`<p class="gcover__meta">${[first ? formatDate(first) : '', place].filter(Boolean).join(' · ')}</p>` : ''}
         <h1 class="gcover__name">${couple.name}</h1>
@@ -589,7 +592,7 @@ function coupleAlbum(c, { couple, pages, csrf, flash: f }) {
       ${open ? h`<p class="alb-progress" data-alb-progress>${reviewed} / ${pages.length} sayfa incelendi</p>` : ''}
       <ol class="alb-pages" data-album data-total="${pages.length}">
         ${pages.map((p, i) => h`<li class="alb-page${open && p.version > 1 && p.status === 'bekliyor' ? ' is-rev' : ''}" data-alb-page="${p.id}" data-status="${p.status}"${p.id === firstRev ? raw(' id="duzeltilen"') : ''}>
-          <a class="alb-page__img" href="/m/a/${p.id}/display?v=${p.version}" data-lb data-caption="Sayfa ${i + 1}"><img src="/m/a/${p.id}/display?v=${p.version}" alt="Albüm sayfası ${i + 1}" loading="lazy" decoding="async"></a>
+          <a class="alb-page__img" href="/m/a/${p.id}/display?v=${p.version}.${String(p.file_key || '').slice(0, 8)}" data-lb data-caption="Sayfa ${i + 1}"><img src="/m/a/${p.id}/display?v=${p.version}.${String(p.file_key || '').slice(0, 8)}" alt="Albüm sayfası ${i + 1}" loading="lazy" decoding="async"></a>
           <div class="alb-page__bar">
             <span class="alb-page__num">Sayfa ${i + 1}${p.version > 1 && p.status === 'bekliyor' ? h` <span class="alb-page__new">Düzeltildi</span>` : ''}</span>
             ${open ? h`<div class="alb-page__btns" role="group" aria-label="Sayfa ${i + 1}">

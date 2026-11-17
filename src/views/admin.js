@@ -1085,7 +1085,7 @@ function albumDesignSection(couple, pages, base, csrf) {
       <ul class="uploader__list" data-list aria-live="polite"></ul>
     </form>
     ${pages.length ? h`<ul class="ad-grid">${pages.map((p, i) => h`<li class="ad-page ad-page--${p.status}">
-      <a href="/m/a/${p.id}/display?v=${p.version}" data-lb data-caption="Sayfa ${i + 1} · ${p.original_name}"><img src="/m/a/${p.id}/thumb?v=${p.version}" alt="Sayfa ${i + 1}" loading="lazy" decoding="async"></a>
+      <a href="/m/a/${p.id}/display?v=${p.version}.${String(p.file_key || '').slice(0, 8)}" data-lb data-caption="Sayfa ${i + 1} · ${p.original_name}"><img src="/m/a/${p.id}/thumb?v=${p.version}.${String(p.file_key || '').slice(0, 8)}" alt="Sayfa ${i + 1}" loading="lazy" decoding="async"></a>
       <div class="ad-page__meta">
         <span><strong>${i + 1}.</strong> ${p.original_name}${p.version > 1 ? h` <span class="muted">· ${p.version}. sürüm</span>` : ''}</span>
         <span class="state state--${PAGE_STATE[p.status][1]}">${PAGE_STATE[p.status][0]}</span>

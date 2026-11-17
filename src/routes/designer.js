@@ -27,7 +27,7 @@ function photoSets(couple, set = 'secim') {
   if (set === 'duzenli') {
     return { photos: db.listPhotos(couple.id, 'duzenli').map((e) => ({
       id: e.id, name: e.original_name || `foto-${e.id}`, w: e.w || 3, h: e.h || 2,
-      thumb: `/m/${e.id}/thumb?v=${e.rev || 0}`, src: `/m/${e.id}/display?v=${e.rev || 0}`, full: e.original_ext ? `/m/${e.id}/original?v=${e.rev || 0}` : `/m/${e.id}/display?v=${e.rev || 0}`,
+      thumb: `/m/${e.id}/thumb?v=${e.rev || 0}.${String(e.file_key || '').slice(0, 8)}`, src: `/m/${e.id}/display?v=${e.rev || 0}.${String(e.file_key || '').slice(0, 8)}`, full: e.original_ext ? `/m/${e.id}/original?v=${e.rev || 0}.${String(e.file_key || '').slice(0, 8)}` : `/m/${e.id}/display?v=${e.rev || 0}.${String(e.file_key || '').slice(0, 8)}`,
       fileId: e.id, edited: true, cover: false, shot: shotOf(e),
     })), pool: [] };
   }
@@ -54,9 +54,9 @@ function photoSets(couple, set = 'secim') {
       id: p.id,
       name: p.original_name || `foto-${p.id}`,
       w: use.w || p.w || 3, h: use.h || p.h || 2,
-      thumb: `/m/${use.id}/thumb?v=${use.rev || 0}`,
-      src: `/m/${use.id}/display?v=${use.rev || 0}`,
-      full: use.original_ext ? `/m/${use.id}/original?v=${use.rev || 0}` : `/m/${use.id}/display?v=${use.rev || 0}`,
+      thumb: `/m/${use.id}/thumb?v=${use.rev || 0}.${String(use.file_key || '').slice(0, 8)}`,
+      src: `/m/${use.id}/display?v=${use.rev || 0}.${String(use.file_key || '').slice(0, 8)}`,
+      full: use.original_ext ? `/m/${use.id}/original?v=${use.rev || 0}.${String(use.file_key || '').slice(0, 8)}` : `/m/${use.id}/display?v=${use.rev || 0}.${String(use.file_key || '').slice(0, 8)}`,
       fileId: use.id,
       edited: Boolean(e),
       cover: p.id === couple.album_cover_id,

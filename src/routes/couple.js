@@ -315,7 +315,7 @@ function register(router) {
     if (couple.album_locked) throw new HttpError(409, 'Albüm seçiminiz tamamlandı. Değişiklik için bize yazın.');
     const on = couple.album_cover_id !== photo.id;
     db.setAlbumCover(couple.id, on ? photo.id : null);
-    json(res, { ok: true, on, coverId: on ? photo.id : null, thumb: on ? `/m/${photo.id}/thumb?v=${photo.rev || 0}` : '' });
+    json(res, { ok: true, on, coverId: on ? photo.id : null, thumb: on ? `/m/${photo.id}/thumb?v=${photo.rev || 0}.${String(photo.file_key || '').slice(0, 8)}` : '' });
   });
 
   // Albüm seçimini tamamla (kilitle)
@@ -380,14 +380,15 @@ function register(router) {
   });
 
   // Albüm tasarım sayfaları: yalnızca admin veya sahibi çift
-  router.get('/m/a/:id/:variant', (req, res, { params }) => {
+  router.get('/m/a/:id/:variant', (req, res, { params, query }) => {
     const s = req.session;
     const page = db.getAlbumPage(toId(params.id));
     if (!(s && page && (s.kind === 'admin' || (s.kind === 'couple' && s.userId === page.couple_id)))) throw new HttpError(404, 'Bulunamadı');
     const file = params.variant === 'thumb' ? 'thumb.jpg' : params.variant === 'display' ? 'display.jpg' : null;
     const dir = media.coupleDir(page.couple_id, page.file_key);
     if (!file || !fs.existsSync(path.join(dir, file))) throw new HttpError(404, 'Bulunamadı');
-    sendFile(req, res, dir, file, { cache: 'private, max-age=86400' });
+    const ok = query.get('v') === `${page.version}.${String(page.file_key).slice(0, 8)}`;
+    sendFile(req, res, dir, file, { cache: ok ? 'private, max-age=86400' : 'private, no-cache' });
   });
 
   // Gizli fotoğraf dosyaları: yalnızca admin veya fotoğrafın sahibi çift erişebilir
@@ -413,7 +414,8 @@ function register(router) {
       download = `${base}${path.extname(file)}`;
     }
     // Sürüm numaralı adresler (?v=) dosya değişince değişir: tarayıcı her seferinde sunucuya sormadan önbellekten gösterir
-    const cache = query.get('v') && !download ? 'private, max-age=604800' : 'private, no-cache';
+    const v = `${photo.rev || 0}.${String(photo.file_key || '').slice(0, 8)}`;
+    const cache = query.get('v') === v && !download ? 'private, max-age=604800' : 'private, no-cache'; // yalnızca bu fotoğrafın güncel adresi önbelleğe alınır
     sendFile(req, res, dir, file, { cache, download });
   });
 }
