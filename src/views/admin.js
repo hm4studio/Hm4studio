@@ -75,7 +75,7 @@ const relDays = (n) => (n === 0 ? 'bugün' : n === 1 ? 'yarın' : n > 0 ? `${n} 
 const longDay = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 
 // Ay takvimi: her günde o günün etkinlikleri (bir çiftin farklı günlerdeki etkinlikleri ayrı ayrı görünür)
-function monthCalendar(monthEvents, ym, base = '/admin/takvim', pre = []) {
+function monthCalendar(monthEvents, ym, base = '/admin/takvim', pre = [], counts = null) {
   const { preWhen } = require('../appointments');
   const preDay = new Map(); const preMonth = [];
   for (const p of pre) { const w = preWhen(p); if (w.month !== ym) continue; if (w.exact) { const d = Number(w.date.slice(8)); if (!preDay.has(d)) preDay.set(d, []); preDay.get(d).push(p); } else preMonth.push({ p, w }); }
@@ -106,6 +106,16 @@ function monthCalendar(monthEvents, ym, base = '/admin/takvim', pre = []) {
         <a class="cal__btn" href="${base}?ay=${next}" aria-label="Sonraki ay">${icon('right')}</a>
       </div>
     </div>
+    ${counts ? (() => {
+      const now = t.slice(0, 7);
+      const start = ym < now ? ym : now;
+      const list = Array.from({ length: 12 }, (_, i) => { const [yy, mm] = start.split('-').map(Number); return new Date(Date.UTC(yy, mm - 1 + i, 1)).toISOString().slice(0, 7); });
+      return h`<nav class="cal__months" aria-label="Aya git">${list.map((x, i) => {
+        const n = counts[x] || {};
+        const yr = i === 0 || x.endsWith('-01');
+        return h`<a class="cal__mo${x === ym ? ' is-on' : ''}${x === now ? ' is-now' : ''}" href="${base}?ay=${x}"${x === ym ? raw(' aria-current="true"') : ''}><span>${MONTHS[Number(x.slice(5)) - 1]}${yr ? h` <small>${x.slice(0, 4)}</small>` : ''}</span><em>${n.ev ? h`<b>${n.ev}</b>` : ''}${n.pre ? h`<b class="r">${n.pre}</b>` : ''}</em></a>`;
+      })}</nav>`;
+    })() : ''}
     ${preMonth.length ? h`<p class="cal__pre">${icon('calendar')}<span><b>Bu ay ön randevu (gün belli değil, kesin değil):</b> ${preMonth.map(({ p, w }, i) => h`${i ? ', ' : ''}<a href="/admin/on-randevu/${p.id}">${p.name}</a> <span class="muted">(${w.label})</span>`)}</span></p>` : ''}
     <div class="cal__grid" role="grid">
       ${DAYS.map((d) => h`<div class="cal__dow" role="columnheader">${d}</div>`)}
@@ -858,7 +868,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=99">
+<link rel="stylesheet" href="/css/style.css?v=100">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -994,7 +1004,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=99"></head>
+  <link rel="stylesheet" href="/css/style.css?v=100"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1414,7 +1424,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
   return panelLayout(c, { title: couple.name, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/panel.js?v=6', '/js/admin.js?v=7', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
-function calendar(c, { couples, monthEvents = [], prebookings = [], ym = today().slice(0, 7), csrf, demoAdmin }) {
+function calendar(c, { couples, monthEvents = [], prebookings = [], monthCounts = {}, ym = today().slice(0, 7), csrf, demoAdmin }) {
   const t = today();
   const rows = couples.map((k) => ({ k, st: jobStatus(k, c.stages) }));
   const count = (key) => rows.filter((r) => r.st[0] === key).length;
@@ -1437,7 +1447,7 @@ function calendar(c, { couples, monthEvents = [], prebookings = [], ym = today()
   <div class="container">
     <div class="panel-title-row"><h1 class="page-title">Takvim</h1><a class="btn btn--primary btn--sm" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a></div>
     ${require('./guide').hint('calendar')}
-    ${monthCalendar(monthEvents, ym, '/admin/takvim', prebookings)}
+    ${monthCalendar(monthEvents, ym, '/admin/takvim', prebookings, monthCounts)}
     <div class="stats stats--4">
       <div class="stat"><span class="stat__num">${count('late')}</span><span class="stat__label">Geciken teslim</span></div>
       <div class="stat"><span class="stat__num">${count('soon')}</span><span class="stat__label">Bu hafta teslim</span></div>

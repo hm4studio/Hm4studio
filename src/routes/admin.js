@@ -1216,7 +1216,13 @@ function register(router) {
     if (!requireAdmin(req, res)) return;
     const ay = query.get('ay');
     const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ay || '') ? ay : today().slice(0, 7);
-    html(res, views.calendar(getContent(), { couples: db.listCouples(), monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), prebookings: db.openPrebookings(), ym, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+    // Ay çubuğu: 12 ayın çekim / ön randevu sayıları
+    const now = today().slice(0, 7), start = ym < now ? ym : now;
+    const monthCounts = {};
+    for (const e of db.eventsBetween(`${start}-01`, addDays(`${start}-01`, 370))) { const k = e.event_date.slice(0, 7); (monthCounts[k] ||= { ev: 0, pre: 0 }).ev++; }
+    const prebookings = db.openPrebookings();
+    for (const p of prebookings) { const w = appt.preWhen(p); if (w.month) (monthCounts[w.month] ||= { ev: 0, pre: 0 }).pre++; }
+    html(res, views.calendar(getContent(), { couples: db.listCouples(), monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), prebookings, monthCounts, ym, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.post('/admin/ciftler/:id/sifre', async (req, res, { params }) => {
