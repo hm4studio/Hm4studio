@@ -31,6 +31,14 @@ const FLEX = { 3: '±3 gün', 7: '±1 hafta', ay: 'aynı ay içinde' };
 const isOutdoor = (type) => /d[ıi]ş/i.test(String(type || ''));
 const flexLabel = (f) => FLEX[f] || '';
 
+// Ön randevu tarihi: kesin gün mü, yoksa yalnızca ay mı ("Nisan gibi" → ayın 1'i tahmin edilir)
+function preWhen(p) {
+  if (!p || !p.est_date) return { exact: false, month: '', label: p?.est_text || 'tarih belli değil' };
+  const monthOnly = p.est_date.endsWith('-01') && p.est_text && !/(^|\D)0?1(\D|$)/.test(p.est_text);
+  const label = p.est_text || shortDate(p.est_date);
+  return { exact: !monthOnly, month: p.est_date.slice(0, 7), date: p.est_date, label };
+}
+
 // Formdaki etkinlik blokları: ev0_type, ev0_date … ev5_type
 function readEvents(form, content) {
   const o = content.appointments || {};
@@ -144,4 +152,4 @@ function selectionNames(favPhotos) {
   return names.sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
 }
 
-module.exports = { selectionNames, readForm, payment, tl, displayName, formValues, eventIndexes, money, shortDate, EVENT_FIELDS, cleanDate, FLEX, isOutdoor, flexLabel };
+module.exports = { selectionNames, readForm, payment, tl, displayName, formValues, eventIndexes, money, shortDate, EVENT_FIELDS, cleanDate, FLEX, isOutdoor, flexLabel, preWhen };

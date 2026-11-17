@@ -75,6 +75,9 @@ function studioData() {
     '## Hatırlatıcılar (stüdyonun kendi notları, yapılmadı)',
     (() => { const r = db.openReminders(); return r.length ? r.map((x) => `- ${dstr(x.due_date)}${x.due_time ? ` ${x.due_time}` : ''} · ${x.title}${x.person ? ` · ${x.person}` : ''}${x.couple_name ? ` · çift: ${x.couple_name}` : ''}${x.note ? ` · not: ${String(x.note).replace(/\s+/g, ' ').slice(0, 160)}` : ''}`).join('\n') : 'Yok.'; })(),
     '',
+    '## Ön randevular (KESİN DEĞİL; tarih netleşmedi)',
+    (() => { const { preWhen } = require('./appointments'); const r = db.openPrebookings(); return r.length ? r.map((p) => { const w = preWhen(p); return `- ${p.name} · ${p.event_type || 'çekim'} · ${w.exact ? `tahmini gün ${dstr(w.date)}` : w.month ? `${w.label} (yalnızca ay belli: ${w.month})` : 'tarih belli değil'}${p.deposit ? ` · kapora ${tl(p.deposit)}` : ''}${p.note ? ` · not: ${String(p.note).replace(/\s+/g, ' ').slice(0, 120)}` : ''}`; }).join('\n') : 'Yok.'; })(),
+    '',
     '## Teklifler (randevuya dönmemiş)',
     quotes.length ? quotes.map((q) => `- ${q.name} · ${q.event_type || ''} ${q.event_date ? dstr(q.event_date) : ''} · durum: ${{ hazir: 'gönderildi, açılmadı', goruldu: 'çift açtı', kabul: 'KABUL ETTİ' }[q.status]} · oluşturma ${q.created_at.slice(0, 10)}`).join('\n') : 'Yok.',
     '',
@@ -91,6 +94,7 @@ Kurallar:
 - İsimler eksik ya da farklı yazılabilir: soru "Menderes" diyorsa çift adında veya kişi adlarında geçen kaydı bul. Birden fazla eşleşme varsa hepsini kısaca listele.
 - "En yakın çekim", "bu hafta", "bu ay" gibi soruları bugünün tarihine göre hesapla. Geçmiş tarihleri "yaklaşan" sayma.
 - Şehir sorularında etkinliğin şehir/yer bilgisine bak.
+- Bir tarih veya müsaitlik sorulduğunda "Ön randevular" listesine de bak: o güne (veya gün belli değilse o aya) düşen ön randevu varsa mutlaka ayrıca belirt, örn. "Ayrıca ön randevu var: Hale Özkarabacak, dış çekim (kesin değil)". Ön randevuyu kesin randevu gibi sayma; tarih tamamen dolu deme.
 - Hiçbir şeyi değiştiremezsin; değişiklik istenirse panelden yapılması gerektiğini söyle.
 - Markdown başlık veya tablo kullanma; gerekirse kısa satırlar ve "•" ile liste yap.
 

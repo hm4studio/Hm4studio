@@ -119,7 +119,7 @@ function register(router) {
 
   router.get('/admin/ciftler', (req, res) => {
     if (!requireAdmin(req, res)) return;
-    html(res, views.couplesPage(getContent(), { couples: db.listCouples(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    html(res, views.couplesPage(getContent(), { couples: db.listCouples(), prebookings: db.openPrebookings(), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   // Elle gönderilen WhatsApp mesajı "gönderildi" (veya "atla") olarak işaretlenir; listeden düşer
@@ -347,7 +347,8 @@ function register(router) {
     if (req.session?.kind !== 'admin') throw new HttpError(401, 'Oturum gerekli');
     const date = appt.cleanDate(query.get('tarih'));
     const list = date ? db.eventsOn(date, Number(query.get('haric')) || 0) : [];
-    json(res, { ok: true, items: list.map((e) => ({ name: e.couple_name, type: e.event_type, time: e.start_time })) });
+    const pre = date ? db.openPrebookings().map((p) => ({ p, w: appt.preWhen(p) })).filter(({ w }) => w.month && (w.exact ? w.date === date : w.month === date.slice(0, 7))) : [];
+    json(res, { ok: true, items: list.map((e) => ({ name: e.couple_name, type: e.event_type, time: e.start_time })), pre: pre.map(({ p, w }) => ({ name: p.name, type: p.event_type, when: w.exact ? 'aynı gün' : `${w.label}, gün belli değil` })) });
   });
 
   // ── Ekip ──
@@ -1215,7 +1216,7 @@ function register(router) {
     if (!requireAdmin(req, res)) return;
     const ay = query.get('ay');
     const ym = /^\d{4}-(0[1-9]|1[0-2])$/.test(ay || '') ? ay : today().slice(0, 7);
-    html(res, views.calendar(getContent(), { couples: db.listCouples(), monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), ym, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+    html(res, views.calendar(getContent(), { couples: db.listCouples(), monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), prebookings: db.openPrebookings(), ym, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.post('/admin/ciftler/:id/sifre', async (req, res, { params }) => {

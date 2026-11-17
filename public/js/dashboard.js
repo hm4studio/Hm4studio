@@ -167,10 +167,11 @@
       const data = await r.json();
       const items = data.items || [];
       // Yalnızca başka çiftlerle çakışma uyarı sayılır; bu kişinin aynı günkü diğer hizmeti normaldir
-      if (items.length) {
-        warn.textContent = 'Bu tarihte başka çekim var: ' + items.map((i) => `${i.name} (${i.type || 'etkinlik'}${i.time ? ' ' + i.time : ''})`).join(', ');
-        warn.hidden = false;
-      }
+      const pre = data.pre || [];
+      const parts = [];
+      if (items.length) parts.push('Bu tarihte başka çekim var: ' + items.map((i) => `${i.name} (${i.type || 'etkinlik'}${i.time ? ' ' + i.time : ''})`).join(', '));
+      if (pre.length) parts.push('Ön randevu (kesin değil): ' + pre.map((i) => `${i.name} (${i.type || 'çekim'}, ${i.when})`).join(', '));
+      if (parts.length) { warn.textContent = parts.join(' · '); warn.hidden = false; warn.classList.toggle('is-pre', !items.length); }
     } catch { /* uyarı gösterilemezse kayıt yine yapılır */ }
   }
 

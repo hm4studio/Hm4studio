@@ -75,7 +75,10 @@ const relDays = (n) => (n === 0 ? 'bugün' : n === 1 ? 'yarın' : n > 0 ? `${n} 
 const longDay = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 
 // Ay takvimi: her günde o günün etkinlikleri (bir çiftin farklı günlerdeki etkinlikleri ayrı ayrı görünür)
-function monthCalendar(monthEvents, ym, base = '/admin/takvim') {
+function monthCalendar(monthEvents, ym, base = '/admin/takvim', pre = []) {
+  const { preWhen } = require('../appointments');
+  const preDay = new Map(); const preMonth = [];
+  for (const p of pre) { const w = preWhen(p); if (w.month !== ym) continue; if (w.exact) { const d = Number(w.date.slice(8)); if (!preDay.has(d)) preDay.set(d, []); preDay.get(d).push(p); } else preMonth.push({ p, w }); }
   const [y, m] = ym.split('-').map(Number);
   const first = new Date(Date.UTC(y, m - 1, 1));
   const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
@@ -103,20 +106,23 @@ function monthCalendar(monthEvents, ym, base = '/admin/takvim') {
         <a class="cal__btn" href="${base}?ay=${next}" aria-label="Sonraki ay">${icon('right')}</a>
       </div>
     </div>
+    ${preMonth.length ? h`<p class="cal__pre">${icon('calendar')}<span><b>Bu ay ön randevu (gün belli değil, kesin değil):</b> ${preMonth.map(({ p, w }, i) => h`${i ? ', ' : ''}<a href="/admin/on-randevu/${p.id}">${p.name}</a> <span class="muted">(${w.label})</span>`)}</span></p>` : ''}
     <div class="cal__grid" role="grid">
       ${DAYS.map((d) => h`<div class="cal__dow" role="columnheader">${d}</div>`)}
       ${cells.map((d) => {
         if (!d) return h`<div class="cal__cell cal__cell--empty"></div>`;
         const iso = `${ym}-${String(d).padStart(2, '0')}`;
         const list = byDay.get(d) || [];
-        return h`<div class="cal__cell${iso === t ? ' is-today' : ''}${list.length > 1 ? ' is-busy' : ''}" role="gridcell">
+        const pl = preDay.get(d) || [];
+        return h`<div class="cal__cell${iso === t ? ' is-today' : ''}${list.length > 1 ? ' is-busy' : ''}${pl.length ? ' has-pre' : ''}" role="gridcell">
           <a class="cal__day" href="/admin/randevu/yeni?tarih=${iso}" title="${shortDate(iso)} için randevu oluştur">${d}</a>
           ${list.map((e) => h`<a class="cal__ev" href="/admin/ciftler/${e.couple_id}" title="${e.couple_name} · ${e.event_type || 'Etkinlik'}${e.start_time ? ' · ' + e.start_time : ''}${e.flex ? ' · esnek tarih' : ''}">
             <span class="cal__ev-time">${e.start_time || ''}${e.flex ? '~' : ''}</span><span class="cal__ev-name">${e.couple_name}</span></a>`)}
+          ${pl.map((p) => h`<a class="cal__ev cal__ev--pre" href="/admin/on-randevu/${p.id}" title="Ön randevu (kesin değil) · ${p.name} · ${p.event_type || 'çekim'}${p.est_text ? ' · ' + p.est_text : ''}"><span class="cal__ev-time">Ön</span><span class="cal__ev-name">${p.name}</span></a>`)}
         </div>`;
       })}
     </div>
-    <p class="cal__hint">Bir güne dokunarak o tarihe randevu oluşturun.</p>
+    <p class="cal__hint">Bir güne dokunarak o tarihe randevu oluşturun.${pre.length ? h` <span class="cal__legend"><i></i>Kırmızı: ön randevu (kesin değil)</span>` : ''}</p>
   </section>`;
 }
 
@@ -235,6 +241,23 @@ function attentionItems(c, couples) {
 }
 
 // Çift satırı (panelde arama ve süzgeçle)
+// Ön randevu satırı (çiftler listesinde kırmızı etiketle)
+function preCard(p) {
+  const { preWhen } = require('../appointments');
+  const w = preWhen(p), t = today();
+  const sortKey = w.date && w.date >= t.slice(0, 7) ? `0${w.date}` : w.date ? `1${99999999 - Number(w.date.replace(/-/g, ''))}` : '0~';
+  const search = [p.name, p.phone, p.event_type, p.est_text, 'ön randevu'].join(' ').toLocaleLowerCase('tr-TR');
+  return h`<li class="crow crow--pre" data-card data-pre data-sel="none" data-search="${search}" data-stage="pre" data-type="${p.event_type || ''}" data-pay="${p.deposit ? 'deposit' : 'none'}" data-date="${sortKey}">
+    <a class="crow__link" href="/admin/on-randevu/${p.id}">
+      <span class="crow__who"><span class="crow__name">${p.name} <span class="otag otag--pre">Ön randevu</span></span><span class="crow__sub">${p.event_type || 'Çekim'} · kesin değil</span></span>
+      <span class="crow__date"><span>${w.exact ? shortDate(w.date) : w.label}</span><span class="crow__sub">${w.exact ? 'tahmini gün' : 'gün belli değil'}</span></span>
+      <span class="crow__stage"><span class="crow__sub">Tarih netleşince randevuya çevirin</span></span>
+      <span class="crow__pay">${p.deposit ? h`<span>${tl(p.deposit)}</span><span class="crow__sub">kapora</span>` : h`<span class="crow__sub">—</span>`}</span>
+      <span class="crow__ready"></span>
+    </a>
+  </li>`;
+}
+
 function coupleCard(c, k) {
   const pay = payment(k);
   const t = today();
@@ -351,7 +374,7 @@ function todoList(c, { couples, outbox, selections, quotes, newLeads, reminders 
 }
 
 // Çiftler: tüm randevular, arama/süzme, liste ve aşama görünümü
-function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
+function couplesPage(c, { couples, csrf, flash: f, demoAdmin, prebookings = [] }) {
   const o = c.appointments || {};
   const body = h`
   <div class="container">
@@ -372,7 +395,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         <label class="sr-only" for="q">Ara</label>
         <input id="q" type="search" placeholder="Ara: isim, telefon, randevu no" data-f-q autocomplete="off">
         <label class="sr-only" for="f-stage">Aşama</label>
-        <select id="f-stage" data-f-stage><option value="">Tüm aşamalar</option>${c.stages.map((s, i) => h`<option value="${i}">${s}</option>`)}</select>
+        <select id="f-stage" data-f-stage><option value="">Tüm aşamalar</option>${prebookings.length ? h`<option value="pre">Ön randevular</option>` : ''}${c.stages.map((s, i) => h`<option value="${i}">${s}</option>`)}</select>
         <label class="sr-only" for="f-type">Tür</label>
         <select id="f-type" data-f-type><option value="">Tüm türler</option>${(o.eventTypes || []).map((x) => h`<option>${x}</option>`)}</select>
         <label class="sr-only" for="f-pay">Ödeme</label>
@@ -383,14 +406,14 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         <select id="f-sort" data-f-sort><option value="date">Tarihe göre</option><option value="new">En yeni kayıt</option></select>
       </div>
       ${couples.length ? h`<div class="crow-head" aria-hidden="true"><span>Çift</span><span>Tarih</span><span>Aşama</span><span>Bakiye</span><span>Hazır</span></div>
-        <ul class="ccards crows" data-cards>${couples.map((k) => coupleCard(c, k))}</ul>
+        <ul class="ccards crows" data-cards>${prebookings.map((p) => preCard(p))}${couples.map((k) => coupleCard(c, k))}</ul>
         ${stageBoard(c, couples)}
         <p class="sec-empty" data-cards-empty hidden>Aramaya uyan çift yok.</p>
         <p class="crow-legend">Hazır: <b>F</b> fotoğraf · <b>V</b> video · <b>A</b> albüm · <b>S</b> sözleşme onaylı</p>`
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=20'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=21'] });
 }
 
 // Bugünün hatırlatmaları: saati geçene kadar Bugün ekranının en üstünde
@@ -539,7 +562,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=20', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=21', '/js/outbox.js?v=4'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -742,7 +765,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=20', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=21', '/js/outbox.js?v=4'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -835,7 +858,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=98">
+<link rel="stylesheet" href="/css/style.css?v=99">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -971,7 +994,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=98"></head>
+  <link rel="stylesheet" href="/css/style.css?v=99"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1391,7 +1414,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
   return panelLayout(c, { title: couple.name, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/panel.js?v=6', '/js/admin.js?v=7', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
-function calendar(c, { couples, monthEvents = [], ym = today().slice(0, 7), csrf, demoAdmin }) {
+function calendar(c, { couples, monthEvents = [], prebookings = [], ym = today().slice(0, 7), csrf, demoAdmin }) {
   const t = today();
   const rows = couples.map((k) => ({ k, st: jobStatus(k, c.stages) }));
   const count = (key) => rows.filter((r) => r.st[0] === key).length;
@@ -1414,7 +1437,7 @@ function calendar(c, { couples, monthEvents = [], ym = today().slice(0, 7), csrf
   <div class="container">
     <div class="panel-title-row"><h1 class="page-title">Takvim</h1><a class="btn btn--primary btn--sm" href="/admin/randevu/yeni">${icon('plus')}Yeni randevu</a></div>
     ${require('./guide').hint('calendar')}
-    ${monthCalendar(monthEvents, ym)}
+    ${monthCalendar(monthEvents, ym, '/admin/takvim', prebookings)}
     <div class="stats stats--4">
       <div class="stat"><span class="stat__num">${count('late')}</span><span class="stat__label">Geciken teslim</span></div>
       <div class="stat"><span class="stat__num">${count('soon')}</span><span class="stat__label">Bu hafta teslim</span></div>
@@ -2320,7 +2343,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=20', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=21', '/js/outbox.js?v=4'] });
 }
 
 module.exports = {
