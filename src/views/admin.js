@@ -111,8 +111,8 @@ function monthCalendar(monthEvents, ym, base = '/admin/takvim') {
         const list = byDay.get(d) || [];
         return h`<div class="cal__cell${iso === t ? ' is-today' : ''}${list.length > 1 ? ' is-busy' : ''}" role="gridcell">
           <a class="cal__day" href="/admin/randevu/yeni?tarih=${iso}" title="${shortDate(iso)} için randevu oluştur">${d}</a>
-          ${list.map((e) => h`<a class="cal__ev" href="/admin/ciftler/${e.couple_id}" title="${e.couple_name} · ${e.event_type || 'Etkinlik'}${e.start_time ? ' · ' + e.start_time : ''}">
-            <span class="cal__ev-time">${e.start_time || ''}</span><span class="cal__ev-name">${e.couple_name}</span></a>`)}
+          ${list.map((e) => h`<a class="cal__ev" href="/admin/ciftler/${e.couple_id}" title="${e.couple_name} · ${e.event_type || 'Etkinlik'}${e.start_time ? ' · ' + e.start_time : ''}${e.flex ? ' · esnek tarih' : ''}">
+            <span class="cal__ev-time">${e.start_time || ''}${e.flex ? '~' : ''}</span><span class="cal__ev-name">${e.couple_name}</span></a>`)}
         </div>`;
       })}
     </div>
@@ -390,7 +390,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin }) {
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=19'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=20'] });
 }
 
 // Bugünün hatırlatmaları: saati geçene kadar Bugün ekranının en üstünde
@@ -539,7 +539,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=19', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=20', '/js/outbox.js?v=4'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -562,6 +562,14 @@ function eventBlock(c, values, i, n, team = [], packages = []) {
       <div class="field"><label for="${id('date')}">Tarih</label><input id="${id('date')}" name="${id('date')}" type="date" value="${v('date')}" data-ev-date></div>
       <div class="field"><label for="${id('time')}">Başlangıç saati</label><input id="${id('time')}" name="${id('time')}" type="time" value="${v('time')}"></div>
     </div>
+    ${(() => {
+      const { FLEX, isOutdoor } = require('../appointments');
+      const f = v('flex');
+      return h`<div class="ev-flex" data-ev-flex${isOutdoor(v('type')) || f ? '' : raw(' hidden')}>
+        <label class="check"><input type="checkbox" data-ev-flex-on${f ? raw(' checked') : ''}><span>${icon('calendar')}Esnek tarih <span class="muted">(hava ve ışığa göre değişebilir; sözleşmeye yazılır)</span></span></label>
+        <select name="${id('flex')}" data-ev-flex-sel aria-label="Esneklik"${f ? '' : raw(' hidden disabled')}>${Object.entries(FLEX).map(([k, t]) => h`<option value="${k}"${(f || '7') === k ? raw(' selected') : ''}>${t}</option>`)}</select>
+      </div>`;
+    })()}
     <p class="ev-block__warn" data-ev-warn hidden></p>
     <div class="appt-row">
       <div class="field"><label for="${id('city')}">Şehir</label><input id="${id('city')}" name="${id('city')}" type="text" maxlength="60" value="${v('city')}"></div>
@@ -734,7 +742,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=19', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=20', '/js/outbox.js?v=4'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -770,7 +778,7 @@ function appointmentSummary(c, k, events, payments, csrf) {
           <li class="ev-view__item">
             <div class="ev-view__date"><span class="ev-view__day">${e.event_date ? Number(e.event_date.slice(8)) : '—'}</span><span class="ev-view__mon">${e.event_date ? MONTHS[Number(e.event_date.slice(5, 7)) - 1].slice(0, 3) : ''}</span></div>
             <div class="ev-view__main">
-              <span><strong>${e.event_type || 'Etkinlik'}</strong>${e.start_time ? h` · ${e.start_time}` : ''}</span>
+              <span><strong>${e.event_type || 'Etkinlik'}</strong>${e.start_time ? h` · ${e.start_time}` : ''}${e.flex ? h` <span class="ev-flexpill">Esnek ${require('../appointments').flexLabel(e.flex)}</span>` : ''}</span>
               <span class="muted">${[e.venue, e.city].filter(Boolean).join(', ')}</span>
               ${e.package ? h`<span>${e.package}${e.price ? h` · ${tl(e.price)}` : ''}</span>` : e.price ? h`<span>${tl(e.price)}</span>` : ''}
               ${e.package_detail ? h`<span class="ev-view__note">${e.package_detail}</span>` : ''}
@@ -827,7 +835,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=97">
+<link rel="stylesheet" href="/css/style.css?v=98">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -847,7 +855,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
   <table class="doc__table">
     <thead><tr><th>Tarih</th><th>Etkinlik</th><th>Yer</th><th>Paket</th><th class="num">Tutar</th></tr></thead>
     <tbody>${events.map((e) => h`<tr>
-      <td>${shortDate(e.event_date)}${e.start_time ? h`<br><span class="muted">${e.start_time}</span>` : ''}</td>
+      <td>${shortDate(e.event_date)}${e.start_time ? h`<br><span class="muted">${e.start_time}</span>` : ''}${e.flex ? h`<br><span class="muted">Esnek ${require('../appointments').flexLabel(e.flex)}</span>` : ''}</td>
       <td>${e.event_type}</td>
       <td>${[e.venue, e.city].filter(Boolean).join(', ')}</td>
       <td>${e.package}${e.package_detail ? h`<div class="doc__detail">${e.package_detail}</div>` : ''}</td>
@@ -963,7 +971,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=97"></head>
+  <link rel="stylesheet" href="/css/style.css?v=98"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -2312,7 +2320,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=19', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=20', '/js/outbox.js?v=4'] });
 }
 
 module.exports = {

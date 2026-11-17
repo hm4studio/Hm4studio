@@ -135,7 +135,7 @@ function snapshotData(c, card, events, payments) {
     telefon: card.phone ? String(card.phone).replace(/^90(\d{3})(\d{3})(\d{2})(\d{2})$/, '0$1 $2 $3 $4') : '',
     randevuNo: card.ref_no || '',
     sehir: cities.join(', ') || '…',
-    events: events.map((e) => ({ tur: e.event_type, tarih: shortDate(e.event_date), saat: e.start_time, yer: [e.venue, e.city].filter(Boolean).join(', '), paket: e.package, detay: e.package_detail, tutar: e.price })),
+    events: events.map((e) => ({ tur: e.event_type, tarih: shortDate(e.event_date), esnek: require('./appointments').flexLabel(e.flex), saat: e.start_time, yer: [e.venue, e.city].filter(Boolean).join(', '), paket: e.package, detay: e.package_detail, tutar: e.price })),
     araToplam: card.gross || card.total || 0,
     indirim: card.discount || 0,
     toplam: card.total || 0,
@@ -160,8 +160,9 @@ function render(data, signer = {}) {
       <div><p class="ct-k">Müşteri</p><p>${signer.ad || data.musteri}${data.es ? h` (eşi: ${data.es})` : ''}<br>T.C. Kimlik No: ${signer.tc || '……………………'}<br>Telefon: ${data.telefon || '……………'}<br>Adres: ${signer.adres || '……………………………………'}</p></div>
     </div>`,
     HIZMETLER: () => h`<table class="ct-table"><thead><tr><th>Hizmet</th><th>Tarih / saat</th><th>Yer</th><th>Paket</th><th class="num">Tutar</th></tr></thead><tbody>
-      ${data.events.map((e) => h`<tr><td>${e.tur || 'Çekim'}</td><td>${e.tarih}${e.saat ? h`<br>${e.saat}` : ''}</td><td>${e.yer}</td><td>${e.paket}${e.detay ? h`<div class="ct-detail">${e.detay}</div>` : ''}</td><td class="num">${e.tutar ? tl(e.tutar) : ''}</td></tr>`)}
-    </tbody></table>`,
+      ${data.events.map((e) => h`<tr><td>${e.tur || 'Çekim'}</td><td>${e.tarih}${e.saat ? h`<br>${e.saat}` : ''}${e.esnek ? h`<br><span class="ct-flex">Esnek: ${e.esnek}</span>` : ''}</td><td>${e.yer}</td><td>${e.paket}${e.detay ? h`<div class="ct-detail">${e.detay}</div>` : ''}</td><td class="num">${e.tutar ? tl(e.tutar) : ''}</td></tr>`)}
+    </tbody></table>
+    ${data.events.filter((e) => e.esnek).map((e) => h`<p class="ct-flexnote"><b>Esnek tarih (${e.tur || 'Çekim'}, ${e.tarih}):</b> Bu çekimin tarihi esnektir. Hava koşulları, ışık veya mekân uygun olmazsa ya da taraflardan biri makul bir gerekçeyle isterse, en az 24 saat önceden haber verilerek ${e.esnek === 'aynı ay içinde' ? 'aynı ay içinde' : `belirtilen tarihin ${e.esnek} içinde`} taraflarca birlikte yeni bir tarih belirlenir. Bu değişiklik iptal sayılmaz, ek ücret doğurmaz ve ödenen kapora yeni tarih için geçerli kalır. Belirtilen süre içinde uygun bir gün bulunamazsa yeni tarih karşılıklı anlaşmayla belirlenir.</p>`)}`,
     ODEME: () => h`<table class="ct-table ct-pay"><tbody>
       ${data.indirim ? h`<tr><td>Hizmetler toplamı</td><td class="num">${tl(data.araToplam)}</td></tr><tr><td>İndirim</td><td class="num">− ${tl(data.indirim)}</td></tr>` : ''}
       <tr><td>Toplam hizmet bedeli</td><td class="num">${tl(data.toplam)}</td></tr>

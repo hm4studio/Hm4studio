@@ -391,6 +391,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   sent_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+addColumn('events', 'flex', "TEXT NOT NULL DEFAULT ''"); // dış çekim gibi esnek tarih: '' | '3' | '7' | 'ay'
 // Stüdyonun "gördüm" dediği sözleşme onayları (Bugün sayfasındaki bildirim). Eskiler görülmüş sayılır.
 if (!db.prepare('PRAGMA table_info(contracts)').all().some((c) => c.name === 'admin_seen_at')) {
   db.exec('ALTER TABLE contracts ADD COLUMN admin_seen_at TEXT');
@@ -525,10 +526,10 @@ module.exports = {
   eventsOn: (date, exceptCoupleId) => q(`SELECT e.*, c.name AS couple_name FROM events e JOIN couples c ON c.id = e.couple_id
     WHERE e.event_date = ? AND e.couple_id <> ? ORDER BY e.start_time`).all(date, exceptCoupleId || 0),
   allEvents: () => q(`SELECT e.*, c.name AS couple_name, c.source AS couple_source FROM events e JOIN couples c ON c.id = e.couple_id ORDER BY e.event_date`).all(),
-  addEvent: (coupleId, e) => Number(q(`INSERT INTO events(couple_id, event_type, event_date, start_time, city, venue, package, package_detail, price, team)
-    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(coupleId, e.eventType, e.eventDate || null, e.startTime, e.city, e.venue, e.package, e.packageDetail, e.price, e.team).lastInsertRowid),
-  updateEvent: (id, e) => q(`UPDATE events SET event_type = ?, event_date = ?, start_time = ?, city = ?, venue = ?, package = ?, package_detail = ?, price = ?, team = ? WHERE id = ?`)
-    .run(e.eventType, e.eventDate || null, e.startTime, e.city, e.venue, e.package, e.packageDetail, e.price, e.team, id),
+  addEvent: (coupleId, e) => Number(q(`INSERT INTO events(couple_id, event_type, event_date, start_time, city, venue, package, package_detail, price, team, flex)
+    VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(coupleId, e.eventType, e.eventDate || null, e.startTime, e.city, e.venue, e.package, e.packageDetail, e.price, e.team, e.flex || '').lastInsertRowid),
+  updateEvent: (id, e) => q(`UPDATE events SET event_type = ?, event_date = ?, start_time = ?, city = ?, venue = ?, package = ?, package_detail = ?, price = ?, team = ?, flex = ? WHERE id = ?`)
+    .run(e.eventType, e.eventDate || null, e.startTime, e.city, e.venue, e.package, e.packageDetail, e.price, e.team, e.flex || '', id),
   // ── Ekip ──
   listTeam: () => q(`SELECT t.*, (SELECT COUNT(*) FROM event_team x JOIN events e ON e.id = x.event_id WHERE x.member_id = t.id AND e.event_date >= date('now', '+3 hours')) AS upcoming
     FROM team t ORDER BY t.active DESC, t.name`).all(),

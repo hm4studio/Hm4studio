@@ -24,7 +24,12 @@ function displayName(fullName, partnerName) {
   return a && b ? `${a} & ${b}` : (fullName || partnerName || '').trim();
 }
 
-const EVENT_FIELDS = ['id', 'type', 'date', 'time', 'city', 'venue', 'package', 'pkgs', 'detail', 'price', 'team'];
+const EVENT_FIELDS = ['id', 'type', 'date', 'time', 'flex', 'city', 'venue', 'package', 'pkgs', 'detail', 'price', 'team'];
+
+// Esnek tarih (dış çekim gibi hava/ışığa bağlı çekimler)
+const FLEX = { 3: '±3 gün', 7: '±1 hafta', ay: 'aynı ay içinde' };
+const isOutdoor = (type) => /d[ıi]ş/i.test(String(type || ''));
+const flexLabel = (f) => FLEX[f] || '';
 
 // Formdaki etkinlik blokları: ev0_type, ev0_date … ev5_type
 function readEvents(form, content) {
@@ -38,6 +43,7 @@ function readEvents(form, content) {
       eventType: (o.eventTypes || []).includes(f('type')) ? f('type') : '',
       eventDate: cleanDate(f('date')),
       startTime: cleanTime(f('time')),
+      flex: FLEX[f('flex')] ? String(f('flex')) : '',
       city: clean(f('city'), 60),
       venue: clean(f('venue'), 160),
       // Seçilen paketler + "Diğer hizmet" → "Fotoğraf + Video + Gelin alma"
@@ -115,7 +121,7 @@ function formValues(k, events = [], teamOf = () => []) {
     discount: k.discount ? String(k.discount) : '',
   };
   events.forEach((e, i) => Object.assign(v, {
-    [`ev${i}_id`]: e.id, [`ev${i}_type`]: e.event_type, [`ev${i}_date`]: e.event_date || '', [`ev${i}_time`]: e.start_time,
+    [`ev${i}_id`]: e.id, [`ev${i}_type`]: e.event_type, [`ev${i}_date`]: e.event_date || '', [`ev${i}_time`]: e.start_time, [`ev${i}_flex`]: e.flex || '',
     [`ev${i}_city`]: e.city, [`ev${i}_venue`]: e.venue, [`ev${i}_package`]: e.package, [`ev${i}_detail`]: e.package_detail,
     [`ev${i}_price`]: e.price || '', [`ev${i}_team`]: teamOf(e.id),
   }));
@@ -138,4 +144,4 @@ function selectionNames(favPhotos) {
   return names.sort((a, b) => a.localeCompare(b, 'tr', { numeric: true }));
 }
 
-module.exports = { selectionNames, readForm, payment, tl, displayName, formValues, eventIndexes, money, shortDate, EVENT_FIELDS, cleanDate };
+module.exports = { selectionNames, readForm, payment, tl, displayName, formValues, eventIndexes, money, shortDate, EVENT_FIELDS, cleanDate, FLEX, isOutdoor, flexLabel };

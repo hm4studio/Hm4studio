@@ -240,6 +240,18 @@
     if (e.target.matches('[data-ev-price], [data-deposit]')) updateSum();
   });
   form.addEventListener('change', (e) => { if (e.target.matches('[data-ev-date]')) { checkDate(e.target); renumber(); } });
+  // Esnek tarih: dış çekim seçilince görünür; kutu işaretlenince esneklik seçilir
+  form.addEventListener('change', (e) => {
+    const block = e.target.closest('[data-ev]'); if (!block) return;
+    const wrap = block.querySelector('[data-ev-flex]'); if (!wrap) return;
+    const on = wrap.querySelector('[data-ev-flex-on]'), sel = wrap.querySelector('[data-ev-flex-sel]');
+    if (e.target.matches('[name$="_type"]')) {
+      const outdoor = /d[ıi]ş/i.test(e.target.value);
+      wrap.hidden = !outdoor && !on.checked;
+      if (outdoor && !on.checked) { on.checked = true; sel.hidden = false; sel.disabled = false; }
+    }
+    if (e.target === on) { sel.hidden = !on.checked; sel.disabled = !on.checked; }
+  });
   evList.querySelectorAll('[data-ev-date]').forEach((el) => el.value && checkDate(el));
   // Düzenlerken: tutar/içerik seçili paketlerden geliyorsa "otomatik" say, paket ekleyip çıkarınca güncellensin
   evList.querySelectorAll('[data-ev]').forEach((block) => {
