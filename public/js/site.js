@@ -169,10 +169,10 @@
         for (const e of entries) {
           const img = e.target;
           if (e.isIntersecting) { if (img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; } }
-          else if (img.getAttribute('src') && img.complete) { img.dataset.src = img.getAttribute('src'); img.removeAttribute('src'); }
+          else if (img.getAttribute('src')) { img.dataset.src = img.getAttribute('src'); img.removeAttribute('src'); } // yarım kalan yükleme de iptal olur
         }
-      }, { rootMargin: '1000px 0px' });
-      imgs.forEach((img) => io.observe(img));
+      }, { rootMargin: '700px 0px' });
+      imgs.forEach((img, i) => { if (i > 24 && img.getAttribute('src')) { img.dataset.src = img.getAttribute('src'); img.removeAttribute('src'); } io.observe(img); });
     });
   }
 

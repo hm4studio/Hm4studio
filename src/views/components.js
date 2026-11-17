@@ -177,7 +177,7 @@ ${siteBanner(c)}
 ${siteHeader(c, active, overlayHeader)}
 <main id="main">${body}</main>
 ${siteFooter(c)}
-<script src="/js/site.js?v=12" defer></script>
+<script src="/js/site.js?v=13" defer></script>
 <script src="/js/pwa.js?v=3" defer></script>
 </body>
 </html>`);
@@ -206,7 +206,7 @@ ${side}
 </header>
 <main id="main" class="panel-main${tabs.length ? ' has-tabbar' : ''}">${body}</main>
 ${tabbar(tabs)}
-<script src="/js/site.js?v=12" defer></script>
+<script src="/js/site.js?v=13" defer></script>
 <script src="/js/pwa.js?v=3" defer></script>
 ${scripts.map((s) => h`<script src="${s}" defer></script>`)}
 </body>
