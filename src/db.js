@@ -460,6 +460,11 @@ const CARD_SQL = `
     (SELECT CASE WHEN k.signed_at IS NOT NULL THEN 'imzali' ELSE 'bekliyor' END FROM contracts k WHERE k.couple_id = c.id AND k.cancelled_at IS NULL ORDER BY k.id DESC LIMIT 1) AS contract_status
   FROM couples c`;
 
+// Fotoğraflar dosya adındaki seri numarasına göre sıralanır (DSC09998, DSC09999, DSC10000…);
+// yükleme aynı anda birkaç dosyayla yapıldığından yükleme sırası karışık olabilir.
+const serialCmp = new Intl.Collator('tr', { numeric: true, sensitivity: 'base' });
+function bySerial(rows) { return rows.sort((a, b) => serialCmp.compare(a.original_name || '', b.original_name || '') || a.id - b.id); }
+
 module.exports = {
   db,
 
@@ -597,12 +602,12 @@ module.exports = {
 
   // ── Çift fotoğrafları ──
   // kind verilmezse çiftin bütün fotoğrafları; 'secim' veya 'duzenli' ile yalnızca o grup
-  listPhotos: (coupleId, kind) => withDims(kind
+  listPhotos: (coupleId, kind) => bySerial(withDims(kind
     ? q(`SELECT p.*, EXISTS(SELECT 1 FROM favorites f WHERE f.photo_id = p.id) AS is_fav FROM photos p WHERE p.couple_id = ? AND p.kind = ? ORDER BY p.id`).all(coupleId, kind)
-    : q(`SELECT p.*, EXISTS(SELECT 1 FROM favorites f WHERE f.photo_id = p.id) AS is_fav FROM photos p WHERE p.couple_id = ? ORDER BY p.id`).all(coupleId)),
-  listFavoritePhotos: (coupleId) => withDims(q(`
+    : q(`SELECT p.*, EXISTS(SELECT 1 FROM favorites f WHERE f.photo_id = p.id) AS is_fav FROM photos p WHERE p.couple_id = ? ORDER BY p.id`).all(coupleId))),
+  listFavoritePhotos: (coupleId) => bySerial(withDims(q(`
     SELECT p.*, 1 AS is_fav FROM favorites f JOIN photos p ON p.id = f.photo_id
-    WHERE f.couple_id = ? ORDER BY p.id`).all(coupleId)),
+    WHERE f.couple_id = ? ORDER BY p.id`).all(coupleId))),
   getPhoto: (id) => q('SELECT * FROM photos WHERE id = ?').get(id),
   // ── Galeriler ──
   listGalleries: (coupleId) => q(`SELECT g.*, (SELECT COUNT(*) FROM photos p WHERE p.gallery_id = g.id AND p.kind = 'secim') AS photo_count,
