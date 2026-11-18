@@ -10,7 +10,7 @@ function setupPage(c, { info, token, csrf, flash: f, demoAdmin, site }) {
   const body = h`
   <div class="container container--form ps-setup">
     <a class="back-link" href="/admin/album">${icon('left')}Albüm</a>
-    <h1 class="page-title">Photoshop bağlantısı</h1>
+    <h1 class="page-title">Photoshop &amp; Lightroom</h1>
     <p class="muted">Albüm panelinde “Photoshop'ta düzenle”ye bastığınız fotoğraf, Mac'teki Photoshop'ta kendiliğinden açılır; ⌘S ile kaydedince yeni hali siteye yüklenir ve çiftin düzenlenmiş fotoğrafları arasında da güncellenir.</p>
     ${f && f.message ? h`<div class="flash flash--${f.type || 'success'}" role="status">${f.message}</div>` : ''}
     <p class="ps-state ${info.has ? 'is-on' : ''}"><b></b>${info.has ? h`Bağlantı açık · kod ${trDate(info.at)} tarihinde oluşturuldu` : 'Henüz bağlantı yok'}</p>
@@ -32,9 +32,19 @@ function setupPage(c, { info, token, csrf, flash: f, demoAdmin, site }) {
       <button class="btn btn--primary" type="submit">${icon('lock')}${info.has ? 'Yeni bağlantı kodu oluştur' : 'Bağlantı kodu oluştur'}</button>
       ${info.has ? h`<button class="btn btn--text" type="submit" name="iptal" value="1">Bağlantıyı kapat</button>` : ''}
     </form>
-    <p class="muted ps-note">Yeni kod oluşturunca eskisi geçersiz olur. Kod, bu bilgisayardaki Photoshop'un sitenize fotoğraf yüklemesine izin verir; başkasıyla paylaşmayın.</p>
+    <p class="muted ps-note">Yeni kod oluşturunca eskisi geçersiz olur (Photoshop ve Lightroom'a yenisini yapıştırın). Kod, bu bilgisayardaki eklentilerin sitenize fotoğraf yüklemesine izin verir; başkasıyla paylaşmayın.</p>
+
+    <h2 class="ps-sub" id="lightroom">Lightroom Classic</h2>
+    <p class="muted">Fotoğrafları Lightroom'dan doğrudan çiftin sayfasına yayınlayın; çiftin seçtiği kareleri tek tıkla Lightroom'da koleksiyona toplayın. Aynı bağlantı kodu kullanılır.</p>
+    <ol class="ps-steps">
+      <li><strong>Eklentiyi indirin.</strong> <a class="btn btn--outline btn--sm" href="/admin/lightroom/HM4Studio.lrplugin.zip">${icon('download')}HM4Studio.lrplugin.zip</a> İnen zip'e çift tıklayın, çıkan <code>HM4Studio.lrplugin</code> klasörünü kalıcı bir yere taşıyın (ör. Belgeler).</li>
+      <li><strong>Ekleyin.</strong> Lightroom › Dosya › Eklenti Yöneticisi › <em>Ekle</em> › o klasörü seçin. Aynı pencerede bağlantı kodunu yapıştırıp “Bağlantıyı dene”ye basın.</li>
+      <li><strong>Yayın hizmetini kurun.</strong> Kitaplık'ta sol alttaki Yayın Hizmetleri › <em>HM4 Studio › Kur…</em> › Kaydet.</li>
+      <li><strong>Çiftleri getirin.</strong> Kitaplık › Eklenti Ekstraları › <em>HM4: Çiftleri getir</em>. Her çiftin altında “Seçim için” ve “Düzenlenmiş” klasörleri oluşur; fotoğrafları sürükleyip <em>Yayınla</em>'ya basın.</li>
+      <li><strong>Seçimi çekin.</strong> Çift seçimini yapınca Kitaplık › Eklenti Ekstraları › <em>HM4: Çiftin seçimini çek</em>. Kareler (RAW'lar) “HM4 Studio – Albüm seçimleri” altında çiftin adıyla bir koleksiyonda toplanır.</li>
+    </ol>
   </div>`;
-  return panelLayout(c, { title: 'Photoshop bağlantısı', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
+  return panelLayout(c, { title: 'Photoshop & Lightroom', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
 }
 
 module.exports = { setupPage };

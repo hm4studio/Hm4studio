@@ -680,6 +680,9 @@ module.exports = {
   addPhoto: ({ coupleId, fileKey, originalName, originalExt, kind, uploadKey, w = null, h = null, galleryId = null }) =>
     Number(q("INSERT INTO photos(couple_id, file_key, original_name, original_ext, uploaded_on, kind, upload_key, w, h, gallery_id) VALUES(?, ?, ?, ?, date('now'), ?, ?, ?, ?, ?)")
       .run(coupleId, fileKey, originalName, originalExt || null, kind === 'duzenli' ? 'duzenli' : 'secim', uploadKey || null, w, h, kind === 'duzenli' ? null : galleryId).lastInsertRowid),
+  // Lightroom'dan yeniden yayın: dosyalar değişir, numara/seçim aynı kalır (rev önbelleği yeniler)
+  replacePhotoFiles: (id, { fileKey, w = null, h = null }) => q('UPDATE photos SET file_key = ?, original_ext = NULL, w = ?, h = ?, rev = rev + 1 WHERE id = ?').run(fileKey, w, h, id),
+  isFavorite: (photoId) => Boolean(q('SELECT 1 FROM favorites WHERE photo_id = ? LIMIT 1').get(photoId)),
   photoByUploadKey: (coupleId, uploadKey) => q('SELECT id FROM photos WHERE couple_id = ? AND upload_key = ?').get(coupleId, uploadKey),
   deletePhoto: (id) => q('DELETE FROM photos WHERE id = ?').run(id),
 

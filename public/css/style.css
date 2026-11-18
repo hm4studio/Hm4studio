@@ -3138,6 +3138,7 @@ body:has(.dz) { overflow-x: hidden; }
 .ps-steps { padding-left: 22px; line-height: 1.6; }
 .ps-steps li { margin-bottom: 12px; }
 .ps-steps .btn { margin-left: 6px; vertical-align: middle; }
+.ps-sub { margin: 40px 0 6px; padding-top: 28px; border-top: 1px solid var(--line, #e6e0d6); font-size: 1.35rem; }
 .ps-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
 .ps-note { font-size: .82rem; margin-top: 10px; }
 .dl-note { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; padding: 10px 12px; background: var(--gold-bg); border-radius: 12px; font-size: .86rem; line-height: 1.45; color: var(--navy); }
