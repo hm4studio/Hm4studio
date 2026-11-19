@@ -3744,3 +3744,78 @@ body.is-touring .install { display: none !important; }
 .act__chips .chip.is-on { background: #1f2a3a; border-color: #1f2a3a; color: #fff; }
 .act-page { max-width: 760px; padding-bottom: 40px; }
 @media (max-width: 640px) { .act__row { padding: 11px 12px; gap: 10px; } .act__go { padding: 6px 9px; font-size: .78rem; } }
+
+/* ── Takvim: resmi tatil, bayram, arefe, Ramazan, önemli gün ── */
+.cal__cell { position: relative; }
+.cal__cell.hol--resmi { background: #fbecea; }
+.cal__cell.hol--dini { background: #e9f3ec; }
+.cal__cell.hol--arefe { background: repeating-linear-gradient(135deg, #e9f3ec 0 6px, transparent 6px 12px); }
+.cal__cell.is-ramazan::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: #8e7cc3; }
+.cal__hol { display: block; font-size: .66rem; line-height: 1.25; padding: 1px 4px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cal__hol--resmi { background: #b8352a; color: #fff; }
+.cal__hol--dini { background: #2f6b3f; color: #fff; }
+.cal__hol--arefe { background: #fff; color: #2f6b3f; border: 1px dashed #2f6b3f; }
+.cal__hol--onemli { background: #f4efe4; color: #8a7448; }
+.cal__key { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 10px 0 0; font-size: .76rem; color: var(--pencil); }
+.cal__key i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.cal__key .k-resmi { background: #b8352a; } .cal__key .k-dini { background: #2f6b3f; }
+.cal__key .k-arefe { background: #e9f3ec; border: 1px dashed #2f6b3f; } .cal__key .k-ram { background: #8e7cc3; height: 4px; vertical-align: 2px; }
+.cal__key .k-onemli { background: #f4efe4; border: 1px solid #d6cebf; }
+.cal__special { list-style: none; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid var(--hair, #ece6da); display: grid; gap: 6px; }
+.cal__special li { display: flex; gap: 12px; font-size: .84rem; }
+.cal__special span { flex: none; width: 74px; color: var(--pencil); }
+.cal__special em { font-style: normal; }
+@media (max-width: 640px) {
+  .cal__hol { font-size: 0; padding: 0; height: 4px; border-radius: 2px; border: 0; }
+  .cal__hol--arefe { background: #2f6b3f; opacity: .45; }
+}
+
+/* ── Personel: ücretler, hesap, rapor ── */
+.rates { border: 1px solid var(--hair, #ece6da); border-radius: 12px; padding: 12px 14px 6px; margin: 4px 0 14px; }
+.rates legend { padding: 0 6px; font-size: .86rem; font-weight: 500; }
+.rates legend .muted { font-weight: 400; font-size: .78rem; }
+.rates__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
+.rates__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: .88rem; }
+.rates__in { display: flex; align-items: center; gap: 4px; }
+.rates__in input { width: 96px; text-align: right; padding: 7px 9px; min-height: 0; }
+.rates__in i { font-style: normal; color: var(--pencil); }
+.team-row__bal { font-size: .78rem; text-decoration: none; color: var(--pencil); border: 1px solid var(--hair, #e6e0d4); border-radius: 20px; padding: 4px 10px; white-space: nowrap; }
+.team-row__bal.is-due { color: #a3271f; border-color: #f0c9c3; background: #fdf3f1; }
+.staff__role { margin: 2px 0 0; }
+.staff__hero, .staffrep__k { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; background: #1f2a3a; color: #fff; border-radius: 14px; padding: 16px 18px; margin: 4px 0 20px; }
+.staff__hero small, .staffrep__k small { display: block; font-size: .74rem; color: #c9c2b5; }
+.staff__hero b, .staffrep__k b { font-weight: 500; font-size: 1.3rem; }
+.staff__due { color: #e0c98f; }
+.staff__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 24px; align-items: start; }
+.ledger { list-style: none; margin: 0 0 16px; padding: 0; background: #fff; border: 1px solid #e6e0d4; border-radius: 12px; overflow: hidden; }
+.ledger__row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; padding: 11px 14px; border-top: 1px solid #f0ebe1; font-size: .88rem; }
+.ledger__row:first-child { border-top: 0; }
+.ledger__row.is-pay { background: #f1f7f2; }
+.ledger__row.is-pay .ledger__a { color: #2f6b3f; }
+.ledger__d { flex: none; width: 92px; color: var(--pencil); font-size: .8rem; }
+.ledger__m { flex: 1; min-width: 0; }
+.ledger__m a { color: inherit; }
+.ledger__a { font-weight: 500; white-space: nowrap; }
+.ledger__a.is-due, .is-due { color: #a3271f; }
+.ledger__tag { font-style: normal; font-size: .7rem; color: #8a7448; background: #f4efe4; border-radius: 10px; padding: 1px 7px; }
+.ledger__tag.is-warn { color: #a3271f; background: #fdf3f1; }
+.ledger--soon .ledger__row { background: #fbfaf8; }
+.fee-edit { flex-basis: 100%; }
+.fee-edit summary { list-style: none; cursor: pointer; font-size: .74rem; color: var(--pencil); text-decoration: underline; text-underline-offset: 2px; width: max-content; margin-left: auto; }
+.fee-edit summary::-webkit-details-marker { display: none; }
+.fee-edit:not([open]) { flex-basis: auto; }
+.fee-edit__f { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+.fee-edit__f input { width: 110px; text-align: right; padding: 7px 9px; min-height: 0; }
+.fee-edit p { font-size: .74rem; margin: 6px 0 0; }
+.staffrep__k { grid-template-columns: repeat(4, minmax(0, 1fr)); background: none; color: inherit; padding: 0; }
+.staffrep__k > div { background: #fff; border: 1px solid #e6e0d4; border-radius: 12px; padding: 12px 14px; }
+.staffrep__k > div small { color: var(--pencil); }
+.staffrep__k > div em { display: block; font-style: normal; font-size: .74rem; color: var(--pencil); }
+.staffrep__k > .is-nv { background: #1f2a3a; border-color: #1f2a3a; }
+.staffrep__k > .is-nv small { color: #c9c2b5; } .staffrep__k > .is-nv b { color: #e0c98f; }
+.staffrep__due { margin-bottom: 8px; }
+.staffrep__note { font-size: .8rem; }
+.rbar__bar--staff, .legend--staff { background: #b49a66; }
+.rbar__bar--ink { background: #1f2a3a; }
+@media (max-width: 900px) { .staff__grid { grid-template-columns: 1fr; } .staffrep__k { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .staff__hero { padding: 14px; } .staff__hero b { font-size: 1.05rem; } .rates__grid { grid-template-columns: 1fr; } .ledger__d { width: auto; flex-basis: 100%; } }

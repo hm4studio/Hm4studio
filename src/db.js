@@ -393,6 +393,24 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 `);
 addColumn('events', 'flex', "TEXT NOT NULL DEFAULT ''"); // dış çekim gibi esnek tarih: '' | '3' | '7' | 'ay'
+// Personel ödemeleri: kişi başı çekim türü ücreti, etkinliğe özel ücret (event_team.fee), yapılan ödemeler
+addColumn('event_team', 'fee', 'INTEGER'); // boşsa kişinin o çekim türü ücreti geçerli
+db.exec(`CREATE TABLE IF NOT EXISTS team_rates (
+  member_id INTEGER NOT NULL REFERENCES team(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  amount INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (member_id, event_type)
+);
+CREATE TABLE IF NOT EXISTS staff_payments (
+  id INTEGER PRIMARY KEY,
+  member_id INTEGER NOT NULL REFERENCES team(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
+  paid_on TEXT NOT NULL,
+  method TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS staff_payments_member ON staff_payments(member_id);`);
 // Stüdyonun "gördüm" dediği sözleşme onayları (Bugün sayfasındaki bildirim). Eskiler görülmüş sayılır.
 if (!db.prepare('PRAGMA table_info(contracts)').all().some((c) => c.name === 'admin_seen_at')) {
   db.exec('ALTER TABLE contracts ADD COLUMN admin_seen_at TEXT');
@@ -480,6 +498,22 @@ function bySerial(rows) { return rows.sort((a, b) => serialCmp.compare(a.origina
 
 module.exports = {
   db,
+
+  // ── Personel ödemeleri ──
+  memberRates: (memberId) => Object.fromEntries(q('SELECT event_type, amount FROM team_rates WHERE member_id = ?').all(memberId).map((r) => [r.event_type, r.amount])),
+  allRates: () => q('SELECT member_id, event_type, amount FROM team_rates').all(),
+  setMemberRates: (memberId, rates) => {
+    q('DELETE FROM team_rates WHERE member_id = ?').run(memberId);
+    for (const [type, amount] of Object.entries(rates)) if (amount > 0) q('INSERT INTO team_rates(member_id, event_type, amount) VALUES(?, ?, ?)').run(memberId, type, amount);
+  },
+  // Kişinin bütün görevleri (ücret hesabı için): etkinlik + çift + etkinliğe özel ücret
+  staffAssignments: (memberId = null) => q(`SELECT x.member_id, x.fee, e.id AS event_id, e.event_type, e.event_date, e.couple_id, c.name AS couple_name
+    FROM event_team x JOIN events e ON e.id = x.event_id JOIN couples c ON c.id = e.couple_id
+    WHERE e.event_date IS NOT NULL ${memberId ? 'AND x.member_id = ?' : ''} ORDER BY e.event_date DESC`).all(...(memberId ? [memberId] : [])),
+  setAssignmentFee: (eventId, memberId, fee) => q('UPDATE event_team SET fee = ? WHERE event_id = ? AND member_id = ?').run(fee, eventId, memberId),
+  staffPayments: (memberId = null) => q(`SELECT * FROM staff_payments ${memberId ? 'WHERE member_id = ?' : ''} ORDER BY paid_on DESC, id DESC`).all(...(memberId ? [memberId] : [])),
+  addStaffPayment: (p) => q('INSERT INTO staff_payments(member_id, amount, paid_on, method, note) VALUES(?, ?, ?, ?, ?)').run(p.memberId, p.amount, p.paidOn, p.method, p.note),
+  deleteStaffPayment: (id, memberId) => q('DELETE FROM staff_payments WHERE id = ? AND member_id = ?').run(id, memberId),
 
   // ── Son gelişmeler ──
   logActivity: ({ coupleId = null, kind, text, url = '', actionLabel = '', actionUrl = '' }) =>
@@ -574,8 +608,9 @@ module.exports = {
     const before = new Set(q('SELECT member_id FROM event_team WHERE event_id = ?').all(eventId).map((r) => r.member_id));
     const valid = new Set(q('SELECT id FROM team').all().map((r) => r.id));
     const want = [...new Set(ids)].filter((id) => valid.has(id));
-    q('DELETE FROM event_team WHERE event_id = ?').run(eventId);
-    for (const id of want) q('INSERT INTO event_team(event_id, member_id) VALUES(?, ?)').run(eventId, id);
+    // Var olanlar korunur (etkinliğe özel ücretleri silinmesin); çıkarılanlar silinir, yeniler eklenir
+    for (const id of before) if (!want.includes(id)) q('DELETE FROM event_team WHERE event_id = ? AND member_id = ?').run(eventId, id);
+    for (const id of want) if (!before.has(id)) q('INSERT INTO event_team(event_id, member_id) VALUES(?, ?)').run(eventId, id);
     const names = want.length ? q(`SELECT group_concat(name, ', ') AS n FROM (SELECT name FROM team WHERE id IN (${want.map(() => '?').join(',')}) ORDER BY name)`).get(...want).n : '';
     q('UPDATE events SET team = ? WHERE id = ?').run(names || '', eventId);
     return want.filter((id) => !before.has(id));
@@ -849,7 +884,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM ps_jobs; DELETE FROM photo_versions; DELETE FROM orig_purge; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications; DELETE FROM activity;
+    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM ps_jobs; DELETE FROM photo_versions; DELETE FROM orig_purge; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM staff_payments; DELETE FROM team_rates; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications; DELETE FROM activity;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

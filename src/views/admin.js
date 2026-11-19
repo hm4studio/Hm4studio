@@ -4,6 +4,7 @@ const { h, raw } = require('./html');
 const { panelLayout, statusBar, flash, icon } = require('./components');
 const { photoTile, galleryTabs, logoutForm, formatDate, albumBar, planView } = require('./panel');
 const { jobStatus, daysBetween, today, addDays } = require('../jobs');
+const holidays = require('../holidays');
 const { displayPhone, taskText } = require('../whatsapp');
 const { payment, tl, shortDate, eventIndexes } = require('../appointments');
 const journey = require('./journey');
@@ -124,8 +125,11 @@ function monthCalendar(monthEvents, ym, base = '/admin/takvim', pre = [], counts
         const iso = `${ym}-${String(d).padStart(2, '0')}`;
         const list = byDay.get(d) || [];
         const pl = preDay.get(d) || [];
-        return h`<div class="cal__cell${iso === t ? ' is-today' : ''}${list.length > 1 ? ' is-busy' : ''}${pl.length ? ' has-pre' : ''}" role="gridcell">
+        const hol = holidays.on(iso);
+        const top = hol[0];
+        return h`<div class="cal__cell${iso === t ? ' is-today' : ''}${list.length > 1 ? ' is-busy' : ''}${pl.length ? ' has-pre' : ''}${top && top.kind !== 'onemli' ? ` hol--${top.kind}` : ''}${holidays.inRamazan(iso) ? ' is-ramazan' : ''}" role="gridcell">
           <a class="cal__day" href="/admin/randevu/yeni?tarih=${iso}" title="${shortDate(iso)} için randevu oluştur">${d}</a>
+          ${hol.map((x) => h`<span class="cal__hol cal__hol--${x.kind}" title="${x.name}">${x.short}</span>`)}
           ${list.map((e) => h`<a class="cal__ev" href="/admin/ciftler/${e.couple_id}" title="${e.couple_name} · ${e.event_type || 'Etkinlik'}${e.start_time ? ' · ' + e.start_time : ''}${e.flex ? ' · esnek tarih' : ''}">
             <span class="cal__ev-time">${e.start_time || ''}${e.flex ? '~' : ''}</span><span class="cal__ev-name">${e.couple_name}</span></a>`)}
           ${pl.map((p) => h`<a class="cal__ev cal__ev--pre" href="/admin/on-randevu/${p.id}" title="Ön randevu (kesin değil) · ${p.name} · ${p.event_type || 'çekim'}${p.est_text ? ' · ' + p.est_text : ''}"><span class="cal__ev-time">Ön</span><span class="cal__ev-name">${p.name}</span></a>`)}
@@ -133,6 +137,13 @@ function monthCalendar(monthEvents, ym, base = '/admin/takvim', pre = [], counts
       })}
     </div>
     <p class="cal__hint">Bir güne dokunarak o tarihe randevu oluşturun.${pre.length ? h` <span class="cal__legend"><i></i>Kırmızı: ön randevu (kesin değil)</span>` : ''}</p>
+    <div class="cal__key" aria-label="Renkler">
+      <span><i class="k-resmi"></i>Resmi tatil</span><span><i class="k-dini"></i>Dini bayram</span><span><i class="k-arefe"></i>Arefe (yarım gün)</span><span><i class="k-ram"></i>Ramazan ayı</span><span><i class="k-onemli"></i>Önemli gün</span>
+    </div>
+    ${(() => {
+      const ml = holidays.month(ym);
+      return ml.length ? h`<ul class="cal__special" aria-label="Bu ayın özel günleri">${ml.map((x) => h`<li><span>${Number(x.date.slice(8))} ${MONTHS[m - 1]}</span><em>${x.items.map((i) => i.name).join(' · ')}</em></li>`)}</ul>` : '';
+    })()}
   </section>`;
 }
 
@@ -916,7 +927,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=110">
+<link rel="stylesheet" href="/css/style.css?v=111">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -958,7 +969,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 }
 
 // Aylık rapor: etkinlik sayısı, ciro (etkinlik ayına göre), tahsilat (ödeme ayına göre), müşteri kaynakları
-function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
+function report(c, { staff = null, year, events, payments, couples, csrf, demoAdmin }) {
   // Ciro indirim düşülerek: çiftin indirimi etkinliklerine fiyatları oranında dağıtılır
   const kOf = new Map(couples.map((k) => [k.id, k]));
   const net = (e) => { const k = kOf.get(e.couple_id); return k && k.discount && k.gross ? Math.round(e.price * (k.total / k.gross)) : e.price; };
@@ -1011,6 +1022,39 @@ function report(c, { year, events, payments, couples, csrf, demoAdmin }) {
         </li>`)}</ul>
     </section>
 
+    ${staff ? (() => {
+      const maxM = Math.max(1, ...months.map((m, i) => Math.max(m.revenue, staff.months[i])));
+      const people = staff.people.filter((p) => p.yearAmount || p.balance);
+      const maxP = Math.max(1, ...people.map((p) => p.yearAmount));
+      const share = tot.revenue ? Math.round((staff.total / tot.revenue) * 100) : 0;
+      const due = staff.people.filter((p) => p.balance > 0).sort((a, b) => b.balance - a.balance);
+      return h`<section class="panel-section staffrep" id="personel" aria-labelledby="staff-title">
+        <div class="panel-section__head"><h2 class="panel-section__title" id="staff-title">Personel giderleri</h2>
+          <a class="btn btn--text btn--sm" href="/admin/rapor/personel.csv?yil=${year}">${icon('download')}Excel</a></div>
+        <div class="staffrep__k">
+          <div class="is-nv"><small>${year} personel gideri</small><b>${tl(staff.total)}</b></div>
+          <div><small>Ciro içindeki payı</small><b>%${share}</b></div>
+          <div><small>Çekim başı ortalama</small><b>${tl(staff.shoots ? Math.round(staff.total / staff.shoots) : 0)}</b><em>${staff.shoots} çekim</em></div>
+          <div><small>Ödenecek (şu an)</small><b class="${staff.due ? 'is-due' : ''}">${tl(staff.due)}</b><em>${due.length} kişi</em></div>
+        </div>
+        ${due.length ? h`<div class="staffrep__due"><h3 class="appt-sub">Kime ne ödenecek</h3><ul class="ledger">${due.map((p) => h`<li class="ledger__row"><span class="ledger__m"><a href="/admin/ekip/${p.id}/hesap"><strong>${p.name}</strong></a>${p.role ? ` · ${p.role}` : ''}</span><b class="ledger__a is-due">${tl(p.balance)}</b><a class="btn btn--outline btn--sm" href="/admin/ekip/${p.id}/hesap">Öde</a></li>`)}</ul></div>` : ''}
+        <h3 class="appt-sub">Aylara göre <span class="muted"><span class="legend legend--staff"></span>Personel gideri <span class="legend legend--col"></span>Ciro</span></h3>
+        <ul class="rbars">${months.map((m, i) => h`
+          <li class="rbar"><span class="rbar__name">${m.name}</span>
+            <span class="rbar__bars"><span class="rbar__bar rbar__bar--staff" data-pct="${Math.round(staff.months[i] / maxM * 100)}"></span><span class="rbar__bar rbar__bar--col" data-pct="${Math.round(m.revenue / maxM * 100)}"></span></span>
+            <span class="rbar__val">${staff.months[i] ? tl(staff.months[i]) : '—'}${m.revenue && staff.months[i] ? h` <span class="muted">· %${Math.round(staff.months[i] / m.revenue * 100)}</span>` : ''}</span></li>`)}</ul>
+        <div class="report-cols">
+          <div><h3 class="appt-sub">Kişilere göre</h3>
+            ${people.length ? h`<ul class="rbars">${people.sort((a, b) => b.yearAmount - a.yearAmount).map((p) => h`<li class="rbar"><span class="rbar__name"><a href="/admin/ekip/${p.id}/hesap">${p.name}</a></span><span class="rbar__bars"><span class="rbar__bar rbar__bar--ink" data-pct="${Math.round(p.yearAmount / maxP * 100)}"></span></span><span class="rbar__val">${tl(p.yearAmount)} <span class="muted">· ${p.yearCount} görev</span></span></li>`)}</ul>` : h`<p class="muted">Bu yıl personel görevi yok.</p>`}
+            ${staff.people.some((p) => p.noRates && p.active) ? h`<p class="muted staffrep__note">Ücreti girilmemiş kişiler var: ${staff.people.filter((p) => p.noRates && p.active).map((p, i) => h`${i ? ', ' : ''}<a href="/admin/ekip?duzenle=${p.id}">${p.name}</a>`)}</p>` : ''}
+          </div>
+          <div><h3 class="appt-sub">Çekim türüne göre</h3>
+            ${staff.byType.length ? h`<ul class="plain-stats">${staff.byType.map((x) => h`<li><span>${x.type} <span class="muted">· ${x.count} çekim · çekim başı ${tl(Math.round(x.amount / Math.max(1, x.count)))}</span></span><strong>${tl(x.amount)}</strong></li>`)}</ul>` : h`<p class="muted">Bu yıl kayıt yok.</p>`}
+          </div>
+        </div>
+      </section>`;
+    })() : ''}
+
     <div class="report-cols">
       <section class="panel-section">
         <div class="panel-section__head"><h2 class="panel-section__title">Müşteri kaynakları</h2></div>
@@ -1052,7 +1096,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=110"></head>
+  <link rel="stylesheet" href="/css/style.css?v=111"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1604,8 +1648,9 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
 }
 
 // Ekip: personel ekle, düzenle, sil; her kişinin görevleri
-function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) {
+function teamPage(c, { team, member, rates = {}, balances = {}, memberEvents, csrf, flash: f, demoAdmin }) {
   const roles = c.appointments?.teamRoles || [];
+  const types = c.appointments?.eventTypes || [];
   const t = today();
   const form = (m, action, submit) => h`
     <form class="form" method="post" action="${action}">
@@ -1616,6 +1661,10 @@ function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) 
       </div>
       <div class="field"><label for="m-phone">Telefon (WhatsApp)</label><input id="m-phone" name="phone" type="tel" inputmode="tel" maxlength="20" placeholder="05XX XXX XX XX" value="${m.phone ? displayPhone(m.phone) : ''}"></div>
       <div class="field"><label for="m-notes">Bilgiler / notlar</label><textarea id="m-notes" name="notes" rows="3" maxlength="1000" placeholder="Ekipman, ücret, IBAN, beden, uygun olmadığı günler…">${m.notes || ''}</textarea></div>
+      <fieldset class="rates">
+        <legend>Çekim ücretleri <span class="muted">(çekim günü geçince hesabına yazılır)</span></legend>
+        <div class="rates__grid">${types.map((t, i) => h`<label class="rates__row" for="rate-${i}"><span>${t}</span><span class="rates__in"><input id="rate-${i}" name="rate_${t}" type="text" inputmode="numeric" placeholder="0" value="${(m.id && rates[t]) ? rates[t].toLocaleString('tr-TR') : ''}"><i>₺</i></span></label>`)}</div>
+      </fieldset>
       <label class="check"><input type="checkbox" name="active" value="1"${m.active === 0 ? '' : raw(' checked')}><span>Aktif (görev verilebilir)</span></label>
       <label class="check"><input type="checkbox" name="waOptin" value="1"${m.wa_optin === 0 ? '' : raw(' checked')}><span>Görev verilince WhatsApp mesajı gönderilsin</span></label>
       <div class="appt-actions"><button class="btn btn--primary" type="submit">${submit}</button>${member ? h`<a class="btn btn--text" href="/admin/ekip">Vazgeç</a>` : ''}</div>
@@ -1636,6 +1685,7 @@ function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) 
               ${m.upcoming ? h`<span class="team-row__up">${m.upcoming} yaklaşan görev</span>` : ''}
             </div>
             <div class="team-row__actions">
+              <a class="team-row__bal${balances[m.id] > 0 ? ' is-due' : ''}" href="/admin/ekip/${m.id}/hesap" title="Hesabı aç">${balances[m.id] > 0 ? `${tl(balances[m.id])} ödenecek` : 'Hesap'}</a>
               <a class="btn btn--text btn--sm" href="/admin/ekip?duzenle=${m.id}">Düzenle</a>
               <form method="post" action="/admin/ekip/${m.id}/sil" data-confirm="${m.name} ekipten silinsin mi? Verilmiş görevlerden de çıkarılır.">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit" aria-label="Sil">${icon('trash')}</button></form>
             </div>
@@ -1652,6 +1702,70 @@ function teamPage(c, { team, member, memberEvents, csrf, flash: f, demoAdmin }) 
     </div>
   </div>`;
   return panelLayout(c, { title: 'Ekip', csrf, nav: adminNav('team', csrf, demoAdmin), home: '/admin', tabs: adminTabs('team', demoAdmin), body });
+}
+
+// Ekip › kişi › hesap: hakediş (çekim günü geçen görevler), ödemeler, kalan
+function staffAccount(c, { member, acc, rates, csrf, flash: f, demoAdmin }) {
+  const t = today();
+  const ledger = [
+    ...acc.rows.filter((r) => r.done).map((r) => ({ date: r.event_date, kind: 'job', r })),
+    ...acc.payments.map((p) => ({ date: p.paid_on, kind: 'pay', p })),
+  ].sort((a, b) => b.date.localeCompare(a.date) || (a.kind === 'pay' ? -1 : 1));
+  const upcoming = acc.rows.filter((r) => !r.done).sort((a, b) => a.event_date.localeCompare(b.event_date));
+  const feeForm = (r) => h`<details class="fee-edit"><summary>Ücret</summary>
+    <form method="post" action="/admin/ekip/${member.id}/ucret" class="fee-edit__f">${csrfField(csrf)}<input type="hidden" name="eventId" value="${r.event_id}">
+      <input name="fee" type="text" inputmode="numeric" value="${r.custom ? r.amount.toLocaleString('tr-TR') : ''}" placeholder="${r.rate ? r.rate.toLocaleString('tr-TR') : '0'}" aria-label="Bu çekimin ücreti"><span>₺</span>
+      <button class="btn btn--primary btn--sm" type="submit">Kaydet</button></form>
+    <p class="muted">Ekstra ya da farklı ücret için yazın; boş bırakırsanız normal ücret (${tl(r.rate)}) geçerli olur.</p></details>`;
+  const body = h`
+  <div class="container staff">
+    <a class="back-link" href="/admin/ekip">${icon('left')}Ekip</a>
+    <div class="panel-title-row"><div><h1 class="page-title">${member.name}</h1><p class="muted staff__role">${member.role || 'Personel'}</p></div>
+      <a class="btn btn--outline btn--sm" href="/admin/ekip?duzenle=${member.id}">Ücretleri düzenle</a></div>
+    ${flashBlock(f)}
+    <div class="staff__hero">
+      <div><small>Hakediş</small><b>${tl(acc.earned)}</b></div>
+      <div><small>Ödenen</small><b>${tl(acc.paid)}</b></div>
+      <div><small>${acc.balance < 0 ? 'Fazla ödenen (avans)' : 'Kalan'}</small><b class="staff__due">${tl(Math.abs(acc.balance))}</b></div>
+    </div>
+    ${!Object.keys(rates).length ? h`<p class="flash flash--error" role="alert">Bu kişinin çekim ücretleri girilmemiş; hakediş 0 ₺ görünür. <a href="/admin/ekip?duzenle=${member.id}">Ücretleri girin</a></p>` : ''}
+
+    <div class="staff__grid">
+      <section class="card" aria-labelledby="pay-title">
+        <h2 class="card__title" id="pay-title">Ödeme yap</h2>
+        <form class="form" method="post" action="/admin/ekip/${member.id}/odeme">${csrfField(csrf)}
+          <div class="appt-row">
+            <div class="field"><label for="sp-amount">Tutar (₺)</label><input id="sp-amount" name="amount" type="text" inputmode="numeric" required placeholder="${acc.balance > 0 ? acc.balance.toLocaleString('tr-TR') : '0'}"></div>
+            <div class="field"><label for="sp-date">Tarih</label><input id="sp-date" name="paidOn" type="date" value="${t}"></div>
+          </div>
+          <div class="appt-row">
+            <div class="field"><label for="sp-method">Yöntem</label><select id="sp-method" name="method"><option>Havale</option><option>Nakit</option><option>Diğer</option></select></div>
+            <div class="field"><label for="sp-note">Not</label><input id="sp-note" name="note" type="text" maxlength="200" placeholder="Kasım çekimleri, avans…"></div>
+          </div>
+          <button class="btn btn--primary" type="submit">Ödemeyi kaydet</button>
+        </form>
+      </section>
+
+      <section aria-labelledby="led-title" id="gorevler">
+        <h2 class="panel-section__title" id="led-title">Hesap hareketleri</h2>
+        ${ledger.length ? h`<ul class="ledger">${ledger.map((x) => x.kind === 'job' ? h`
+          <li class="ledger__row">
+            <span class="ledger__d">${shortDate(x.r.event_date)}</span>
+            <span class="ledger__m"><a href="/admin/ciftler/${x.r.couple_id}">${x.r.couple_name}</a> · ${x.r.event_type || 'Etkinlik'}${x.r.custom ? h` <em class="ledger__tag">özel ücret</em>` : ''}${!x.r.amount ? h` <em class="ledger__tag is-warn">ücret yok</em>` : ''}</span>
+            <b class="ledger__a">+${tl(x.r.amount)}</b>${feeForm(x.r)}
+          </li>` : h`
+          <li class="ledger__row is-pay">
+            <span class="ledger__d">${shortDate(x.p.paid_on)}</span>
+            <span class="ledger__m">Ödeme${x.p.method ? ` · ${x.p.method}` : ''}${x.p.note ? ` · ${x.p.note}` : ''}</span>
+            <b class="ledger__a">−${tl(x.p.amount)}</b>
+            <form method="post" action="/admin/ekip/${member.id}/odeme/${x.p.id}/sil" data-confirm="Bu ödeme kaydı silinsin mi? Bakiye yeniden hesaplanır.">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit" aria-label="Ödemeyi sil">${icon('trash')}</button></form>
+          </li>`)}</ul>` : h`<p class="muted">Henüz geçmiş görev ya da ödeme yok.</p>`}
+        ${upcoming.length ? h`<h3 class="appt-sub">Yaklaşan görevler <span class="muted">(çekim günü geçince eklenir · toplam ${tl(acc.planned)})</span></h3>
+          <ul class="ledger ledger--soon">${upcoming.map((r) => h`<li class="ledger__row"><span class="ledger__d">${shortDate(r.event_date)}</span><span class="ledger__m"><a href="/admin/ciftler/${r.couple_id}">${r.couple_name}</a> · ${r.event_type || 'Etkinlik'}${r.custom ? h` <em class="ledger__tag">özel ücret</em>` : ''}</span><b class="ledger__a muted">${tl(r.amount)}</b>${feeForm(r)}</li>`)}</ul>` : ''}
+      </section>
+    </div>
+  </div>`;
+  return panelLayout(c, { title: `${member.name} · hesap`, csrf, nav: adminNav('team', csrf, demoAdmin), home: '/admin', tabs: adminTabs('team', demoAdmin), body, scripts: ['/js/dashboard.js?v=22'] });
 }
 
 // Ayarlar › Mesajlar: WhatsApp mesaj metinleri
@@ -2472,6 +2586,7 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
 
 module.exports = {
   activityPage,
+  staffAccount,
   tasksPage,
   portfolioTagsPage,
   prebookList, prebookForm, arwPage,

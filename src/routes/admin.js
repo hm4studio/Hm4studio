@@ -357,7 +357,7 @@ function register(router) {
     const date = appt.cleanDate(query.get('tarih'));
     const list = date ? db.eventsOn(date, Number(query.get('haric')) || 0) : [];
     const pre = date ? db.openPrebookings().map((p) => ({ p, w: appt.preWhen(p) })).filter(({ w }) => w.month && (w.exact ? w.date === date : w.month === date.slice(0, 7))) : [];
-    json(res, { ok: true, items: list.map((e) => ({ name: e.couple_name, type: e.event_type, time: e.start_time })), pre: pre.map(({ p, w }) => ({ name: p.name, type: p.event_type, when: w.exact ? 'aynı gün' : `${w.label}, gün belli değil` })) });
+    json(res, { ok: true, hol: date ? require('../holidays').warning(date) : '', items: list.map((e) => ({ name: e.couple_name, type: e.event_type, time: e.start_time })), pre: pre.map(({ p, w }) => ({ name: p.name, type: p.event_type, when: w.exact ? 'aynı gün' : `${w.label}, gün belli değil` })) });
   });
 
   // ── Ekip ──
@@ -374,7 +374,10 @@ function register(router) {
     if (!requireAdmin(req, res)) return;
     const editId = Number(query.get('duzenle')) || null;
     const member = editId ? db.getMember(editId) : null;
-    html(res, views.teamPage(getContent(), { team: db.listTeam(), member, memberEvents: member ? db.memberEvents(member.id) : [], csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const staff = require('../staff');
+    const types = getContent().appointments?.eventTypes || [];
+    const balances = Object.fromEntries(staff.overview(types, Number(today().slice(0, 4))).people.map((p) => [p.id, p.balance]));
+    html(res, views.teamPage(getContent(), { team: db.listTeam(), member, rates: member ? db.memberRates(member.id) : {}, balances, memberEvents: member ? db.memberEvents(member.id) : [], csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   router.post('/admin/ekip', async (req, res) => {
@@ -383,7 +386,7 @@ function register(router) {
     const m = readMember(form);
     if (!m.name) setFlash(req, { message: 'İsim yazın.', type: 'error' });
     else if (m.phoneRaw && !m.phone) setFlash(req, { message: 'Telefon numarası geçersiz (örn. 0532 123 45 67).', type: 'error' });
-    else { db.addMember(m); setFlash(req, { message: `${m.name} ekibe eklendi.`, type: 'success' }); }
+    else { const id = db.addMember(m); db.setMemberRates(id, readRates(form)); setFlash(req, { message: `${m.name} ekibe eklendi.`, type: 'success' }); }
     redirect(res, '/admin/ekip');
   });
 
@@ -396,8 +399,71 @@ function register(router) {
     if (!m.name) { setFlash(req, { message: 'İsim yazın.', type: 'error' }); return redirect(res, `/admin/ekip?duzenle=${member.id}`); }
     if (m.phoneRaw && !m.phone) { setFlash(req, { message: 'Telefon numarası geçersiz (örn. 0532 123 45 67).', type: 'error' }); return redirect(res, `/admin/ekip?duzenle=${member.id}`); }
     db.updateMember(member.id, m);
+    db.setMemberRates(member.id, readRates(form));
     setFlash(req, { message: `${m.name} güncellendi.`, type: 'success' });
     redirect(res, '/admin/ekip');
+  });
+
+  // ── Personel hesabı: hakediş, ödemeler ──
+  function readRates(form) {
+    const out = {};
+    for (const t of getContent().appointments?.eventTypes || []) out[t] = appt.money(form[`rate_${t}`]);
+    return out;
+  }
+  router.get('/admin/ekip/:id/hesap', (req, res, { params }) => {
+    if (!requireAdmin(req, res)) return;
+    const member = db.getMember(toId(params.id));
+    if (!member) throw new HttpError(404, 'Bulunamadı');
+    const types = getContent().appointments?.eventTypes || [];
+    html(res, views.staffAccount(getContent(), { member, acc: require('../staff').account(member.id, types), rates: db.memberRates(member.id), csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+  });
+  router.post('/admin/ekip/:id/odeme', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const member = db.getMember(toId(params.id));
+    if (!member) throw new HttpError(404, 'Bulunamadı');
+    const amount = appt.money(form.amount);
+    const paidOn = appt.cleanDate(form.paidOn) || today();
+    if (!amount) setFlash(req, { message: 'Tutarı yazın.', type: 'error' });
+    else {
+      db.addStaffPayment({ memberId: member.id, amount, paidOn, method: cleanText(form.method, 30), note: cleanText(form.note, 200) });
+      setFlash(req, { message: `${member.name} için ${amount.toLocaleString('tr-TR')} ₺ ödeme kaydedildi.`, type: 'success' });
+    }
+    redirect(res, `/admin/ekip/${member.id}/hesap`);
+  });
+  router.post('/admin/ekip/:id/odeme/:pid/sil', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const member = db.getMember(toId(params.id));
+    if (!member) throw new HttpError(404, 'Bulunamadı');
+    db.deleteStaffPayment(toId(params.pid), member.id);
+    setFlash(req, { message: 'Ödeme kaydı silindi.', type: 'success' });
+    redirect(res, `/admin/ekip/${member.id}/hesap`);
+  });
+  // Bu çekime özel ücret (ekstra, farklı tutar); boş bırakılırsa kişinin normal ücreti
+  router.post('/admin/ekip/:id/ucret', async (req, res, { params }) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    const member = db.getMember(toId(params.id));
+    if (!member) throw new HttpError(404, 'Bulunamadı');
+    const raw = String(form.fee ?? '').trim();
+    db.setAssignmentFee(toId(form.eventId), member.id, raw === '' ? null : appt.money(raw));
+    setFlash(req, { message: raw === '' ? 'Normal ücrete döndü.' : 'Bu çekimin ücreti güncellendi.', type: 'success' });
+    redirect(res, `/admin/ekip/${member.id}/hesap#gorevler`);
+  });
+  router.get('/admin/rapor/personel.csv', (req, res, { query }) => {
+    if (!requireAdmin(req, res)) return;
+    const y = Number(query.get('yil')) || Number(today().slice(0, 4));
+    const types = getContent().appointments?.eventTypes || [];
+    const staff = require('../staff');
+    const lines = ['Personel;Görev;Tarih;Çift;Çekim;Hakediş;Ödeme'];
+    for (const m of db.listTeam()) {
+      const acc = staff.account(m.id, types);
+      for (const r of acc.rows) if (r.done && r.event_date.startsWith(String(y))) lines.push([m.name, m.role, appt.shortDate(r.event_date), r.couple_name, r.event_type, r.amount, ''].map(csvCell).join(';'));
+      for (const p of acc.payments) if (p.paid_on.startsWith(String(y))) lines.push([m.name, m.role, appt.shortDate(p.paid_on), p.note || p.method || 'Ödeme', '', '', p.amount].map(csvCell).join(';'));
+    }
+    res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="hm4-personel-${y}.csv"`, 'Cache-Control': 'no-store' });
+    res.end('\ufeff' + lines.join('\r\n'));
   });
 
   router.post('/admin/ekip/:id/sil', async (req, res, { params }) => {
@@ -774,7 +840,7 @@ function register(router) {
   router.get('/admin/rapor', (req, res, { query }) => {
     if (!requireAdmin(req, res)) return;
     const y = Number(query.get('yil')) || Number(today().slice(0, 4));
-    html(res, views.report(getContent(), { year: y, events: db.allEvents(), payments: db.allPayments(), couples: db.listCouples(), csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+    html(res, views.report(getContent(), { staff: require('../staff').overview(getContent().appointments?.eventTypes || [], y), year: y, events: db.allEvents(), payments: db.allPayments(), couples: db.listCouples(), csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
   });
 
   // Etkinlik satırları → Excel'de açılan CSV (her etkinlik bir satır)

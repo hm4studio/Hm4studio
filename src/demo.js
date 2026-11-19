@@ -80,6 +80,11 @@ function seed() {
     Mert: db.addMember({ name: 'Mert Aksoy', role: 'Videocu', phone: null, notes: 'Sony FX3, gimbal. Drone lisansı var.', active: true, waOptin: true }),
     Ece: db.addMember({ name: 'Ece Kara', role: 'Asistan', phone: null, notes: 'Işık ve gelin hazırlığı yardımı.', active: true, waOptin: true }),
   };
+  // Örnek çekim ücretleri ve bir avans ödemesi (Rapor › Personel giderleri ve Ekip › Hesap için)
+  db.setMemberRates(crew.Hasan, { 'Düğün': 3000, 'Nişan': 1800, 'Kına': 1800, 'Söz': 1200, 'Dış Çekim': 1500, 'Diğer': 1200 });
+  db.setMemberRates(crew.Mert, { 'Düğün': 3500, 'Nişan': 2000, 'Kına': 2000, 'Söz': 1500, 'Dış Çekim': 1800, 'Diğer': 1500 });
+  db.setMemberRates(crew.Ece, { 'Düğün': 1500, 'Nişan': 1000, 'Kına': 1000, 'Söz': 800, 'Dış Çekim': 800, 'Diğer': 800 });
+  db.addStaffPayment({ memberId: crew.Hasan, amount: 3000, paidOn: d(-20), method: 'Havale', note: 'Avans' });
   const crewIds = (names) => String(names || '').split(',').map((n) => crew[n.trim()]).filter(Boolean);
 
   let photoCount = 0;
