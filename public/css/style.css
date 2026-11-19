@@ -3721,3 +3721,26 @@ body.is-touring .install { display: none !important; }
   .ed-flow__step { flex: 0 0 auto; min-width: 86px; }
   .ed-jobs { grid-template-columns: 1fr; }
 }
+
+/* ── Son gelişmeler ── */
+.act { margin: 0 0 22px; }
+.act .ahd { display: flex; align-items: baseline; gap: 10px; }
+.act .ahd a { margin-left: auto; }
+.act__new { font-size: .75rem; color: #8a7448; background: #f4efe4; border-radius: 20px; padding: 2px 9px; }
+.act__list { list-style: none; margin: 0; padding: 0; }
+.act__row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid #f0ebe1; }
+.act__row:first-child { border-top: 0; }
+.act__row.is-new { background: #fbf8f1; }
+.act__row[hidden] { display: none; }
+.act__row .aitem__av { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; }
+.act__row .aitem__av svg { width: 18px; height: 18px; }
+.act__m { flex: 1; min-width: 0; text-decoration: none; color: #1f2a3a; display: flex; flex-direction: column; gap: 2px; font-size: .9rem; line-height: 1.4; }
+.act__m strong { font-weight: 500; }
+.act__m small { font-size: .75rem; color: var(--pencil); }
+.act__go { flex: none; white-space: nowrap; }
+.act__dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #b49a66; }
+.act__chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+.act__chips .chip { font: inherit; font-size: .8rem; padding: 6px 12px; border-radius: 20px; background: #fff; border: 1px solid #e6e0d4; color: var(--pencil); cursor: pointer; }
+.act__chips .chip.is-on { background: #1f2a3a; border-color: #1f2a3a; color: #fff; }
+.act-page { max-width: 760px; padding-bottom: 40px; }
+@media (max-width: 640px) { .act__row { padding: 11px 12px; gap: 10px; } .act__go { padding: 6px 9px; font-size: .78rem; } }

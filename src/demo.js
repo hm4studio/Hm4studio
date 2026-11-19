@@ -125,6 +125,23 @@ function seed() {
   }
   if (heroId) db.setSetting('hero_portfolio_id', String(heroId));
 
+  // Son gelişmeler (ana sayfa) için örnek kayıtlar
+  const byName = Object.fromEntries(db.listCouples().map((x) => [x.name, x.id]));
+  const ago = (min) => new Date(Date.now() - min * 60000).toISOString();
+  for (const [min, name, kind, text, label, url] of [
+    [4200, 'Deniz & Kaan', 'sozlesme', 'Deniz & Kaan sözleşmeyi onayladı (imzalayan: Deniz Acar)', '', ''],
+    [2900, 'Ayşe & Mehmet', 'plan', 'Ayşe & Mehmet çekim günü planını gönderdi', 'Planı gör', '#plan'],
+    [1500, 'Elif & Burak', 'secim', 'Elif & Burak albüm için fotoğraf seçmeye başladı', '', ''],
+    [95, 'Selin & Emre', 'secim', 'Selin & Emre albüm seçimini tamamladı · 3 kare + kapak', 'ARW bul', '/arw'],
+  ]) {
+    const id = byName[name];
+    if (!id) continue;
+    const base = `/admin/ciftler/${id}`;
+    if (kind === 'secim' && !label) db.markNotified(`secimbasladi:${id}`);
+    const r = db.logActivity({ coupleId: id, kind, text, url: `${base}#album`, actionLabel: label, actionUrl: label ? (url.startsWith('#') ? base + url : base + url) : '' });
+    db.db.prepare('UPDATE activity SET created_at = ?, seen_at = ? WHERE id = ?').run(ago(min), min > 1000 ? ago(min) : null, r.lastInsertRowid);
+  }
+
   nextResetAt = Date.now() + config.demoResetHours * 3600 * 1000;
   console.log(`Demo verileri hazırlandı (${photoCount} çift fotoğrafı, ${(manifest.portfolio || []).length} portfolyo). Sonraki sıfırlama: ${new Date(nextResetAt).toLocaleString('tr-TR')}`);
 }

@@ -424,7 +424,7 @@ function couplesPage(c, { couples, csrf, flash: f, demoAdmin, prebookings = [] }
         : h`<p class="sec-empty">Henüz randevu yok. <a href="/admin/randevu/yeni">İlk randevuyu oluşturun.</a></p>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=21'] });
+  return panelLayout(c, { title: 'Çiftler', csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/dashboard.js?v=22'] });
 }
 
 // Bugünün hatırlatmaları: saati geçene kadar Bugün ekranının en üstünde
@@ -452,7 +452,53 @@ function taskNotice(items) {
   </section>`;
 }
 
-function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], orderPrompts = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
+// Son gelişmeler: çiftlerin yaptıkları (seçim, onay, indirme…) — görülmeyenler altın noktalı
+const ACT = { secim: ['heart', 'sec', 'Seçim'], album: ['book', 'alb', 'Albüm'], siparis: ['check', 'pay', 'Albüm'], sozlesme: ['sign', 'soz', 'Sözleşme'], plan: ['calendar', 'cek', 'Diğer'], teklif: ['sign', 'pay', 'Teklif ve talep'], talep: ['inbox', 'sec', 'Teklif ve talep'], indirme: ['download', 'vid', 'Diğer'] };
+const ACT_FILTERS = ['Seçim', 'Albüm', 'Sözleşme', 'Teklif ve talep', 'Diğer'];
+function actWhen(iso) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 1) return 'şimdi';
+  if (min < 60) return `${min} dk önce`;
+  if (min < 180) return `${Math.floor(min / 60)} saat önce`;
+  const loc = new Date(new Date(iso).getTime() + 3 * 3600e3).toISOString();
+  const n = daysBetween(loc.slice(0, 10), today());
+  if (n <= 0) return `Bugün ${loc.slice(11, 16)}`;
+  if (n === 1) return `Dün ${loc.slice(11, 16)}`;
+  return new Date(`${loc.slice(0, 10)}T12:00:00`).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' });
+}
+function actRow(a) {
+  const [ic, tone, grp] = ACT[a.kind] || ['bell', 'soz', 'Diğer'];
+  const name = a.couple_name && a.text.startsWith(a.couple_name) ? a.couple_name : '';
+  return h`<li class="act__row${a.seen_at ? '' : ' is-new'}" data-grp="${grp}">
+    <span class="aitem__av av--${tone}">${icon(ic)}</span>
+    <a class="act__m" href="${a.url || '/admin'}"><span>${name ? h`<strong>${name}</strong>${a.text.slice(name.length)}` : a.text}</span><small>${actWhen(a.created_at)}</small></a>
+    ${a.action_label ? h`<a class="btn btn--outline btn--sm act__go" href="${a.action_url}">${a.action_label}</a>` : ''}
+    ${a.seen_at ? '' : h`<span class="act__dot" aria-label="Yeni"></span>`}
+  </li>`;
+}
+function activityBlock(list, unseen) {
+  if (!list.length) return '';
+  return h`<section class="act" aria-labelledby="act-title">
+    <div class="ahd"><h2 id="act-title">Son gelişmeler</h2>${unseen ? h`<span class="act__new">${unseen} yeni</span>` : ''}<a href="/admin/gelismeler">Tümü</a></div>
+    <ul class="abox act__list">${list.map(actRow)}</ul>
+  </section>`;
+}
+function activityPage(c, { list, csrf, demoAdmin }) {
+  const body = h`
+  <div class="container act-page">
+    <a class="back-link" href="/admin">${icon('left')}Bugün</a>
+    <h1 class="page-title">Son gelişmeler</h1>
+    <div class="act__chips" role="toolbar" aria-label="Süz">
+      <button type="button" class="chip is-on" data-act-f="">Tümü</button>
+      ${ACT_FILTERS.map((g) => h`<button type="button" class="chip" data-act-f="${g}">${g}</button>`)}
+    </div>
+    ${list.length ? h`<ul class="abox act__list">${list.map(actRow)}</ul>` : h`<p class="muted">Henüz gelişme yok. Çiftler seçim yaptıkça, onay verdikçe burada görünecek.</p>`}
+  </div>`;
+  return panelLayout(c, { title: 'Son gelişmeler', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=22'] });
+}
+
+function dashboard(c, { activity = [], unseenActivity = 0, outbox = [], selections = [], quotes = [], newLeads = 0, reminders = [], prebookings = [], signed = [], disk = null, adminName = '', checks = [], orderPrompts = [], tasks = [], team = [], couples, monthEvents, upcoming, ym, csrf, flash: f, demoAdmin }) {
   const t = today();
   const tm = addDays(t, 1);
   const tomorrowDue = couples.filter((k) => k.due_date === tm && k.stage < c.stages.length - 1);
@@ -474,6 +520,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${flashBlock(f)}
     ${remNotice(reminders.filter((r) => r.due_date === t && (!r.due_time || r.due_time > require('../reminders').nowHm())), csrf)}
     ${taskNotice(newTasks)}
+    ${activityBlock(activity, unseenActivity)}
     ${disk && disk.used >= 0.85 ? h`<div class="flash flash--error" role="alert">Sunucu diski %${Math.round(disk.used * 100)} dolu, ${(disk.free / 1024 ** 3).toFixed(1)} GB boş yer kaldı. Disk dolarsa fotoğraf yüklenemez. <a href="/admin/veriler">Veriler ve arşiv</a></div>` : ''}
 
     <section class="ahero is-hidden" data-money aria-label="Özet">
@@ -573,7 +620,7 @@ function dashboard(c, { outbox = [], selections = [], quotes = [], newLeads = 0,
     ${prebookings.length ? prebookBlock(prebookings) : ''}
 
   </div>`;
-  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=21', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Bugün', csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=22', '/js/outbox.js?v=4'] });
 }
 
 // Bir etkinlik bloğu (formda tekrar eder; JS "Tarih ekle" ile kopyalar)
@@ -776,7 +823,7 @@ function appointmentPage(c, { values = {}, action, title, submitLabel, csrf, err
       </div>
     </form>
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=21', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/dashboard.js?v=22', '/js/outbox.js?v=4'] });
 }
 
 // Kişi kartı özeti, etkinlikler ve ödemeler (çift sayfasında)
@@ -869,7 +916,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=109">
+<link rel="stylesheet" href="/css/style.css?v=110">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -1005,7 +1052,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=109"></head>
+  <link rel="stylesheet" href="/css/style.css?v=110"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -2420,10 +2467,11 @@ function packagesPage(c, { packages, pkg, csrf, flash: f, demoAdmin }) {
       </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=21', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Paketler', csrf, nav: adminNav('packages', csrf, demoAdmin), home: '/admin', tabs: adminTabs('packages', demoAdmin), body, scripts: ['/js/dashboard.js?v=22', '/js/outbox.js?v=4'] });
 }
 
 module.exports = {
+  activityPage,
   tasksPage,
   portfolioTagsPage,
   prebookList, prebookForm, arwPage,

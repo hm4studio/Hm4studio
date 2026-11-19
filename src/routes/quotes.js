@@ -137,7 +137,7 @@ function register(router) {
     if (!q) throw new HttpError(404, 'Teklif bulunamadı');
     // İlk açılış stüdyoya bildirilir (stüdyonun kendi önizlemesi sayılmaz)
     if (req.session?.kind !== 'admin' && !query.get('onizleme') && db.markQuoteViewed(q.id)) {
-      push.toAdmin({ title: 'Teklif açıldı', body: `${q.name} teklifinizi görüntüledi.`, url: `/admin/teklif/${q.id}` }).catch(() => {});
+      require('../activity').notify('teklif', { title: 'Teklif açıldı', text: `${q.name} teklifinizi görüntüledi`, url: `/admin/teklif/${q.id}`, telegram: false });
     }
     html(res, views.publicPage(getContent(), { q, today: today() }));
   });
@@ -159,7 +159,7 @@ function register(router) {
     if (!name || !phone || form.kvkk !== '1') return html(res, views.publicPage(c, { q, today: today(), error: 'Adınızı, geçerli bir telefon numarası ve onay kutusunu doldurun.' }), 400);
     if (db.acceptQuote(q.id, name, phone)) {
       if (q.lead_id) db.setLeadStatus(q.lead_id, 'rezervasyon');
-      push.toAdmin({ title: 'Teklif kabul edildi', body: `${name} teklifi kabul etti (${views.total(q).toLocaleString('tr-TR')} ₺). Randevuya çevirebilirsiniz.`, url: `/admin/teklif/${q.id}` }).catch(() => {});
+      require('../activity').notify('teklif', { title: 'Teklif kabul edildi', text: `${name} teklifi kabul etti (${views.total(q).toLocaleString('tr-TR')} ₺)`, url: `/admin/teklif/${q.id}`, action: ['Randevuya çevir', `/admin/randevu/yeni?teklif=${q.id}`] });
     }
     html(res, views.publicPage(c, { q: db.getQuote(q.id), today: today(), done: true }));
   });

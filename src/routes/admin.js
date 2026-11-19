@@ -101,6 +101,12 @@ function register(router) {
   });
 
   // ── Bugün: yapılacaklar, program, bu ay, çiftler ──
+  router.get('/admin/gelismeler', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const list = db.listActivity(150);
+    html(res, views.activityPage(getContent(), { list, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req) }));
+    if (list.length && !demo.isDemoAdmin(req)) db.markActivitySeen(list[0].id);
+  });
   router.get('/admin', (req, res) => {
     if (!requireAdmin(req, res)) return;
     const t = today();
@@ -114,7 +120,10 @@ function register(router) {
     const outbox = wa.autoSend() ? [] : require('../outbox').list();
     const quotes = db.listQuotes().filter((q) => q.status === 'kabul' && !q.couple_id);
     const newLeads = db.listLeads().filter((l) => l.status === 'yeni').length;
-    html(res, views.dashboard(c, { outbox, selections, quotes, newLeads, reminders: db.openReminders(), prebookings: db.openPrebookings(), signed: db.unseenSignedContracts(), checks: require('../production').dueChecks(), orderPrompts: require('./orders').prompts(), tasks: db.openTasks(), team: db.listTeam().filter((m) => m.active), adminName: (() => { const u = db.getAdmin(req.session.userId)?.username || ''; return /^(admin|yonetici|demo)/i.test(u) || /\d/.test(u) ? '' : u.charAt(0).toLocaleUpperCase('tr-TR') + u.slice(1); })(), disk: require('../reminders').diskUsage(), couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    const activity = db.listActivity(5);
+    const unseenActivity = db.unseenActivity();
+    html(res, views.dashboard(c, { activity, unseenActivity, outbox, selections, quotes, newLeads, reminders: db.openReminders(), prebookings: db.openPrebookings(), signed: db.unseenSignedContracts(), checks: require('../production').dueChecks(), orderPrompts: require('./orders').prompts(), tasks: db.openTasks(), team: db.listTeam().filter((m) => m.active), adminName: (() => { const u = db.getAdmin(req.session.userId)?.username || ''; return /^(admin|yonetici|demo)/i.test(u) || /\d/.test(u) ? '' : u.charAt(0).toLocaleUpperCase('tr-TR') + u.slice(1); })(), disk: require('../reminders').diskUsage(), couples: couplesAll, monthEvents: db.eventsBetween(`${ym}-01`, `${ym}-31`), upcoming: db.eventsBetween(t, addDays(t, 30)), ym, csrf: req.session.csrf, flash: takeFlash(req), demoAdmin: demo.isDemoAdmin(req) }));
+    if (activity.length && !demo.isDemoAdmin(req)) db.markActivitySeen(activity[0].id);
   });
 
   router.get('/admin/ciftler', (req, res) => {

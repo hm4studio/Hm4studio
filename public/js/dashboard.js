@@ -325,3 +325,10 @@
   };
   sweep(); setInterval(sweep, 30000);
 })();
+
+// Son gelişmeler: türe göre süz
+document.querySelectorAll('[data-act-f]').forEach((b) => b.addEventListener('click', () => {
+  const g = b.dataset.actF;
+  document.querySelectorAll('[data-act-f]').forEach((x) => x.classList.toggle('is-on', x === b));
+  document.querySelectorAll('.act__row').forEach((r) => { r.hidden = Boolean(g) && r.dataset.grp !== g; });
+}));

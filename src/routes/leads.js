@@ -105,7 +105,7 @@ function register(router) {
     }
     if (!open) {
       try {
-        require('../push').toAdmin({ title: 'Yeni talep', body: [lead.name, lead.eventDate ? lead.eventDate.split('-').reverse().join('.') : '', lead.service].filter(Boolean).join(' · '), url: '/admin/talepler', tag: `talep-${id}` }).catch(() => {});
+        require('../activity').notify('talep', { title: 'Yeni talep', text: [lead.name, lead.eventDate ? lead.eventDate.split('-').reverse().join('.') : '', lead.service].filter(Boolean).join(' · '), url: '/admin/talepler', action: ['Talepler', '/admin/talepler'], tag: `talep-${id}` });
       } catch (err) { console.error('Bildirim:', err.message); }
     }
     redirect(res, '/talep?tamam=1');

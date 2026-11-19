@@ -447,6 +447,19 @@ function withDims(rows) {
 }
 
 // Kart özeti: etkinlik sayısı, toplam tutar, ödenen, sıradaki etkinlik
+// Son gelişmeler: çiftlerin yaptıkları (seçim, onay, indirme...) ana sayfada kalıcı olarak görünsün
+db.exec(`CREATE TABLE IF NOT EXISTS activity (
+  id INTEGER PRIMARY KEY,
+  couple_id INTEGER REFERENCES couples(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  text TEXT NOT NULL,
+  url TEXT NOT NULL DEFAULT '',
+  action_label TEXT NOT NULL DEFAULT '',
+  action_url TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  seen_at TEXT
+); CREATE INDEX IF NOT EXISTS activity_created ON activity(created_at);`);
+
 const CARD_SQL = `
   SELECT c.*,
     (SELECT COUNT(*) FROM photos p WHERE p.couple_id = c.id) AS photo_count,
@@ -467,6 +480,14 @@ function bySerial(rows) { return rows.sort((a, b) => serialCmp.compare(a.origina
 
 module.exports = {
   db,
+
+  // ── Son gelişmeler ──
+  logActivity: ({ coupleId = null, kind, text, url = '', actionLabel = '', actionUrl = '' }) =>
+    q('INSERT INTO activity(couple_id, kind, text, url, action_label, action_url) VALUES(?, ?, ?, ?, ?, ?)').run(coupleId, kind, text, url, actionLabel, actionUrl),
+  listActivity: (limit = 8) => q(`SELECT a.*, c.name AS couple_name FROM activity a LEFT JOIN couples c ON c.id = a.couple_id ORDER BY a.id DESC LIMIT ?`).all(limit),
+  unseenActivity: () => q('SELECT COUNT(*) AS n FROM activity WHERE seen_at IS NULL').get().n,
+  markActivitySeen: (upToId) => q("UPDATE activity SET seen_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE seen_at IS NULL AND id <= ?").run(upToId),
+  pruneActivity: () => q("DELETE FROM activity WHERE created_at < strftime('%Y-%m-%dT%H:%M:%fZ','now','-180 days')").run(),
 
   // ── Ayarlar ──
   getSetting: (key) => q('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? null,
@@ -828,7 +849,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM ps_jobs; DELETE FROM photo_versions; DELETE FROM orig_purge; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications;
+    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM ps_jobs; DELETE FROM photo_versions; DELETE FROM orig_purge; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications; DELETE FROM activity;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

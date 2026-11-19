@@ -39,14 +39,14 @@ function markDownload(couple, kind) {
     body: due ? `Orijinal boyuttaki dosyalar ${trDay(due)} tarihinde sunucudan silinecek; panelde küçük halleri kalır. İndirmeyi tamamladığınızdan emin olun.` : 'İndirdiğiniz için teşekkürler.',
     url: '/panel/fotograflar', tag: `indirme-${kind}`,
   }).catch(() => {});
-  push.toAdmin({ title: `${couple.name} fotoğrafları indirdi`, body: `${KINDS[kind]} toplu indirildi.${due ? ` Orijinaller ${trDay(due)} tarihinde silinecek.` : ''}`, url: `/admin/ciftler/${couple.id}` }).catch(() => {});
+  require('./activity').notify('indirme', { coupleId: couple.id, title: `${couple.name} fotoğrafları indirdi`, text: `${couple.name} ${String(KINDS[kind] || 'fotoğrafları').toLocaleLowerCase('tr-TR')} indirdi${due ? ` · orijinaller ${trDay(due)} silinecek` : ''}`, url: `/admin/ciftler/${couple.id}`, telegram: false });
   return row(couple.id, kind);
 }
 
 function markVideo(couple) {
   if (couple.dl_video_at) return;
   q('UPDATE couples SET dl_video_at = ? WHERE id = ?').run(nowIso(), couple.id);
-  push.toAdmin({ title: `${couple.name} videoyu indirdi`, body: 'Çift teslim videosunu indirdi.', url: `/admin/ciftler/${couple.id}` }).catch(() => {});
+  require('./activity').notify('indirme', { coupleId: couple.id, title: `${couple.name} videoyu indirdi`, text: `${couple.name} teslim videosunu indirdi`, url: `/admin/ciftler/${couple.id}`, telegram: false });
 }
 
 // Albüm çalışması sürüyor mu? (seçim yapılmış, tasarım onaylanmamış)

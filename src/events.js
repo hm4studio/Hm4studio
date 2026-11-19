@@ -8,6 +8,7 @@ const db = require('./db');
 const wa = require('./whatsapp');
 const { getContent, getWhatsapp } = require('./content');
 const push = require('./push');
+const activity = require('./activity');
 
 // Telefon bildirimi hatası hiçbir işlemi durdurmasın
 const safePush = (fn) => { try { const p = fn(); if (p?.catch) p.catch(() => {}); } catch (err) { console.error('Bildirim:', err.message); } };
@@ -125,21 +126,20 @@ function teamAssigned(eventId, memberIds) {
 
 function albumLocked(couple) {
   const c = db.getCouple(couple.id);
-  safePush(() => require('./telegram').notifyAll(`📖 Albüm seçimi tamamlandı\n${c.name}: ${db.favoriteCount(c.id)} kare${c.album_cover_id ? ' + kapak' : ''}.\n${config.siteUrl}/admin/ciftler/${c.id}#album`));
-  safePush(() => push.toAdmin({ title: 'Albüm seçimi tamamlandı', body: `${c.name} albüm seçimini tamamladı: ${db.favoriteCount(c.id)} kare${c.album_cover_id ? ' + kapak' : ''}.`, url: `/admin/ciftler/${c.id}`, tag: `album-${c.id}` }));
+  activity.notify('secim', { coupleId: c.id, title: 'Albüm seçimi tamamlandı', text: `${c.name} albüm seçimini tamamladı · ${db.favoriteCount(c.id)} kare${c.album_cover_id ? ' + kapak' : ''}`, url: `/admin/ciftler/${c.id}#album`, action: ['ARW bul', `/admin/ciftler/${c.id}/arw`], tag: `album-${c.id}` });
   if (!config.n8nWebhookUrl) return;
   post({ event: 'album_tamamlandi', at: new Date().toISOString(), couple: coupleInfo(c), selected: db.favoriteCount(c.id), limit: c.album_limit });
 }
 
 function planSaved(couple) {
   const c = db.getCouple(couple.id);
-  safePush(() => push.toAdmin({ title: 'Çekim günü planı iletildi', body: `${c.name} çekim günü planını gönderdi.`, url: `/admin/ciftler/${c.id}`, tag: `plan-${c.id}` }));
+  activity.notify('plan', { coupleId: c.id, title: 'Çekim günü planı iletildi', text: `${c.name} çekim günü planını gönderdi`, url: `/admin/ciftler/${c.id}#plan`, action: ['Planı gör', `/admin/ciftler/${c.id}#plan`], tag: `plan-${c.id}` });
   if (!config.n8nWebhookUrl) return;
   post({ event: 'plan_kaydedildi', at: new Date().toISOString(), couple: coupleInfo(c) });
 }
 
 function newLead(lead) {
-  safePush(() => push.toAdmin({ title: 'Yeni talep', body: [lead.name, lead.eventDate ? lead.eventDate.split('-').reverse().join('.') : '', lead.service, lead.message ? String(lead.message).slice(0, 80) : ''].filter(Boolean).join(' · '), url: '/admin/talepler', tag: `talep-${lead.id}` }));
+  activity.notify('talep', { title: 'Yeni talep', text: [lead.name, lead.eventDate ? lead.eventDate.split('-').reverse().join('.') : '', lead.service, lead.message ? String(lead.message).slice(0, 80) : ''].filter(Boolean).join(' · '), url: '/admin/talepler', action: ['Talepler', '/admin/talepler'], tag: `talep-${lead.id}` });
   if (!config.n8nWebhookUrl) return;
   post({ event: 'yeni_talep', at: new Date().toISOString(), lead, adminUrl: `${config.siteUrl}/admin/talepler` });
 }
@@ -151,8 +151,7 @@ function flushPhotoTimers() {
 
 // Çift sözleşmeyi onayladı (n8n üzerinden size bildirim gönderilebilir)
 function contractSigned(couple, signerName) {
-  safePush(() => push.toAdmin({ title: 'Sözleşme onaylandı', body: `${couple.name} sözleşmeyi onayladı (imzalayan: ${signerName}).`, url: `/admin/ciftler/${couple.id}#sozlesme`, tag: `soz-${couple.id}` }));
-  safePush(() => require('./telegram').notifyAll(`✅ Sözleşme onaylandı\n${couple.name} sözleşmeyi onayladı (imzalayan: ${signerName}).`));
+  activity.notify('sozlesme', { coupleId: couple.id, title: 'Sözleşme onaylandı', text: `${couple.name} sözleşmeyi onayladı (imzalayan: ${signerName})`, url: `/admin/ciftler/${couple.id}#sozlesme`, tag: `soz-${couple.id}` });
   safePush(() => push.toCouple(couple.id, { title: 'Sözleşmeniz onaylandı', body: 'Teşekkür ederiz! Onaylı sözleşmenize panelinizden her zaman ulaşabilirsiniz.', url: '/panel/sozlesme', tag: 'sozlesme' }));
   const c = db.getCouple(couple.id);
   const k = db.activeContract(couple.id);
@@ -181,9 +180,9 @@ function albumDesignReady(coupleId, revised = 0) {
 }
 function albumDesignReviewed(coupleId, approved, changes) {
   const c = db.getCouple(coupleId);
-  safePush(() => push.toAdmin(approved
-    ? { title: 'Albüm tasarımı onaylandı', body: `${c.name} albüm tasarımını onayladı. Baskıya gönderebilirsiniz.`, url: `/admin/ciftler/${c.id}#album`, tag: `ad-${c.id}` }
-    : { title: 'Albümde değişiklik istendi', body: `${c.name} ${changes} sayfada değişiklik istedi.`, url: `/admin/ciftler/${c.id}#album`, tag: `ad-${c.id}` }));
+  activity.notify('album', approved
+    ? { coupleId: c.id, title: 'Albüm tasarımı onaylandı', text: `${c.name} albüm tasarımını onayladı`, url: `/admin/ciftler/${c.id}#album`, action: ['Siparişe geç', `/admin/ciftler/${c.id}/siparis`], tag: `ad-${c.id}` }
+    : { coupleId: c.id, title: 'Albümde değişiklik istendi', text: `${c.name} albümde ${changes} sayfa için değişiklik istedi`, url: `/admin/ciftler/${c.id}#album`, action: ['Gör', `/admin/album?cift=${c.id}`], tag: `ad-${c.id}` });
 }
 
 // Albüm siparişi çifte onaya gönderildi / çift karar verdi
@@ -193,10 +192,9 @@ function albumOrderSent(coupleId) {
 function albumOrderReviewed(coupleId, approved, note) {
   const c = db.getCouple(coupleId);
   const url = `/admin/ciftler/${c.id}/siparis`;
-  safePush(() => push.toAdmin(approved
-    ? { title: 'Albüm siparişi onaylandı', body: `${c.name} albüm siparişini onayladı. Laba gönderebilirsiniz.`, url, tag: `as-${c.id}` }
-    : { title: 'Siparişte değişiklik istendi', body: `${c.name}: ${note || 'değişiklik istedi'}`, url, tag: `as-${c.id}` }));
-  safePush(() => require('./telegram').notifyAll(approved ? `🧾 Albüm siparişi onaylandı\n${c.name} siparişi onayladı.\n${config.siteUrl}${url}` : `✏️ Albüm siparişinde değişiklik\n${c.name}: ${note || '-'}\n${config.siteUrl}${url}`));
+  activity.notify('siparis', approved
+    ? { coupleId: c.id, title: 'Albüm siparişi onaylandı', text: `${c.name} albüm siparişini onayladı · laba gönderebilirsiniz`, url, action: ['Siparişi aç', url], tag: `as-${c.id}` }
+    : { coupleId: c.id, title: 'Siparişte değişiklik istendi', text: `${c.name}: ${note || 'değişiklik istedi'}`, url, action: ['Siparişi aç', url], tag: `as-${c.id}` });
 }
 
 function videoAdded(coupleId, title) {

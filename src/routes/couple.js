@@ -301,6 +301,11 @@ function register(router) {
       if (!already) throw new HttpError(409, `Albüm sınırına ulaştınız (${couple.album_limit} kare). Eklemek için önce birini çıkarın.`);
     }
     db.setFavorite(photo.couple_id, photo.id, Boolean(on));
+    // İlk kare: "seçmeye başladı" (çift başına bir kez)
+    if (on && !db.wasNotified(`secimbasladi:${couple.id}`)) {
+      db.markNotified(`secimbasladi:${couple.id}`);
+      require('../activity').notify('secim', { coupleId: couple.id, title: 'Fotoğraf seçimi başladı', text: `${couple.name} albüm için fotoğraf seçmeye başladı`, url: `/admin/ciftler/${couple.id}#album`, tag: `secim-${couple.id}`, telegram: false });
+    }
     json(res, { ok: true, on: Boolean(on), count: db.listFavoritePhotos(photo.couple_id).length });
   });
 

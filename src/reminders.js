@@ -79,6 +79,7 @@ function start() {
   setInterval(tick, 60 * 1000).unref();
   setTimeout(diskCheck, 60 * 1000).unref();
   setInterval(diskCheck, 60 * 60 * 1000).unref();
+  setInterval(() => { try { db.pruneActivity(); } catch { /* önemsiz */ } }, 24 * 3600 * 1000).unref();
   const purge = () => { try { require('./purge').run(); } catch (e) { console.error('Orijinal temizliği:', e.message); } };
   setTimeout(purge, 2 * 60 * 1000).unref();
   setInterval(purge, 60 * 60 * 1000).unref();
