@@ -464,7 +464,7 @@ function taskNotice(items) {
 }
 
 // Son gelişmeler: çiftlerin yaptıkları (seçim, onay, indirme…) — görülmeyenler altın noktalı
-const ACT = { secim: ['heart', 'sec', 'Seçim'], album: ['book', 'alb', 'Albüm'], siparis: ['check', 'pay', 'Albüm'], sozlesme: ['sign', 'soz', 'Sözleşme'], plan: ['calendar', 'cek', 'Diğer'], teklif: ['sign', 'pay', 'Teklif ve talep'], talep: ['inbox', 'sec', 'Teklif ve talep'], indirme: ['download', 'vid', 'Diğer'] };
+const ACT = { secim: ['heart', 'sec', 'Seçim'], album: ['book', 'alb', 'Albüm'], siparis: ['check', 'pay', 'Albüm'], sozlesme: ['sign', 'soz', 'Sözleşme'], plan: ['calendar', 'cek', 'Diğer'], teklif: ['sign', 'pay', 'Teklif ve talep'], talep: ['inbox', 'sec', 'Teklif ve talep'], indirme: ['download', 'vid', 'Diğer'], sistem: ['alert', 'pay', 'Diğer'] };
 const ACT_FILTERS = ['Seçim', 'Albüm', 'Sözleşme', 'Teklif ve talep', 'Diğer'];
 function actWhen(iso) {
   const ms = Date.now() - new Date(iso).getTime();
@@ -927,7 +927,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=111">
+<link rel="stylesheet" href="/css/style.css?v=112">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -1096,7 +1096,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=111"></head>
+  <link rel="stylesheet" href="/css/style.css?v=112"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1751,8 +1751,8 @@ function staffAccount(c, { member, acc, rates, csrf, flash: f, demoAdmin }) {
         ${ledger.length ? h`<ul class="ledger">${ledger.map((x) => x.kind === 'job' ? h`
           <li class="ledger__row">
             <span class="ledger__d">${shortDate(x.r.event_date)}</span>
-            <span class="ledger__m"><a href="/admin/ciftler/${x.r.couple_id}">${x.r.couple_name}</a> · ${x.r.event_type || 'Etkinlik'}${x.r.custom ? h` <em class="ledger__tag">özel ücret</em>` : ''}${!x.r.amount ? h` <em class="ledger__tag is-warn">ücret yok</em>` : ''}</span>
-            <b class="ledger__a">+${tl(x.r.amount)}</b>${feeForm(x.r)}
+            <span class="ledger__m">${x.r.archived ? x.r.couple_name : h`<a href="/admin/ciftler/${x.r.couple_id}">${x.r.couple_name}</a>`} · ${x.r.event_type || 'Etkinlik'}${x.r.archived ? h` <em class="ledger__tag">silinen çift</em>` : ''}${x.r.custom ? h` <em class="ledger__tag">özel ücret</em>` : ''}${!x.r.amount ? h` <em class="ledger__tag is-warn">ücret yok</em>` : ''}</span>
+            <b class="ledger__a">+${tl(x.r.amount)}</b>${x.r.archived ? '' : feeForm(x.r)}
           </li>` : h`
           <li class="ledger__row is-pay">
             <span class="ledger__d">${shortDate(x.p.paid_on)}</span>

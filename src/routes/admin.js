@@ -1350,6 +1350,7 @@ function register(router) {
     const couple = getCoupleOr404(params.id);
     if (!(await passGuard(req, res, form, `/admin/ciftler/${couple.id}`))) return;
     db.deleteSessionsFor('couple', couple.id);
+    require('../staff').archiveCouple(couple.id, getContent().appointments?.eventTypes || []); // geçmiş personel hakedişleri silinmesin
     db.deleteCouple(couple.id);
     media.removeCoupleFolder(couple.id);
     setFlash(req, { message: `${couple.name} silindi.`, type: 'success' });
@@ -1607,7 +1608,10 @@ function register(router) {
       setFlash(req, { message: 'Yeni şifre en az 10 karakter olmalı.', type: 'error' });
     } else {
       db.setAdminPassword(admin.id, auth.hashPassword(form.next));
-      setFlash(req, { message: 'Şifreniz değiştirildi.', type: 'success' });
+      // Diğer cihazlardaki açık oturumlar kapanır; bu cihazda yeni oturum açılır
+      db.deleteSessionsFor('admin', admin.id);
+      req.session.csrf = auth.startSession(res, 'admin', admin.id); // bildirim yeni oturuma yazılsın
+      setFlash(req, { message: 'Şifreniz değiştirildi. Diğer cihazlardaki oturumlar kapatıldı.', type: 'success' });
     }
     redirect(res, '/admin/hesap');
   });

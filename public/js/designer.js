@@ -17,7 +17,7 @@
 
   // pages: yapraklar (fotoğraf kimlikleri, hikâye sırasıyla) · out: albüme girmeyenler · tpl: yaprağın şablon anahtarı
   // sent: aktarılan yaprakların imzası ("1": imza) · pool/extra: seçim dışından eklenebilenler · albumPages: çiftin onay durumları
-  const S = { photos: [], pages: [[]], out: [], tpl: {}, crop: {}, sheet: 0, cropMode: false, sel: null, dims: {}, couple: {}, set: 'secim', nextId: 1, sent: {}, pool: [], extra: [], albumPages: [], adj: {}, gap: {}, edit: null, multi: [] };
+  const S = { photos: [], pages: [[]], out: [], tpl: {}, crop: {}, sheet: 0, cropMode: false, sel: null, dims: {}, couple: {}, set: 'secim', nextId: 1, sent: {}, pool: [], extra: [], albumPages: [], adj: {}, gap: {}, lock: {}, edit: null, multi: [] };
   const byPid = new Map();
   const photoById = (id) => byPid.get(id);
   const indexPhotos = () => { byPid.clear(); S.photos.forEach((p) => byPid.set(p.id, p)); };
@@ -29,9 +29,9 @@
   }
   // Boş yaprakları at (açık olan hariç); şablon seçimleri yaprakla birlikte kayar
   // Yaprağa bağlı ayarlar: şablon, çerçeve kaydırmaları, boşluk
-  const LEAF_MAPS = ['tpl', 'adj', 'gap'];
+  const LEAF_MAPS = ['tpl', 'adj', 'gap', 'lock'];
   function tidy() {
-    const keep = [], maps = { tpl: {}, adj: {}, gap: {} };
+    const keep = [], maps = { tpl: {}, adj: {}, gap: {}, lock: {} };
     let sheet = 0;
     S.pages.forEach((l, i) => {
       if (!(l.length || i === S.sheet || S.pages.length === 1)) return;
@@ -52,7 +52,7 @@
     // varsayılan kadrajlar saklanmaz (taslak küçük kalsın)
     const crop = {};
     Object.entries(S.crop).forEach(([k, c2]) => { if (c2 && (Math.abs(c2.z - 1) > 0.001 || Math.abs(c2.ox) > 0.0005 || Math.abs(c2.oy) > 0.0005)) crop[k] = c2; });
-    return { v: 2, set: S.set, cfg: v, pages: S.pages, tpl: S.tpl, crop, sheet: S.sheet, sent: S.sent, sentV: 2, extra: S.extra, adj: S.adj, gap: S.gap };
+    return { v: 2, set: S.set, cfg: v, pages: S.pages, tpl: S.tpl, crop, sheet: S.sheet, sent: S.sent, sentV: 2, extra: S.extra, adj: S.adj, gap: S.gap, lock: S.lock };
   }
   let dirty = false;
   // Sayfadan çıkarken bekleyen kaydı hemen gönder (keepalive: sayfa kapansa da istek tamamlanır)
@@ -249,6 +249,9 @@
   function leafTemplate(i, c) {
     const ids = S.pages[i] || [];
     const rk = rankTemplates(ids, leafCfg(i, c));
+    // Değiştirilen fotoğraf: tasarım kilitli (aynı şablon, aynı yuva sırası); yeni kare eskisinin çerçevesine oturur
+    const lk = S.lock[i];
+    if (lk && lk.n === ids.length) { const t = templatesFor(ids.length, leafCfg(i, c)).find((x) => x.key === lk.key); if (t) return { ...t, order: lk.order }; }
     return rk.exact.find((x) => x.key === S.tpl[i]) || rk.near.find((x) => x.key === S.tpl[i]) || defaultTemplate(i, rk);
   }
   // Çerçeve kaydırmaları (yuva sırasıyla): sol/üst taraf büyür, sağ/alt taraf aynı ölçüde küçülür
@@ -296,7 +299,7 @@
     }
     return out;
   }
-  const currentKey = (i, c) => { const ids = S.pages[i] || []; if (!ids.length) return ''; const rk = rankTemplates(ids, leafCfg(i, c)); return S.tpl[i] && [...rk.exact, ...rk.near].some((t) => t.key === S.tpl[i]) ? S.tpl[i] : defaultTemplate(i, rk).key; };
+  const currentKey = (i, c) => { const ids = S.pages[i] || []; if (!ids.length) return ''; if (S.lock[i] && S.lock[i].n === ids.length) return S.lock[i].key; const rk = rankTemplates(ids, leafCfg(i, c)); return S.tpl[i] && [...rk.exact, ...rk.near].some((t) => t.key === S.tpl[i]) ? S.tpl[i] : defaultTemplate(i, rk).key; };
 
   // ── Kadraj ──
   const cropOf = (id) => S.crop[id] || (S.crop[id] = { z: 1, ox: 0, oy: 0 });
@@ -314,7 +317,7 @@
     S.pages.forEach((l) => { const i = l.indexOf(id); if (i >= 0) l.splice(i, 1); });
     const o = S.out.indexOf(id); if (o >= 0) S.out.splice(o, 1);
   }
-  function touched(...leaves) { leaves.forEach((l) => { if (l != null) { delete S.tpl[l]; delete S.adj[l]; } }); }
+  function touched(...leaves) { leaves.forEach((l) => { if (l != null) { delete S.tpl[l]; delete S.adj[l]; delete S.lock[l]; } }); }
   function moveTo(id, leaf, idx) {
     const from = locate(id);
     if (from && idx != null && S.pages[leaf][idx] != null) {
@@ -379,7 +382,7 @@
     S.pages = []; let i = 0;
     sizes.forEach((s) => { S.pages.push(sorted.slice(i, i + s).map((p) => p.id)); i += s; });
     S.out = S.photos.filter((p) => outSet.has(p.id)).map((p) => p.id);
-    S.tpl = {}; S.adj = {}; S.gap = {}; S.sheet = 0; S.sel = null; S.edit = null;
+    S.tpl = {}; S.adj = {}; S.gap = {}; S.lock = {}; S.sheet = 0; S.sel = null; S.edit = null;
     tidy();
     status(`${keep.length} fotoğraf ${S.pages.length} yaprağa dizildi. Şeritte iki fotoğraf arasına dokunarak yaprak bölebilirsiniz.`);
     render(); scheduleSave();
@@ -392,7 +395,7 @@
     const sizes = S.pages.map((l) => l.length);
     const sorted = sortPhotos(all.map(photoById)).map((p) => p.id);
     let i = 0; S.pages = sizes.map((s) => { const r = sorted.slice(i, i + s); i += s; return r; });
-    S.tpl = {}; S.adj = {};
+    S.tpl = {}; S.adj = {}; S.lock = {};
   }
 
   // ── Sürükle-bırak (dokunmatikte şerit kaydırılabilir; sürükleme şeride dik hareketle başlar) ──
@@ -768,7 +771,7 @@
       b.style.width = `${tw}px`; b.style.height = `${Math.round(tw * c.ph / (2 * c.pw))}px`;
       b.setAttribute('aria-label', 'Bu şablonu uygula');
       drawMini(b, t.rects.map((r) => ({ id: null, r })), c, tw, false);
-      b.addEventListener('click', () => { S.tpl[S.sheet] = t.key; delete S.adj[S.sheet]; render(); scheduleSave(); });
+      b.addEventListener('click', () => { S.tpl[S.sheet] = t.key; delete S.adj[S.sheet]; delete S.lock[S.sheet]; render(); scheduleSave(); });
       return b;
     };
     rk.exact.slice(0, 30).forEach((t) => exactBox.appendChild(tile(t, false)));
@@ -814,7 +817,8 @@
       placeImg(im, p, d._slot);
       S.dims[id] = { W: r.w * s, H: r.h * s };
       if (psState.has(id)) { d.classList.add('is-ps'); d.appendChild(el('b', 'dz-ps', psState.get(id) === 'acik' ? "Photoshop'ta açık · kaydedince güncellenecek" : "Photoshop'a gönderildi")); }
-      d.addEventListener('pointerdown', (e) => (S.cropMode || editing ? startPan(e, id, d) : startDrag(e, { type: 'cell', id })));
+      d.addEventListener('pointerdown', (e) => { if (e.button === 2) return; (S.cropMode || editing ? startPan(e, id, d) : startDrag(e, { type: 'cell', id })); });
+      d.addEventListener('contextmenu', (e) => { e.preventDefault(); S.sel = id; S.multi = []; render(); openCtx(e.clientX, e.clientY, id); });
       if (editing) d.addEventListener('wheel', (e) => { e.preventDefault(); zoomBy(id, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025))); }, { passive: false });
       sp.appendChild(d);
     });
@@ -1016,6 +1020,129 @@
       });
       grid.appendChild(b);
     });
+  }
+
+  // ── Değiştir: çerçevedeki fotoğrafı başka bir kareyle değiştir, tasarım aynen kalsın ──
+  function lockLeaf(i) {
+    const ids = S.pages[i] || [];
+    if (!ids.length) return;
+    const t = leafTemplate(i, cfg());
+    S.lock[i] = { key: t.key, order: [...t.order], n: ids.length };
+    S.tpl[i] = t.key;
+  }
+  function replacePhoto(oldId, newId) {
+    const at = locate(oldId);
+    if (!at || oldId === newId) return;
+    const other = locate(newId);
+    lockLeaf(at.p);
+    if (other) lockLeaf(other.p);
+    if (other) S.pages[other.p][other.i] = oldId; // albümde başka yerdeyse yer değiştirirler
+    else { const o = S.out.indexOf(newId); if (o >= 0) S.out.splice(o, 1); S.out.push(oldId); } // eski kare "Kenarda" bekler
+    S.pages[at.p][at.i] = newId;
+    delete S.crop[newId];
+    S.sel = newId; S.multi = [];
+    const a = photoById(oldId), b = photoById(newId);
+    status(`${a ? a.name : 'Fotoğraf'} yerine ${b ? b.name : 'yeni kare'} kondu; tasarım değişmedi.${other ? ' İki kare yer değiştirdi.' : ' Eski kare “Kenarda” bekliyor.'}`);
+    render(); scheduleSave();
+  }
+  let ctx = null;
+  function closeCtx() { if (ctx) { ctx.remove(); ctx = null; } }
+  function openCtx(x, y, id) {
+    closeCtx();
+    ctx = el('div', 'dz-ctx'); ctx.setAttribute('role', 'menu');
+    const item = (t, fn) => { const b = el('button', '', t); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.addEventListener('click', () => { closeCtx(); fn(); }); ctx.appendChild(b); };
+    item('Değiştir…', () => openReplace(id));
+    item('Kadrajı düzenle', () => enterEdit(id));
+    if (!local) item("Photoshop'ta düzenle", () => { S.sel = id; sendToPs(); });
+    item('Kenara al', () => { removeFromAlbum(id); tidy(); render(); scheduleSave(); });
+    document.body.appendChild(ctx);
+    const r = ctx.getBoundingClientRect();
+    ctx.style.left = `${Math.min(x, innerWidth - r.width - 8)}px`; ctx.style.top = `${Math.min(y, innerHeight - r.height - 8)}px`;
+    ctx.querySelector('button').focus();
+  }
+  document.addEventListener('pointerdown', (e) => { if (ctx && !ctx.contains(e.target)) closeCtx(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCtx(); });
+  window.addEventListener('scroll', closeCtx, true);
+
+  // Seçici: kenardakiler, çiftin seçim dışı kareleri, albümdeki diğer kareler (yer değiştirir), bilgisayardan dosya
+  function openReplace(id) {
+    const cur = photoById(id); if (!cur) return;
+    const dlg = el('dialog', 'dz-rp');
+    const head = el('div', 'dz-rp__hd');
+    head.appendChild(el('strong', '', 'Fotoğrafı değiştir'));
+    head.appendChild(el('span', 'muted', `${cur.name} yerine gelecek kareyi seçin; tasarım aynen kalır.`));
+    const q = el('input'); q.type = 'search'; q.placeholder = 'Numara ile ara (ör. 4391)'; q.className = 'dz-rp__q'; q.setAttribute('aria-label', 'Numara ile ara');
+    const tabs = el('div', 'dz-rp__tabs');
+    const grid = el('div', 'dz-rp__grid');
+    const foot = el('div', 'dz-rp__ft');
+    const fileBtn = el('label', 'btn btn--outline btn--sm', local ? 'Bilgisayardan seç' : 'Bilgisayardan yükle');
+    const fi = el('input'); fi.type = 'file'; fi.accept = 'image/jpeg,image/png,image/webp'; fi.hidden = true; fileBtn.appendChild(fi);
+    const close = el('button', 'btn btn--text btn--sm', 'Vazgeç'); close.type = 'button'; close.addEventListener('click', () => dlg.close());
+    foot.append(fileBtn, close);
+    const used = new Set(S.pages.flat());
+    const lists = [
+      ['Kenarda', S.out.map(photoById).filter(Boolean)],
+      ['Çiftin diğer kareleri', S.pool.filter((p) => !byPid.has(p.id))],
+      ['Albümdekiler (yer değiştirir)', S.photos.filter((p) => used.has(p.id) && p.id !== id)],
+    ].filter(([, l]) => l.length);
+    let tab = 0;
+    const draw = () => {
+      tabs.textContent = ''; grid.textContent = '';
+      lists.forEach(([t, l], i) => { const b = el('button', `dz-rp__tab${i === tab ? ' is-on' : ''}`, `${t} · ${l.length}`); b.type = 'button'; b.addEventListener('click', () => { tab = i; draw(); }); tabs.appendChild(b); });
+      const term = q.value.trim().toLocaleLowerCase('tr-TR');
+      const src = term ? lists.flatMap(([, l]) => l) : (lists[tab] || [, []])[1];
+      const shown = src.filter((p) => !term || String(p.name).toLocaleLowerCase('tr-TR').includes(term));
+      if (!shown.length) grid.appendChild(el('p', 'muted dz-rp__empty', term ? 'Bu numarada kare yok. Bilgisayardan yükleyebilirsiniz.' : 'Burada kare yok.'));
+      shown.slice(0, 300).forEach((p) => {
+        const b = el('button', 'dz-rp__ph'); b.type = 'button'; b.title = p.name;
+        const im = el('img'); im.loading = 'lazy'; im.decoding = 'async'; im.src = p.thumb; im.alt = p.name;
+        b.append(im, el('span', '', p.name));
+        if (used.has(p.id)) b.appendChild(el('em', '', `Yaprak ${(locate(p.id) || {}).p + 1}`));
+        b.addEventListener('click', () => {
+          if (!byPid.has(p.id)) { S.photos.push(p); S.extra.push(p.id); indexPhotos(); S.out.push(p.id); } // seçim dışından gelen
+          dlg.close(); replacePhoto(id, p.id);
+        });
+        grid.appendChild(b);
+      });
+    };
+    q.addEventListener('input', draw);
+    fi.addEventListener('change', async () => {
+      const f = fi.files[0]; if (!f) return;
+      if (local) { const before = S.photos.length; await addFiles([f]); const np = S.photos[before]; dlg.close(); if (np) replacePhoto(id, np.id); return; }
+      dlg.close();
+      const nid = await uploadEdited(f);
+      if (!nid) return;
+      await refreshPhotos();
+      try { const r = await fetch(`${base}/tasarimci.json?set=${S.set}`, { credentials: 'same-origin' }); const d = await r.json(); S.pool = d.pool || S.pool; } catch { /* sonra */ }
+      const hit = [...S.photos, ...S.pool].find((p) => p.fileId === nid);
+      if (!hit) { status(`${f.name} çiftin düzenlenmiş fotoğraflarına yüklendi, ama bu adla eşleşen seçim fotoğrafı yok. Dosya adını çiftin seçtiği kareyle aynı yapın (ör. DSC04391.jpg).`); render(); return; }
+      if (hit.id === id) { status(`${f.name} yüklendi; bu karenin yeni hali çerçeveye geldi, tasarım değişmedi.`); render(); scheduleSave(); return; }
+      if (!byPid.has(hit.id)) { S.photos.push(hit); S.extra.push(hit.id); indexPhotos(); S.out.push(hit.id); }
+      replacePhoto(id, hit.id);
+    });
+    dlg.append(head, q, tabs, grid, foot);
+    dlg.addEventListener('close', () => dlg.remove());
+    document.body.appendChild(dlg);
+    draw();
+    dlg.showModal();
+    q.focus();
+  }
+  // Bilgisayardaki dosyayı çiftin düzenlenmiş fotoğraflarına yükler (aynı adlı seçim karesinin düzenlenmiş hali olur)
+  async function uploadEdited(f) {
+    const cid = (base.match(/\/admin\/ciftler\/(\d+)/) || [])[1];
+    if (!cid) { status('Bu albümde dosya yüklenemez.'); return null; }
+    try {
+      status(`${f.name} hazırlanıyor…`);
+      const url = URL.createObjectURL(f); const img = new Image(); img.src = url; await img.decode();
+      const blobOf = async (edge, q2) => { const k = Math.min(1, edge / Math.max(img.naturalWidth, img.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); const b = await toBlob(c, q2); c.width = c.height = 0; return b; };
+      const thumb = await blobOf(640, 0.82), display = await blobOf(2400, 0.9);
+      URL.revokeObjectURL(url);
+      status(`${f.name} yükleniyor…`);
+      const r = await fetch(`/admin/ciftler/${cid}/fotograflar`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream', Accept: 'application/json', 'X-CSRF-Token': csrf, 'X-Parts': `thumb:${thumb.size},display:${display.size}`, 'X-Filename': encodeURIComponent(f.name), 'X-Category': 'duzenli' }, body: new Blob([thumb, display]) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.ok) throw new Error(d.error || 'yüklenemedi');
+      return d.id;
+    } catch (err) { status(`${f.name} yüklenemedi: ${err.message}`); return null; }
   }
 
   // ── Photoshop ──
@@ -1319,7 +1446,7 @@
     if (!ids.length) return;
     const rk = rankTemplates(ids, leafCfg(S.sheet, c)), list = rk.exact.length ? rk.exact : rk.near;
     const i = list.findIndex((t) => t.key === currentKey(S.sheet, c));
-    S.tpl[S.sheet] = list[(i + 1) % list.length].key; delete S.adj[S.sheet];
+    S.tpl[S.sheet] = list[(i + 1) % list.length].key; delete S.adj[S.sheet]; delete S.lock[S.sheet];
     render(); scheduleSave();
   });
   $('[data-crop]').addEventListener('click', (e) => {
@@ -1343,6 +1470,7 @@
     cr.z = Math.max(0.3, Math.min(d.W / p.w, d.H / p.h) / Math.max(d.W / p.w, d.H / p.h)); cr.ox = 0; cr.oy = 0;
     render(); scheduleSave();
   });
+  const rpBtn = $('[data-replace]'); if (rpBtn) rpBtn.addEventListener('click', () => { if (S.sel) openReplace(S.sel); });
   $('[data-remove]').addEventListener('click', () => {
     if (!S.sel) return;
     const p = photoById(S.sel);
@@ -1395,7 +1523,7 @@
     S.pages = (d.pages || []).map((l) => l.filter((id) => ok.has(id)));
     if (!S.pages.length) S.pages = [[]];
     S.tpl = d.v === 2 ? (d.tpl || {}) : {};
-    S.adj = d.adj || {}; S.gap = d.gap || {};
+    S.adj = d.adj || {}; S.gap = d.gap || {}; S.lock = d.lock || {};
     S.crop = d.crop || {}; S.sheet = d.sheet || 0;
     const used = new Set(S.pages.flat());
     S.out = sortPhotos(S.photos.filter((p) => !used.has(p.id))).map((p) => p.id);
@@ -1414,7 +1542,7 @@
       $('[data-n="secim"]').textContent = data.favCount; $('[data-n="duzenli"]').textContent = data.editedCount;
       $$('[data-set-btn]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.setBtn === S.set)));
       const d = data.draft;
-      S.pages = [[]]; S.tpl = {}; S.adj = {}; S.gap = {}; S.edit = null; S.crop = {}; S.sheet = 0; S.sel = null;
+      S.pages = [[]]; S.tpl = {}; S.adj = {}; S.gap = {}; S.lock = {}; S.edit = null; S.crop = {}; S.sheet = 0; S.sel = null;
       S.out = sortPhotos(S.photos).map((p) => p.id);
       if (!switching && d && d.cfg && (d.set || 'secim') === S.set) applyDraft(d);
       else if (!switching && !d) {

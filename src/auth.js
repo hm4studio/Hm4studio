@@ -68,7 +68,7 @@ function parseCookies(req) {
   for (const part of header.split(';')) {
     const i = part.indexOf('=');
     if (i === -1) continue;
-    out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+    try { out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); } catch { /* bozuk çerez yok sayılır */ }
   }
   return out;
 }
@@ -85,6 +85,7 @@ function startSession(res, kind, userId) {
   const maxAge = config.sessionDays * 24 * 3600;
   db.createSession(hashSid(sid), kind, userId, csrf, Date.now() + maxAge * 1000);
   res.setHeader('Set-Cookie', cookieHeader(sid, maxAge));
+  return csrf;
 }
 
 function endSession(req, res) {

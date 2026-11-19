@@ -90,6 +90,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
             <button type="button" class="dz-ic" data-nudge="0,1" aria-label="Aşağı">${icon('down')}</button>
           </div>
           <button type="button" class="dz-tool" data-fit>Tam sığdır</button>
+          <button type="button" class="dz-tool" data-replace title="Tasarım değişmeden bu çerçeveye başka kare koyar (sağ tık › Değiştir)">${icon('copy')}Değiştir</button>
           ${couple ? h`<button type="button" class="dz-tool dz-tool--ps" data-ps title="Kısayol: E"><i>Ps</i>Photoshop'ta düzenle <kbd>E</kbd></button>` : ''}
           <button type="button" class="dz-tool dz-tool--out" data-remove title="Fotoğraf silinmez; şeridin sonundaki “Kenarda” kutusunda bekler">${icon('down')}Kenara al</button>
         </div>
@@ -112,7 +113,7 @@ function designerPage(c, { couples = [], selected: couple = null, csrf, demoAdmi
       </div>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=19'] });
+  return panelLayout(c, { title: couple ? `Albüm · ${couple.name}` : 'Albüm', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/designer.js?v=20'] });
 }
 
 module.exports = { designerPage };

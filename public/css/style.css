@@ -3819,3 +3819,28 @@ body.is-touring .install { display: none !important; }
 .rbar__bar--ink { background: #1f2a3a; }
 @media (max-width: 900px) { .staff__grid { grid-template-columns: 1fr; } .staffrep__k { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .staff__hero { padding: 14px; } .staff__hero b { font-size: 1.05rem; } .rates__grid { grid-template-columns: 1fr; } .ledger__d { width: auto; flex-basis: 100%; } }
+
+/* ── Albüm: sağ tık menüsü ve "Değiştir" seçicisi ── */
+.dz-ctx { position: fixed; z-index: 90; min-width: 190px; background: #fff; border: 1px solid #e6e0d4; border-radius: 10px; box-shadow: 0 12px 32px rgba(20, 25, 35, .18); padding: 5px; display: grid; }
+.dz-ctx button { font: inherit; font-size: .88rem; text-align: left; background: none; border: 0; border-radius: 7px; padding: 9px 12px; cursor: pointer; color: #1f2a3a; }
+.dz-ctx button:hover, .dz-ctx button:focus-visible { background: #f4efe4; outline: none; }
+.dz-ctx button:first-child { font-weight: 500; }
+.dz-rp { width: min(880px, 94vw); max-height: 86vh; border: 0; border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 24px 60px rgba(20, 25, 35, .3); }
+.dz-rp:not([open]) { display: none; }
+.dz-rp::backdrop { background: rgba(20, 25, 35, .55); }
+.dz-rp__hd { display: flex; flex-direction: column; gap: 2px; }
+.dz-rp__hd strong { font-size: 1.05rem; font-weight: 500; }
+.dz-rp__hd span { font-size: .84rem; }
+.dz-rp__q { width: 100%; }
+.dz-rp__tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.dz-rp__tab { font: inherit; font-size: .8rem; padding: 6px 12px; border-radius: 20px; border: 1px solid #e6e0d4; background: #fff; color: var(--pencil); cursor: pointer; }
+.dz-rp__tab.is-on { background: #1f2a3a; border-color: #1f2a3a; color: #fff; }
+.dz-rp__grid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; min-height: 160px; }
+.dz-rp__ph { position: relative; padding: 0; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: #f3f0e9; cursor: pointer; text-align: left; }
+.dz-rp__ph:hover, .dz-rp__ph:focus-visible { border-color: #b49a66; outline: none; }
+.dz-rp__ph img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.dz-rp__ph span { display: block; font-size: .7rem; padding: 3px 6px; color: #1f2a3a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dz-rp__ph em { position: absolute; top: 5px; left: 5px; font-style: normal; font-size: .66rem; background: rgba(31, 42, 58, .85); color: #fff; border-radius: 10px; padding: 1px 7px; }
+.dz-rp__empty { grid-column: 1 / -1; text-align: center; padding: 30px 0; }
+.dz-rp__ft { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.dz-rp__ft label { cursor: pointer; }

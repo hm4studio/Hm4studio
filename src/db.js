@@ -410,7 +410,16 @@ CREATE TABLE IF NOT EXISTS staff_payments (
   note TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-CREATE INDEX IF NOT EXISTS staff_payments_member ON staff_payments(member_id);`);
+CREATE INDEX IF NOT EXISTS staff_payments_member ON staff_payments(member_id);
+-- Silinen çiftlerin geçmiş görevleri: hakediş hesabı bozulmasın diye tutarıyla saklanır
+CREATE TABLE IF NOT EXISTS staff_archive (
+  id INTEGER PRIMARY KEY,
+  member_id INTEGER NOT NULL REFERENCES team(id) ON DELETE CASCADE,
+  event_date TEXT NOT NULL,
+  event_type TEXT NOT NULL DEFAULT '',
+  couple_name TEXT NOT NULL DEFAULT '',
+  amount INTEGER NOT NULL DEFAULT 0
+);`);
 // Stüdyonun "gördüm" dediği sözleşme onayları (Bugün sayfasındaki bildirim). Eskiler görülmüş sayılır.
 if (!db.prepare('PRAGMA table_info(contracts)').all().some((c) => c.name === 'admin_seen_at')) {
   db.exec('ALTER TABLE contracts ADD COLUMN admin_seen_at TEXT');
@@ -510,6 +519,8 @@ module.exports = {
   staffAssignments: (memberId = null) => q(`SELECT x.member_id, x.fee, e.id AS event_id, e.event_type, e.event_date, e.couple_id, c.name AS couple_name
     FROM event_team x JOIN events e ON e.id = x.event_id JOIN couples c ON c.id = e.couple_id
     WHERE e.event_date IS NOT NULL ${memberId ? 'AND x.member_id = ?' : ''} ORDER BY e.event_date DESC`).all(...(memberId ? [memberId] : [])),
+  archivedAssignments: (memberId = null) => q(`SELECT member_id, event_date, event_type, couple_name, amount, -id AS event_id, NULL AS couple_id, 1 AS archived FROM staff_archive ${memberId ? 'WHERE member_id = ?' : ''} ORDER BY event_date DESC`).all(...(memberId ? [memberId] : [])),
+  archiveAssignment: (a) => q('INSERT INTO staff_archive(member_id, event_date, event_type, couple_name, amount) VALUES(?, ?, ?, ?, ?)').run(a.member_id, a.event_date, a.event_type || '', a.couple_name || '', a.amount),
   setAssignmentFee: (eventId, memberId, fee) => q('UPDATE event_team SET fee = ? WHERE event_id = ? AND member_id = ?').run(fee, eventId, memberId),
   staffPayments: (memberId = null) => q(`SELECT * FROM staff_payments ${memberId ? 'WHERE member_id = ?' : ''} ORDER BY paid_on DESC, id DESC`).all(...(memberId ? [memberId] : [])),
   addStaffPayment: (p) => q('INSERT INTO staff_payments(member_id, amount, paid_on, method, note) VALUES(?, ?, ?, ?, ?)').run(p.memberId, p.amount, p.paidOn, p.method, p.note),
@@ -884,7 +895,7 @@ module.exports = {
 
   // ── Demo sıfırlama: görüşler ve gerçek admin hesapları korunur ──
   resetDemoData: () => db.exec(`
-    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM ps_jobs; DELETE FROM photo_versions; DELETE FROM orig_purge; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM staff_payments; DELETE FROM team_rates; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications; DELETE FROM activity;
+    DELETE FROM contracts; DELETE FROM push_subs WHERE kind = 'couple'; DELETE FROM favorites; DELETE FROM ps_jobs; DELETE FROM photo_versions; DELETE FROM orig_purge; DELETE FROM photos; DELETE FROM videos; DELETE FROM event_team; DELETE FROM staff_payments; DELETE FROM staff_archive; DELETE FROM team_rates; DELETE FROM team; DELETE FROM packages; DELETE FROM events; DELETE FROM payments; DELETE FROM couples; DELETE FROM portfolio; DELETE FROM leads; DELETE FROM notifications; DELETE FROM activity;
     DELETE FROM settings WHERE key = 'hero_portfolio_id';
     DELETE FROM sessions WHERE kind = 'couple';
     DELETE FROM sessions WHERE kind = 'admin' AND user_id IN (SELECT id FROM admins WHERE username = 'demo');

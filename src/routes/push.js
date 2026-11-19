@@ -12,7 +12,9 @@ function who(req) {
   return { kind: k, userId: req.session.userId };
 }
 
-const validEndpoint = (u) => { try { const x = new URL(u); return x.protocol === 'https:' && u.length < 1000; } catch { return false; } };
+// Yalnızca tarayıcıların bildirim servisleri (Chrome/Android, Firefox, Safari/iPhone, Edge)
+const PUSH_HOSTS = /(^|\.)(fcm\.googleapis\.com|android\.googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)$/;
+const validEndpoint = (u) => { try { const x = new URL(u); return x.protocol === 'https:' && u.length < 1000 && PUSH_HOSTS.test(x.hostname); } catch { return false; } };
 
 function register(router) {
   router.get('/push/anahtar', (req, res) => json(res, { key: push.publicKey() }));

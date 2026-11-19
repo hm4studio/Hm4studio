@@ -39,7 +39,17 @@ function nightly() {
   const file = path.join(DIR, `hm4-${today()}.db`);
   if (fs.existsSync(file)) return;
   try { const n = db.purgeOldLeads(); if (n) console.log(`KVKK: ${n} eski talep silindi`); } catch { /* yok say */ }
-  try { dbSnapshot(file); prune(); console.log(`Gece yedeği alındı: ${path.basename(file)}`); } catch (err) { console.error('Yedek alınamadı:', err.message); }
+  try { dbSnapshot(file); prune(); console.log(`Gece yedeği alındı: ${path.basename(file)}`); } catch (err) { console.error('Yedek alınamadı:', err.message); alert(`Gece yedeği alınamadı: ${err.message}`); }
+  // Veritabanı sağlık kontrolü: bozulma ya da kopuk kayıt varsa Telegram ve panel bildirimi
+  try {
+    const ok = db.db.prepare('PRAGMA quick_check').all().map((r) => Object.values(r)[0]);
+    const fk = db.db.prepare('PRAGMA foreign_key_check').all().length;
+    if (ok.join() !== 'ok' || fk) alert(`Veritabanı kontrolünde sorun bulundu (${ok[0] !== 'ok' ? ok.slice(0, 3).join('; ') : `${fk} kopuk kayıt`}). En son yedek: ${(listBackups()[0] || {}).name || 'yok'}. Lütfen haber verin.`);
+  } catch (err) { alert(`Veritabanı kontrol edilemedi: ${err.message}`); }
+}
+function alert(text) {
+  console.error(text);
+  try { require('./activity').notify('sistem', { title: 'Sistem uyarısı', text, url: '/admin/veriler' }); } catch { /* bildirim gönderilemedi */ }
 }
 
 function manual() {

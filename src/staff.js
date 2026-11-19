@@ -24,7 +24,10 @@ function ratesByMember() {
 function account(memberId, types) {
   const t = today();
   const rates = ratesByMember();
-  const rows = db.staffAssignments(memberId).map((a) => ({ ...a, amount: feeOf(a, rates, types), custom: a.fee !== null && a.fee !== undefined, rate: (rates[memberId] || {})[typeOf(a.event_type, types)] ?? (rates[memberId] || {})['Diğer'] ?? 0, done: a.event_date < t }));
+  const rows = [
+    ...db.staffAssignments(memberId).map((a) => ({ ...a, amount: feeOf(a, rates, types), custom: a.fee !== null && a.fee !== undefined, rate: (rates[memberId] || {})[typeOf(a.event_type, types)] ?? (rates[memberId] || {})['Diğer'] ?? 0, done: a.event_date < t })),
+    ...db.archivedAssignments(memberId).map((a) => ({ ...a, custom: false, rate: a.amount, done: true })),
+  ];
   const payments = db.staffPayments(memberId);
   const earned = rows.filter((r) => r.done).reduce((s, r) => s + r.amount, 0);
   const planned = rows.filter((r) => !r.done).reduce((s, r) => s + r.amount, 0);
@@ -37,7 +40,10 @@ function overview(types, year) {
   const t = today();
   const rates = ratesByMember();
   const team = db.listTeam();
-  const all = db.staffAssignments().map((a) => ({ ...a, amount: feeOf(a, rates, types), done: a.event_date < t }));
+  const all = [
+    ...db.staffAssignments().map((a) => ({ ...a, amount: feeOf(a, rates, types), done: a.event_date < t })),
+    ...db.archivedAssignments().map((a) => ({ ...a, done: true })),
+  ];
   const pays = db.staffPayments();
   const y = String(year);
   const people = team.map((m) => {
@@ -71,4 +77,14 @@ function overview(types, year) {
   };
 }
 
-module.exports = { account, overview, feeOf, typeOf };
+/** Çift silinmeden önce: çekim günü geçmiş görevlerin tutarı arşive yazılır (ödeme geçmişi bozulmasın) */
+function archiveCouple(coupleId, types) {
+  const t = today();
+  const rates = ratesByMember();
+  for (const a of db.staffAssignments().filter((x) => x.couple_id === coupleId && x.event_date < t)) {
+    const amount = feeOf(a, rates, types);
+    if (amount > 0) db.archiveAssignment({ ...a, amount });
+  }
+}
+
+module.exports = { account, overview, feeOf, typeOf, archiveCouple };

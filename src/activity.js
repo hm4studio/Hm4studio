@@ -5,7 +5,7 @@ const config = require('./config');
 const db = require('./db');
 const push = require('./push');
 
-const EMOJI = { secim: '💛', album: '📖', siparis: '🧾', sozlesme: '✅', plan: '🗓', teklif: '📨', talep: '📥', indirme: '⬇️' };
+const EMOJI = { secim: '💛', album: '📖', siparis: '🧾', sozlesme: '✅', plan: '🗓', teklif: '📨', talep: '📥', indirme: '⬇️', sistem: '⚠️' };
 
 /**
  * @param {string} kind   secim | album | siparis | sozlesme | plan | teklif | talep | indirme
