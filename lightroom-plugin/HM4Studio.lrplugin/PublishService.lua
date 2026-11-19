@@ -93,7 +93,7 @@ function provider.sectionsForTopOfDialog(f, propertyTable)
         end },
       },
       f:static_text {
-        title = 'Kodu panelden alın: Albüm › Photoshop bağlantısı › Bağlantı kodu oluştur (Photoshop eklentisiyle aynı kod).\n'
+        title = 'Kodu panelden alın: Editör › Lightroom › Bağlantı kodu oluştur (Photoshop eklentisiyle aynı kod).\n'
           .. 'Kaydettikten sonra Kitaplık › Eklenti Ekstraları › "HM4: Çiftleri getir" ile çiftlerin klasörlerini oluşturun.',
         height_in_lines = 3, width_in_chars = 70,
       },

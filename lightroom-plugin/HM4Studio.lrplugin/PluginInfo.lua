@@ -30,7 +30,7 @@ return {
           end },
         },
         f:static_text {
-          title = '1) Kodu panelden alın: Albüm › Photoshop bağlantısı › Bağlantı kodu oluştur.\n'
+          title = '1) Kodu panelden alın: Editör › Lightroom › Bağlantı kodu oluştur.\n'
             .. '2) Kitaplık › sol panel › Yayın Hizmetleri › + › HM4 Studio’yu ekleyin.\n'
             .. '3) Kitaplık › Eklenti Ekstraları › "HM4: Çiftleri getir" ile çift klasörlerini oluşturun.',
           height_in_lines = 3, width_in_chars = 70,

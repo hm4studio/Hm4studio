@@ -9,7 +9,7 @@ const trDate = (iso) => (iso ? new Date(iso).toLocaleString('tr-TR', { timeZone:
 function setupPage(c, { info, token, csrf, flash: f, demoAdmin, site }) {
   const body = h`
   <div class="container container--form ps-setup">
-    <a class="back-link" href="/admin/album">${icon('left')}Albüm</a>
+    <a class="back-link" href="/admin/editor">${icon('left')}Editör</a>
     <h1 class="page-title">Photoshop &amp; Lightroom</h1>
     <p class="muted">Albüm panelinde “Photoshop'ta düzenle”ye bastığınız fotoğraf, Mac'teki Photoshop'ta kendiliğinden açılır; ⌘S ile kaydedince yeni hali siteye yüklenir ve çiftin düzenlenmiş fotoğrafları arasında da güncellenir.</p>
     ${f && f.message ? h`<div class="flash flash--${f.type || 'success'}" role="status">${f.message}</div>` : ''}

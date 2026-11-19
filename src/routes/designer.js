@@ -7,6 +7,8 @@ const { getContent } = require('../content');
 const { html, json, readJson, redirect, HttpError } = require('../http');
 const { requireAdmin, checkCsrf, toId } = require('./guards');
 const views = require('../views/designer');
+const editorView = require('../views/editor');
+const ps = require('../photoshop');
 const media = require('../media');
 const exif = require('../exif');
 const path = require('node:path');
@@ -76,6 +78,37 @@ function register(router) {
   };
 
   // Albüm paneli: çift seçilir (düzenlenmiş fotoğrafı olanlar) ya da sıfırdan albüm
+  // Editör: bütün çiftlerin fotoğraf işi hangi aşamada, sıradaki adım ne
+  router.get('/admin/editor', (req, res, { query }) => {
+    if (!requireAdmin(req, res)) return;
+    const today = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+    const counts = {};
+    for (const r of db.db.prepare('SELECT couple_id AS id, kind, COUNT(*) AS n FROM photos GROUP BY couple_id, kind').all()) {
+      (counts[r.id] ||= { secim: 0, duzenli: 0 })[r.kind === 'duzenli' ? 'duzenli' : 'secim'] += r.n;
+    }
+    const orders = Object.fromEntries(db.listOrders().map((o) => [o.couple_id, o]));
+    const lastShoot = Object.fromEntries(db.db.prepare("SELECT couple_id AS id, MAX(event_date) AS d, (SELECT event_type FROM events x WHERE x.couple_id = e.couple_id AND x.event_date <= ? ORDER BY x.event_date DESC LIMIT 1) AS t FROM events e WHERE event_date <= ? GROUP BY couple_id").all(today, today).map((r) => [r.id, r]));
+    const jobs = [];
+    for (const c of db.listCouples()) {
+      if (c.archived_at || c.delivered_at) continue;
+      const n = counts[c.id] || { secim: 0, duzenli: 0 };
+      const o = orders[c.id];
+      const fav = c.fav_count || 0;
+      const shot = lastShoot[c.id];
+      let stage = null;
+      if (o && o.arrived_at) stage = null;
+      else if (o && o.lab_at) stage = 'baski';
+      else if (c.album_locked && fav && n.duzenli >= fav) stage = 'album';
+      else if (c.album_locked && n.duzenli > 0) stage = 'duzen';
+      else if (c.album_locked) stage = 'secildi';
+      else if (n.secim > 0) stage = 'secim';
+      else if (shot) stage = 'yukle';
+      if (!stage) continue;
+      jobs.push({ couple: c, stage, secim: n.secim, duzenli: n.duzenli, fav, order: o || {}, date: shot ? shot.d : c.event_date, typeLabel: shot && shot.t });
+    }
+    const stage = editorView.STAGES.some((s) => s.key === query.get('asama')) ? query.get('asama') : '';
+    html(res, editorView.editorPage(getContent(), { jobs, stage, csrf: req.session.csrf, demoAdmin: demo.isDemoAdmin(req), tools: { connected: ps.tokenInfo().has } }));
+  });
   router.get('/admin/album', (req, res, { query }) => {
     if (!requireAdmin(req, res)) return;
     const couples = db.listEditedCouples();
