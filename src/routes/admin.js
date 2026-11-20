@@ -1531,6 +1531,7 @@ function register(router) {
       csrf: req.session.csrf,
       flash: takeFlash(req),
       demoAdmin: demo.isDemoAdmin(req),
+      ig: config.demoMode ? { connected: true, demo: true, username: 'hm4studio' } : { ...require('../instagram').status(), redirect: require('../instagram').redirectUri() },
     }));
   });
 
@@ -1546,11 +1547,20 @@ function register(router) {
     if (seenId) { req.resume(); return json(res, { ok: true, id: seenId, again: true }); }
     const body = await readBody(req, config.maxUploadBytes);
     const parts = media.splitParts(req, body);
-    const fileKey = newKey();
     const cats = getContent().portfolio.categories;
-    const category = decodeURIComponent(String(req.headers['x-category'] || ''));
+    let wanted = [];
+    try { wanted = JSON.parse(decodeURIComponent(String(req.headers['x-tags'] || ''))) || []; } catch { wanted = []; }
+    if (!Array.isArray(wanted) || !wanted.length) wanted = [decodeURIComponent(String(req.headers['x-category'] || ''))];
+    const tags = cats.filter((t) => wanted.includes(t));
+    // Instagram'dan alınan fotoğraf: aynısı ikinci kez eklenmez
+    const igId = /^\d{1,30}$/.test(String(req.headers['x-ig-id'] || '')) ? String(req.headers['x-ig-id']) : '';
+    const igPost = /^\d{1,30}$/.test(String(req.headers['x-ig-post'] || '')) ? String(req.headers['x-ig-post']) : '';
+    const dup = igId && db.portfolioByIg(igId);
+    if (dup) return json(res, { ok: true, id: dup.id, again: true });
+    const alt = cleanText(decodeURIComponent(String(req.headers['x-alt'] || '')), 160);
+    const fileKey = newKey();
     media.savePortfolioPhoto(fileKey, parts);
-    const id = db.addPortfolioItem({ fileKey, tags: cats.includes(category) ? [category] : [], alt: '' });
+    const id = db.addPortfolioItem({ fileKey, tags, alt, igId, igPost });
     if (uploadKey) { pfUploads.set(uploadKey, id); if (pfUploads.size > 500) pfUploads.delete(pfUploads.keys().next().value); }
     json(res, { ok: true, id });
   });
@@ -1586,6 +1596,100 @@ function register(router) {
     if (Number(db.getSetting('hero_portfolio_id')) === item.id) db.setSetting('hero_portfolio_id', '');
     setFlash(req, { message: 'Fotoğraf portfolyodan silindi.', type: 'success' });
     redirect(res, '/admin/portfolyo');
+  });
+
+  // ── Instagram'dan al ──
+  const ig = require('../instagram');
+  // Demoda Instagram'a bağlanılmaz: portfolyodaki fotoğraflardan örnek gönderiler (ikincisi çoklu gönderi)
+  const demoIgItems = (doneIds) => {
+    const list = portfolioItems().slice(0, 14);
+    const out = [];
+    for (let i = 0; i < list.length; i++) {
+      const group = i === 1 && list[i + 2] ? [list[i], list[i + 1], list[i + 2]] : [list[i]];
+      if (group.length > 1) i += 2;
+      const photos = group.map((p) => String(910000 + p.id));
+      out.push({ id: String(900000 + group[0].id), caption: 'Örnek gönderi', permalink: '', date: '', photos, thumb: group[0].thumb, src: group.map((p) => p.display), added: photos.filter((x) => doneIds.has(x)).length });
+    }
+    return out;
+  };
+  const igState = (req) => crypto.createHmac('sha256', config.sessionSecret).update(`ig:${req.session.csrf}`).digest('hex').slice(0, 32);
+
+  router.get('/admin/instagram/bagla', (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    if (config.demoMode) { setFlash(req, { message: 'Demoda Instagram bağlanamaz; örnek gönderiler gösteriliyor.', type: 'info' }); return redirect(res, '/admin/portfolyo#instagram'); }
+    if (!ig.appReady()) { setFlash(req, { message: 'Önce sunucuda INSTAGRAM_APP_ID ve INSTAGRAM_APP_SECRET tanımlanmalı.', type: 'error' }); return redirect(res, '/admin/portfolyo#instagram'); }
+    redirect(res, ig.authorizeUrl(igState(req)));
+  });
+
+  router.get('/admin/instagram/donus', async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    const u = new URL(req.url, 'http://x');
+    const code = u.searchParams.get('code');
+    if (u.searchParams.get('state') !== igState(req) || !code) {
+      setFlash(req, { message: u.searchParams.get('error_description') || 'Instagram bağlantısı tamamlanamadı. Tekrar deneyin.', type: 'error' });
+      return redirect(res, '/admin/portfolyo#instagram');
+    }
+    try {
+      const name = await ig.finishConnect(code);
+      setFlash(req, { message: `Instagram bağlandı${name ? `: @${name}` : ''}.`, type: 'success' });
+    } catch (err) {
+      setFlash(req, { message: `Instagram bağlanamadı: ${err.message}`, type: 'error' });
+    }
+    redirect(res, '/admin/portfolyo#instagram');
+  });
+
+  router.post('/admin/instagram/kaldir', async (req, res) => {
+    const form = await formGuard(req, res);
+    if (!form) return;
+    ig.disconnect();
+    setFlash(req, { message: 'Instagram bağlantısı kaldırıldı. Portfolyoya eklenen fotoğraflar yerinde duruyor.', type: 'success' });
+    redirect(res, '/admin/portfolyo#instagram');
+  });
+
+  // Seçici listesi: gönderiler + daha önce eklenenler
+  router.get('/admin/instagram/gonderiler', async (req, res) => {
+    if (req.session?.kind !== 'admin') throw new HttpError(401, 'Oturum gerekli');
+    const after = String(new URL(req.url, 'http://x').searchParams.get('after') || '').slice(0, 200);
+    const done = db.igImported();
+    const doneIds = new Set(done.map((r) => r.ig_id));
+    if (config.demoMode) return json(res, { ok: true, items: demoIgItems(doneIds), next: '', demo: true });
+    if (!ig.status().connected) throw new HttpError(400, 'Instagram bağlı değil.');
+    try {
+      const { items, next } = await ig.listMedia(after);
+      json(res, { ok: true, next, items: items.map((p) => ({ ...p, thumb: `/admin/instagram/foto/t${p.id}`, src: p.photos.map((x) => `/admin/instagram/foto/${x}`), added: p.photos.filter((x) => doneIds.has(x)).length })) });
+    } catch (err) {
+      throw new HttpError(err.expired ? 401 : 502, err.expired ? 'Instagram bağlantısının süresi dolmuş; yeniden bağlayın.' : `Instagram'a ulaşılamadı: ${err.message}`);
+    }
+  });
+
+  // Fotoğraf vekili: yalnızca listede görünen Instagram fotoğrafları, yalnızca Instagram sunucusundan
+  router.get('/admin/instagram/foto/:id', async (req, res, { params }) => {
+    if (req.session?.kind !== 'admin') throw new HttpError(401, 'Oturum gerekli');
+    if (!/^t?\d{1,30}$/.test(params.id)) throw new HttpError(404, 'Bulunamadı');
+    try {
+      const { buf, type } = await ig.fetchPhoto(params.id);
+      res.writeHead(200, { 'Content-Type': type, 'Content-Length': buf.length, 'Cache-Control': 'private, max-age=600' });
+      res.end(buf);
+    } catch (err) {
+      throw new HttpError(err.status || 502, err.message);
+    }
+  });
+
+  // Seçiciden yeni etiket ekleme
+  router.post('/admin/portfolyo-etiket-ekle', async (req, res) => {
+    apiGuard(req);
+    const body = await readJson(req);
+    const name = cleanText(body.name, 40);
+    if (!name) throw new HttpError(400, 'Etiket adı boş olamaz.');
+    const o = siteOver();
+    const list = [...(getContent().portfolio.categories || [])];
+    const same = list.find((x) => x.toLocaleLowerCase('tr-TR') === name.toLocaleLowerCase('tr-TR'));
+    if (same) return json(res, { ok: true, name: same });
+    if (list.length >= 40) throw new HttpError(400, 'En fazla 40 etiket olabilir.');
+    list.push(name);
+    o.portfolio = { ...(o.portfolio || {}), categories: list };
+    saveOver(o);
+    json(res, { ok: true, name });
   });
 
   // ── Hesap ──

@@ -133,6 +133,8 @@ db.exec(`CREATE TABLE IF NOT EXISTS galleries (
 addColumn('photos', 'gallery_id', 'INTEGER');
 // Portfolyo etiketleri (birden çok: "Sinop", "Gün batımı"...). Eski tek kategori ilk etikete taşınır.
 addColumn('portfolio', 'tags', "TEXT NOT NULL DEFAULT ''");
+addColumn('portfolio', 'ig_id', "TEXT NOT NULL DEFAULT ''"); // Instagram'dan alındıysa fotoğrafın ve gönderinin kimliği
+addColumn('portfolio', 'ig_post', "TEXT NOT NULL DEFAULT ''");
 db.exec("UPDATE portfolio SET tags = json_array(category) WHERE tags = '' AND category <> ''");
 addColumn('photos', 'kind', "TEXT NOT NULL DEFAULT 'secim'"); // secim: albüm seçimi için · duzenli: düzenlenmiş (renkli) teslim
 addColumn('couples', 'discount', 'INTEGER NOT NULL DEFAULT 0'); // randevuda uygulanan indirim (₺); toplam = etkinlik fiyatları − indirim
@@ -761,8 +763,10 @@ module.exports = {
   // ── Portfolyo ──
   listPortfolio: () => q('SELECT * FROM portfolio ORDER BY id DESC').all(),
   getPortfolioItem: (id) => q('SELECT * FROM portfolio WHERE id = ?').get(id),
-  addPortfolioItem: ({ fileKey, tags = [], alt }) =>
-    Number(q('INSERT INTO portfolio(file_key, category, tags, alt) VALUES(?, ?, ?, ?)').run(fileKey, tags[0] || '', JSON.stringify(tags), alt).lastInsertRowid),
+  addPortfolioItem: ({ fileKey, tags = [], alt = '', igId = '', igPost = '' }) =>
+    Number(q('INSERT INTO portfolio(file_key, category, tags, alt, ig_id, ig_post) VALUES(?, ?, ?, ?, ?, ?)').run(fileKey, tags[0] || '', JSON.stringify(tags), alt, igId, igPost).lastInsertRowid),
+  portfolioByIg: (igId) => q("SELECT * FROM portfolio WHERE ig_id = ? AND ig_id <> ''").get(String(igId)),
+  igImported: () => q("SELECT ig_id, ig_post FROM portfolio WHERE ig_id <> ''").all(),
   updatePortfolioItem: (id, { tags = [], alt }) => q('UPDATE portfolio SET category = ?, tags = ?, alt = ? WHERE id = ?').run(tags[0] || '', JSON.stringify(tags), alt, id),
   setPortfolioTags: (id, tags) => q('UPDATE portfolio SET category = ?, tags = ? WHERE id = ?').run(tags[0] || '', JSON.stringify(tags), id),
   deletePortfolioItem: (id) => q('DELETE FROM portfolio WHERE id = ?').run(id),

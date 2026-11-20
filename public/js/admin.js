@@ -72,7 +72,7 @@
     }
   }
 
-  async function uploadOne(file, { endpoint, keepOriginal, category, gallery }) {
+  async function uploadOne(file, { endpoint, keepOriginal, category, gallery, tags, headers: extra }) {
     const bitmap = await decode(file);
     const thumb = await resize(bitmap, THUMB);
     const display = await resize(bitmap, DISPLAY);
@@ -84,10 +84,12 @@
       Accept: 'application/json',
       'X-CSRF-Token': csrf,
       'X-Parts': parts.map(([n, b]) => `${n}:${b.size}`).join(','),
-      'X-Filename': encodeURIComponent(file.name),
+      'X-Filename': encodeURIComponent(file.name || 'instagram.jpg'),
       'X-Upload-Key': file.uploadKey || '',
     };
     if (category !== undefined) headers['X-Category'] = encodeURIComponent(category);
+    if (tags) headers['X-Tags'] = encodeURIComponent(JSON.stringify(tags));
+    if (extra) Object.assign(headers, extra);
     if (gallery) headers['X-Gallery'] = gallery;
     let res;
     try {
@@ -96,6 +98,9 @@
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) throw new UploadError(data.error || `Sunucu hatası (${res.status})`, [0, 408, 429, 500, 502, 503, 504].includes(res.status));
   }
+
+  // Instagram seçicisi (instagram.js) aynı küçültme/yükleme yolunu kullanır
+  window.HM4Upload = { uploadWithRetry, busy: (d) => { busy += d; } };
 
   // Düzenlenmiş fotoğraflar galeriye bağlanmaz: o seçilince galeri alanı gizlenir
   document.querySelectorAll('[data-kind-select]').forEach((sel) => {

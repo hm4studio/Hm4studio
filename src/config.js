@@ -58,6 +58,8 @@ module.exports = {
   demoResetHours: Number(env.DEMO_RESET_HOURS) || 6,
   demoMaxPhotos: 40,
   instagramToken: env.INSTAGRAM_ACCESS_TOKEN || '',
+  instagramAppId: env.INSTAGRAM_APP_ID || '',
+  instagramAppSecret: env.INSTAGRAM_APP_SECRET || '',
   // n8n + WhatsApp (boşsa bu özellikler kapalı kalır)
   n8nWebhookUrl: env.N8N_WEBHOOK_URL || '',
   n8nApiKey: env.N8N_API_KEY || '',

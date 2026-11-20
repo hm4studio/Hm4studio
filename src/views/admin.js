@@ -927,7 +927,7 @@ function appointmentDoc(c, { card: k, events, payments, back, forCouple }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Randevu belgesi ${k.ref_no || ''} — ${c.brand.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=112">
+<link rel="stylesheet" href="/css/style.css?v=113">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>
@@ -1096,7 +1096,7 @@ function giftCards(c, { couple, codes, settings: gs, qr, url }) {
   return String(h`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Hediye kartları — ${couple.name}</title><meta name="robots" content="noindex">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap">
-  <link rel="stylesheet" href="/css/style.css?v=112"></head>
+  <link rel="stylesheet" href="/css/style.css?v=113"></head>
   <body class="gift-print"><main>
     <p class="gift-print__hint no-print">Yazdırmak için Ctrl/Cmd + P. Kartları kesik çizgilerden kesip albüm kutusuna koyun.</p>
     ${codes.filter((g) => !g.used_couple_id).map((g) => h`<article class="gcard">
@@ -1514,7 +1514,7 @@ function coupleDetail(c, { couple, galleries = [], gal = null, card, contract: c
     </section>
     </div>
   </div>`;
-  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/panel.js?v=6', '/js/admin.js?v=8', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
+  return panelLayout(c, { title: couple.name, csrf, nav: adminNav('list', csrf, demoAdmin), home: '/admin', tabs: adminTabs('list', demoAdmin), body, scripts: ['/js/panel.js?v=6', '/js/admin.js?v=9', '/js/video-upload.js?v=1', '/js/cdtabs.js?v=1'] });
 }
 
 function calendar(c, { couples, monthEvents = [], prebookings = [], monthCounts = {}, ym = today().slice(0, 7), csrf, demoAdmin }) {
@@ -1564,7 +1564,7 @@ function calendar(c, { couples, monthEvents = [], prebookings = [], monthCounts 
   return panelLayout(c, { title: 'Takvim', csrf, nav: adminNav('calendar', csrf, demoAdmin), home: '/admin', tabs: adminTabs('calendar', demoAdmin), body });
 }
 
-function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
+function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin, ig = { connected: false } }) {
   const catOptions = (selected) => h`<option value="">Etiket yok</option>${c.portfolio.categories.map((k) => h`<option value="${k}"${k === selected ? raw(' selected') : ''}>${k}</option>`)}`;
   const { slugify } = require('../routes/guards');
   const count = {};
@@ -1596,10 +1596,60 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       })}</ul>` : h`<p class="muted">Fotoğraflara etiket verdiğinizde bağlantıları burada çıkar.</p>`}
     </section>
 
+    <section class="panel-section" id="instagram" aria-labelledby="pf-ig">
+      <div class="panel-section__head">
+        <h2 class="panel-section__title" id="pf-ig">Instagram'dan al</h2>
+        <p class="muted">Paylaştığınız gönderileri seçin; fotoğraflar tam boyutta portfolyoya kopyalanır. Instagram'dan silseniz de sitede kalır.</p>
+      </div>
+      ${ig.connected ? h`
+      <div class="ig-box" data-ig data-max="${ig.demo ? 10 : 200}">
+        <div class="ig-head">
+          <div class="ig-acc"><span class="ig-av" aria-hidden="true">${icon('instagram')}</span>
+            <div><strong>${ig.username ? `@${ig.username}` : 'Instagram hesabı'}</strong>
+              <div class="muted ig-sub">${ig.demo ? 'Demo · örnek gönderiler' : ig.viaEnv ? 'Bağlı (sunucu ayarından)' : ig.expires && ig.expires - Date.now() < 7 * 86400000 ? 'Bağlantı yakında yenilenecek' : 'Bağlı'}</div></div>
+          </div>
+          <div class="ig-head__acts">
+            <button class="btn btn--text btn--sm" type="button" data-ig-reload>${icon('refresh')}Yenile</button>
+            ${ig.demo || ig.viaEnv ? '' : h`<form method="post" action="/admin/instagram/kaldir" data-confirm="Instagram bağlantısı kaldırılsın mı? Portfolyoya eklenen fotoğraflar silinmez.">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">Bağlantıyı kaldır</button></form>`}
+          </div>
+        </div>
+        <div class="ig-tabs" role="group" aria-label="Göster">
+          <button type="button" class="ig-tab is-on" data-ig-filter="all" aria-pressed="true">Tümü <span data-ig-count="all"></span></button>
+          <button type="button" class="ig-tab" data-ig-filter="new" aria-pressed="false">Eklenmeyenler <span data-ig-count="new"></span></button>
+        </div>
+        <ul class="ig-grid" data-ig-grid aria-live="polite"><li class="ig-msg muted">Gönderiler yükleniyor…</li></ul>
+        <button class="btn btn--outline btn--sm ig-more" type="button" data-ig-more hidden>Daha eski gönderiler</button>
+        <div class="ig-bar" data-ig-bar hidden>
+          <p class="ig-bar__sum"><strong data-ig-sel></strong> <span class="muted" data-ig-photos></span></p>
+          <p class="muted ig-bar__hint">Etiketler (birden fazla seçilebilir)</p>
+          <fieldset class="tagpick ig-tags" data-ig-tags><legend class="sr-only">Etiketler</legend>
+            ${c.portfolio.categories.map((t) => h`<label class="tagpick__c"><input type="checkbox" value="${t}"><span>${t}</span></label>`)}
+            <button type="button" class="ig-newtag" data-ig-newtag>+ Yeni etiket</button>
+          </fieldset>
+          <div class="ig-bar__acts">
+            <button class="btn btn--primary" type="button" data-ig-import>Portfolyoya ekle</button>
+            <button class="btn btn--text btn--sm" type="button" data-ig-clear>Seçimi temizle</button>
+          </div>
+          <ul class="uploader__list" data-ig-list aria-live="polite"></ul>
+        </div>
+      </div>` : ig.appReady ? h`
+      <div class="ig-box ig-connect">
+        <span class="ig-av" aria-hidden="true">${icon('instagram')}</span>
+        <div class="ig-connect__text"><strong>Instagram hesabınızı bağlayın</strong>
+          <p class="muted">Bir kez Instagram'a giriş yapıp izin verirsiniz; bağlantı kendiliğinden yenilenir. Hesabın Profesyonel (İşletme veya İçerik Üreticisi) olması gerekir.</p></div>
+        <a class="btn btn--primary" href="/admin/instagram/bagla">${icon('instagram')}Instagram'ı bağla</a>
+      </div>` : h`
+      <div class="ig-box ig-connect">
+        <span class="ig-av" aria-hidden="true">${icon('instagram')}</span>
+        <div class="ig-connect__text"><strong>Kurulum gerekli (bir kerelik)</strong>
+          <p class="muted">Meta for Developers'da "Instagram API with Instagram Login" uygulaması oluşturulup sunucudaki .env dosyasına <code>INSTAGRAM_APP_ID</code> ve <code>INSTAGRAM_APP_SECRET</code> eklenmeli. Uygulamaya yönlendirme adresi olarak <code>${ig.redirect}</code> yazılmalı. Sonra burada "Instagram'ı bağla" düğmesi çıkar.</p></div>
+      </div>`}
+    </section>
+
     <section class="panel-section" aria-labelledby="pf-upload">
       <div class="panel-section__head">
         <h2 class="panel-section__title" id="pf-upload">Portfolyoya fotoğraf ekle</h2>
-        <p class="muted">Instagram'da paylaştığınız fotoğrafları buraya yükleyin. Bu fotoğraflar herkese açık sitede görünür.</p>
+        <p class="muted">Bilgisayarınızdan ya da telefonunuzdan fotoğraf yükleyin. Bu fotoğraflar herkese açık sitede görünür.</p>
       </div>
       <form class="uploader" data-uploader data-endpoint="/admin/portfolyo">
         <div class="field field--inline">
@@ -1644,7 +1694,7 @@ function portfolioAdmin(c, { items, heroId, csrf, flash: f, demoAdmin }) {
       </ul>` : h`<div class="empty-box">${icon('image')}<p>Henüz portfolyo fotoğrafı yok.</p></div>`}
     </section>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
+  return panelLayout(c, { title: 'Portfolyo', csrf, nav: adminNav('portfolio', csrf, demoAdmin), home: '/admin', tabs: adminTabs('portfolio', demoAdmin), body, scripts: ['/js/admin.js?v=9', ...(ig.connected ? ['/js/instagram.js?v=2'] : [])] });
 }
 
 // Ekip: personel ekle, düzenle, sil; her kişinin görevleri
@@ -1862,7 +1912,7 @@ function reminderForm(c, { id, values: v = {}, action, title, errors = [], csrf,
       <form method="post" action="/admin/hatirlatma/${id}/sil" class="inline-form" data-confirm="Bu hatırlatma silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
     </div>` : ''}
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=9'] });
 }
 
 
@@ -1955,7 +2005,7 @@ function tasksPage(c, { tasks, done, team, couples, who = 0, notices = [], csrf,
       <span class="task__m"><b>${x.title}</b><span>${x.member_name || ''}</span></span></li>`)}</ul></details>` : ''}
     <p class="muted tasks__note">Her akşam 20:00'de ertesi günün görevleri telefonunuza ve Telegram'a gelir; görev verilen kişinin mesajı “Gönderilecek mesajlar”a düşer.</p>
   </div>`;
-  return panelLayout(c, { title: 'Görevler', csrf, nav: adminNav('tasks', csrf, demoAdmin), home: '/admin', tabs: adminTabs('tasks', demoAdmin), body, scripts: ['/js/admin.js?v=8', '/js/outbox.js?v=4'] });
+  return panelLayout(c, { title: 'Görevler', csrf, nav: adminNav('tasks', csrf, demoAdmin), home: '/admin', tabs: adminTabs('tasks', demoAdmin), body, scripts: ['/js/admin.js?v=9', '/js/outbox.js?v=4'] });
 }
 
 // ARW Bulucu: çiftin seçtiği karelerin RAW dosyalarını bilgisayardaki klasörde bulup tek klasöre kopyalar.
@@ -2096,7 +2146,7 @@ function prebookForm(c, { id, values: v = {}, action, title, errors = [], csrf, 
       <form method="post" action="/admin/on-randevu/${id}/sil" class="inline-form" data-confirm="Bu ön randevu silinsin mi?">${csrfField(csrf)}<button class="btn btn--text btn--sm btn--danger-text" type="submit">${icon('trash')}Sil</button></form>
     </div>` : ''}
   </div>`;
-  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
+  return panelLayout(c, { title, csrf, nav: adminNav('couples', csrf, demoAdmin), home: '/admin', tabs: adminTabs('couples', demoAdmin), body, scripts: ['/js/admin.js?v=9'] });
 }
 
 // Sayfa başlıkları: her sayfanın Google'da görünen başlığı ve açıklaması, canlı önizlemeyle
@@ -2140,7 +2190,7 @@ function portfolioTagsPage(c, { counts = {}, csrf, flash: f, demoAdmin }) {
       <button class="btn btn--primary" type="submit">${icon('check')}Kaydet</button>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Portfolyo etiketleri', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
+  return panelLayout(c, { title: 'Portfolyo etiketleri', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=9'] });
 }
 
 function sourcesPage(c, { counts = {}, csrf, flash: f, demoAdmin }) {
@@ -2192,7 +2242,7 @@ function seoTitlesPage(c, { csrf, flash: f, demoAdmin }) {
       <button class="btn btn--primary" type="submit">Kaydet</button>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Sayfa başlıkları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
+  return panelLayout(c, { title: 'Sayfa başlıkları', csrf, nav: adminNav('account', csrf, demoAdmin), home: '/admin', tabs: adminTabs('account', demoAdmin), body, scripts: ['/js/admin.js?v=9'] });
 }
 
 function deliverySettingsPage(c, { csrf, flash: f, demoAdmin }) {
@@ -2535,7 +2585,7 @@ function sitePage(c, { accents, heroUrl, csrf, flash: f, demoAdmin }) {
       <div class="appt-actions"><button class="btn btn--primary" type="submit">Siteyi güncelle</button></div>
     </form>
   </div>`;
-  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
+  return panelLayout(c, { title: 'Site', csrf, nav: adminNav('site', csrf, demoAdmin), home: '/admin', tabs: adminTabs('site', demoAdmin), body, scripts: ['/js/admin.js?v=9'] });
 }
 
 // Paketler: ad, fiyat, içerik; randevu formunda seçilince fiyat ve içerik dolar

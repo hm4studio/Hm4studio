@@ -27,6 +27,7 @@ require('./src/routes/lightroom').register(router);
 require('./src/demo').start();
 require('./src/backup').start();
 require('./src/reminders').start();
+if (!config.demoMode) require('./src/instagram').start();
 require('./src/telegram').start();
 
 // İsteğe bağlı: .env / barındırma panelindeki ADMIN_USERNAME + ADMIN_PASSWORD ile ilk yönetici hesabını oluştur

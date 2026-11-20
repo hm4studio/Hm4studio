@@ -44,7 +44,7 @@ function setupPage(c, { info, token, csrf, flash: f, demoAdmin, site }) {
       <li><strong>Seçimi çekin.</strong> Çift seçimini yapınca Kitaplık › Eklenti Ekstraları › <em>HM4: Çiftin seçimini çek</em>. Kareler (RAW'lar) “HM4 Studio – Albüm seçimleri” altında çiftin adıyla bir koleksiyonda toplanır.</li>
     </ol>
   </div>`;
-  return panelLayout(c, { title: 'Photoshop & Lightroom', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
+  return panelLayout(c, { title: 'Photoshop & Lightroom', csrf, nav: admin.adminNav('album', csrf, demoAdmin), home: '/admin', tabs: admin.adminTabs('list', demoAdmin), body, scripts: ['/js/admin.js?v=9'] });
 }
 
 module.exports = { setupPage };

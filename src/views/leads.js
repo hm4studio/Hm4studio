@@ -149,7 +149,7 @@ function adminList(c, { leads, csrf, flash: f, demoAdmin, quotes = [], loose = [
     ${shown.length || shownQ.length ? h`<ul class="fb-list leads">${shown.map(leadRow)}${shownQ.map(quoteRow)}</ul>`
       : h`<div class="empty-box">${icon('whatsapp')}<p>${empty}</p></div>`}
   </div>`;
-  return panelLayout(c, { title: 'Talepler', csrf, nav: adminNav('leads', csrf, demoAdmin), home: '/admin', tabs: adminTabs('leads', demoAdmin), body, scripts: ['/js/admin.js?v=8'] });
+  return panelLayout(c, { title: 'Talepler', csrf, nav: adminNav('leads', csrf, demoAdmin), home: '/admin', tabs: adminTabs('leads', demoAdmin), body, scripts: ['/js/admin.js?v=9'] });
 }
 
 module.exports = { form, adminList, STATUS };
