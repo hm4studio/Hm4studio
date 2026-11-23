@@ -22,6 +22,8 @@ const MIME = {
   '.woff2': 'font/woff2',
   '.woff': 'font/woff',
   '.txt': 'text/plain; charset=utf-8',
+  '.glb': 'model/gltf-binary',
+  '.usdz': 'model/vnd.usdz+zip',
 };
 
 class HttpError extends Error {

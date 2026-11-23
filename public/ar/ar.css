@@ -1,0 +1,9 @@
+*{box-sizing:border-box}body{margin:0;background:#fbfaf8;color:#1f2a3a;font:16px/1.5 -apple-system,Helvetica,Arial,sans-serif}
+.ar{max-width:520px;margin:0 auto;padding:28px 18px 40px}
+.ar__brand{letter-spacing:.3em;font:500 13px Georgia,serif;margin:0 0 18px}
+h1{font:400 26px/1.2 Georgia,serif;margin:0}.ar__sub{color:#6b6b6b;margin:6px 0 16px;font-size:14px}
+.ar__img{width:100%;border-radius:12px;display:block;margin-bottom:16px}
+.ar__btn{display:block;text-align:center;background:#7a3a2e;color:#fff;text-decoration:none;font-weight:600;padding:15px;border-radius:12px}
+.ar__hid{display:none}.ar__note{background:#f4efe4;padding:12px;border-radius:10px;font-size:14px}
+.ar__steps{color:#555;font-size:14px;padding-left:20px;margin-top:18px}
+[hidden]{display:none!important}

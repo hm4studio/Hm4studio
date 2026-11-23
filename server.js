@@ -82,7 +82,8 @@ function serveStatic(req, res, pathname) {
   if (rel === '/favicon.ico') return sendFile(req, res, PUBLIC_DIR, 'favicon.ico', { cache: 'public, max-age=604800' }); // Google ve tarayıcılar kökte arar
   if (rel.startsWith('/fonts/')) return sendFile(req, res, PUBLIC_DIR, rel.slice(1), { cache: 'public, max-age=31536000, immutable' });
   if (rel === '/css/tema.css') return false; // sitenin renk ayarı: router üretir
-  if (rel.startsWith('/css/') || rel.startsWith('/js/') || rel.startsWith('/images/') ) {
+  if (rel === '/ar/deneme') return sendFile(req, res, PUBLIC_DIR, 'ar/deneme.html', { cache: 'no-cache' }); // AR albüm denemesi (gizli sayfa)
+  if (rel.startsWith('/css/') || rel.startsWith('/js/') || rel.startsWith('/images/') || rel.startsWith('/ar/')) {
     return sendFile(req, res, PUBLIC_DIR, rel.slice(1), { cache: config.isProd ? 'public, max-age=604800' : 'no-cache' });
   }
   if (rel.startsWith('/media/site/')) {
