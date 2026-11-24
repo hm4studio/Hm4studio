@@ -7,3 +7,5 @@ h1{font:400 26px/1.2 Georgia,serif;margin:0}.ar__sub{color:#6b6b6b;margin:6px 0 
 .ar__hid{display:none}.ar__note{background:#f4efe4;padding:12px;border-radius:10px;font-size:14px}
 .ar__steps{color:#555;font-size:14px;padding-left:20px;margin-top:18px}
 [hidden]{display:none!important}
+
+.ar__card{margin:18px 0 26px}.ar__card h2{font:400 20px Georgia,serif;margin:4px 0 0}
