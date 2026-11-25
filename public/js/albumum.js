@@ -229,7 +229,10 @@
         btn.href = `${u.usdz}#allowsContentScaling=0`;
         // Ana ekrana eklenmiş uygulamada (PWA) iOS, AR görünümünde kapatma düğmesi göstermiyor:
         // orada dosyayı uygulama içi Safari penceresinde açıyoruz (kapatma düğmesi olan)
-        if (standalone || otherIos) { btn.removeAttribute('rel'); btn.target = '_blank'; btn.rel = 'noopener'; }
+        if (standalone) { // Safari uygulamasında açılır (iOS 17+): orada AR'dan ✕ ile çıkılır
+          btn.removeAttribute('rel'); btn.removeAttribute('target');
+          btn.href = `x-safari-${location.origin}/ar/ac.html#${u.usdz.replace(/^.*\/([a-f0-9]{32})\.usdz$/, '$1')}`;
+        } else if (otherIos) { btn.removeAttribute('rel'); btn.target = '_blank'; btn.rel = 'noopener'; }
       }
       else {
         const file = encodeURIComponent(location.origin + u.glb);
