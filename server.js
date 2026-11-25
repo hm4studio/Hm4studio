@@ -22,6 +22,7 @@ require('./src/routes/prebook').register(router);
 require('./src/routes/tasks').register(router);
 require('./src/routes/orders').register(router);
 require('./src/routes/designer').register(router);
+require('./src/routes/katalog').register(router);
 require('./src/routes/photoshop').register(router);
 require('./src/routes/lightroom').register(router);
 require('./src/demo').start();
