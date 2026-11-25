@@ -255,6 +255,7 @@ addColumn('couples', 'dl_override', 'INTEGER NOT NULL DEFAULT 0'); // kalan öde
 addColumn('couples', 'app_first_at', 'TEXT'); // çift ana ekrandaki uygulamayı ilk açtığında
 addColumn('couples', 'app_last_at', 'TEXT');
 addColumn('couples', 'tour_seen_at', 'TEXT'); // ilk giriş kılavuzu görüldü
+addColumn('couples', 'album_choice', 'TEXT'); // katalogdan seçilen albüm modeli (JSON: model, renk, boy, kapak yazısı)
 // Çift fotoğrafları toplu indirince: orijinallerin silineceği gün (küçük haller kalır)
 db.exec(`CREATE TABLE IF NOT EXISTS orig_purge (
   couple_id INTEGER NOT NULL REFERENCES couples(id) ON DELETE CASCADE,
@@ -712,6 +713,7 @@ module.exports = {
   resolveCheck: (id, state) => q("UPDATE checks SET state = ?, resolved_at = datetime('now') WHERE id = ?").run(state, id),
   snoozeCheck: (id, until) => q('UPDATE checks SET snooze_until = ? WHERE id = ?').run(until, id),
   // Albüm siparişi
+  setAlbumChoice: (id, v) => q('UPDATE couples SET album_choice = ? WHERE id = ?').run(v, id),
   getOrder: (coupleId) => q('SELECT * FROM album_orders WHERE couple_id = ?').get(coupleId) || null,
   listOrders: () => q(`SELECT o.*, c.name AS couple_name, c.album_design_state, c.album_design_at, c.event_date FROM album_orders o JOIN couples c ON c.id = o.couple_id`).all(),
   saveOrder: (coupleId, x) => {
