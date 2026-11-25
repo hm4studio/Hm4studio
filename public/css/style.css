@@ -4013,3 +4013,4 @@ body.is-touring .install { display: none !important; }
 .ak-ar { position: relative; }
 .ak-arimg { display: none; }
 .ak-arnote { font-size: .8rem; margin: 10px 0 0; }
+.ak-ar[hidden], .ak-arnote[hidden], .ak-favchip[hidden], .ak-empty[hidden], .ak-card[hidden] { display: none; }
