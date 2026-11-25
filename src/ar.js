@@ -51,9 +51,10 @@ const MATS = {
   kumas: { tex: 'kumas', rough: 0.88, metal: 0 },
   sayfa: { tex: 'sayfa', rough: 0.95, metal: 0 },
   yaldiz: { tex: 'yaldiz', rough: 0.32, metal: 1, alpha: true },
+  foto: { tex: 'foto', rough: 0.3, metal: 0, alpha: true }, // kapaktaki fotoğraf (parlak baskı)
 };
 
-function glb(ms, tex) {
+function glb(ms, tex, MATS) {
   const chunks = []; let off = 0; const views = []; const accs = [];
   const view = (buf, target) => {
     const pad = (4 - (off % 4)) % 4; if (pad) { chunks.push(Buffer.alloc(pad)); off += pad; }
@@ -91,7 +92,7 @@ function glb(ms, tex) {
   return Buffer.concat([head, ch(js.length, 0x4e4f534a), js, ch(bin.length, 0x004e4942), bin]);
 }
 
-function usda(ms, files) {
+function usda(ms, files, MATS) {
   const n = (v) => String(Math.round(v * 1e6) / 1e6);
   const tup = (a, k) => { const o = []; for (let i = 0; i < a.length; i += k) o.push(`(${Array.from(a.subarray(i, i + k), n).join(', ')})`); return `[${o.join(', ')}]`; };
   const body = ms.map((m, k) => `    def Mesh "m${k}"
@@ -187,21 +188,23 @@ function isPng(b) { return b && b.length > 100 && b.readUInt32BE(0) === 0x89504e
  * Dosyaları üretir (aynı girdi için önceden üretilmişse yeniden kullanır).
  * @returns {{glb: string, usdz: string}} herkese açık adresler (/media/ar/…)
  */
-function build({ doku, kumas: hazir, boy, yaldiz }) {
+function build({ doku, kumas: hazir, boy, yaldiz, foto }) {
   if (!isPng(yaldiz) || yaldiz.length > 1.5 * 1024 * 1024) throw new Error('Kapak yazısı görseli geçersiz.');
+  if (foto && (!isPng(foto) || foto.length > 3 * 1024 * 1024)) throw new Error('Kapak fotoğrafı geçersiz.');
   // Tarayıcı dokuyu tekrar etmeye uygun hâle getirip gönderir; gelmezse katalogdaki görsel kullanılır
   const ok = hazir && hazir.length > 1000 && hazir.length < 700 * 1024 && hazir[0] === 0xff && hazir[1] === 0xd8;
   const kumas = ok ? hazir : readDoku(doku);
-  const key = crypto.createHash('sha256').update(kumas).update('\0').update(boy).update('\0').update(yaldiz).digest('hex').slice(0, 32);
+  const key = crypto.createHash('sha256').update(kumas).update('\0').update(boy).update('\0').update(yaldiz).update('\0').update(foto || '').digest('hex').slice(0, 32);
   fs.mkdirSync(DIR, { recursive: true });
   const out = { glb: `/media/ar/${key}.glb`, usdz: `/media/ar/${key}.usdz` };
   if (fs.existsSync(path.join(DIR, `${key}.usdz`))) return out;
   const { w, h } = dims(boy);
-  const ms = meshes(w, h);
-  const tex = { kumas: { buf: kumas }, sayfa: { buf: SAYFA }, yaldiz: { buf: yaldiz, png: true } };
-  fs.writeFileSync(path.join(DIR, `${key}.glb`), glb(ms, tex));
-  const files = { kumas: 'kumas.jpg', sayfa: 'sayfa.jpg', yaldiz: 'yaldiz.png' };
-  fs.writeFileSync(path.join(DIR, `${key}.usdz`), zip([['album.usda', Buffer.from(usda(ms, files))], ['kumas.jpg', kumas], ['sayfa.jpg', SAYFA], ['yaldiz.png', yaldiz]]));
+  const ms = meshes(w, h).filter((m) => foto || m.mat !== 'foto');
+  const mats = Object.fromEntries(Object.entries(MATS).filter(([k]) => foto || k !== 'foto'));
+  const tex = { kumas: { buf: kumas }, sayfa: { buf: SAYFA }, yaldiz: { buf: yaldiz, png: true }, ...(foto ? { foto: { buf: foto, png: true } } : {}) };
+  fs.writeFileSync(path.join(DIR, `${key}.glb`), glb(ms, tex, mats));
+  const files = { kumas: 'kumas.jpg', sayfa: 'sayfa.jpg', yaldiz: 'yaldiz.png', foto: 'foto.png' };
+  fs.writeFileSync(path.join(DIR, `${key}.usdz`), zip([['album.usda', Buffer.from(usda(ms, files, mats))], ['kumas.jpg', kumas], ['sayfa.jpg', SAYFA], ['yaldiz.png', yaldiz], ...(foto ? [['foto.png', foto]] : [])]));
   prune();
   return out;
 }

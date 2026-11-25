@@ -54,29 +54,71 @@
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const val = (n) => (form.querySelector(`input[name="${n}"]:checked`) || {}).value || '';
 
-  // Kapak yazısı: saydam zemin üstünde yaldız (kapağın sırt hariç ölçüsünde)
+  // Kapak düzenleri (kapağın sırt hariç yüzüne göre oran): fotoğrafın yeri ve yazının ortası
+  const LAYOUT = {
+    duz: { text: [0.5, 0.5], tw: 0.8 },
+    orta: { foto: { r: [0.2, 0.12, 0.6, 0.56] }, text: [0.5, 0.82], tw: 0.7, frame: true },
+    daire: { foto: { c: [0.5, 0.42, 0.3] }, text: [0.5, 0.84], tw: 0.7, frame: true },
+    sag: { foto: { r: [0.42, 0, 0.58, 1] }, text: [0.21, 0.5], tw: 0.34 },
+    sol: { foto: { r: [0, 0, 0.58, 1] }, text: [0.79, 0.5], tw: 0.34 },
+    ust: { foto: { r: [0, 0, 1, 0.7] }, text: [0.5, 0.85], tw: 0.8 },
+    tam: { foto: { r: [0, 0, 1, 1] }, text: [0.5, 0.86], tw: 0.8 },
+  };
+  const loadImg = (src) => new Promise((resolve) => { if (!src) { resolve(null); return; } const im = new Image(); im.onload = () => resolve(im); im.onerror = () => resolve(null); im.src = src; });
+  let photoP = null;
+
+  // Kapak: yaldız yazı (metalik katman) + varsa fotoğraf (parlak baskı katmanı); ikisi de saydam zeminli PNG
   async function decal(boy) {
     const m = /^(\d{2})x(\d{2,3})$/.exec(boy) || [0, 30, 60];
     const hcm = Number(m[1]); const wcm = Number(m[2]) / 2 - 1.3;
     const H = 1024; const W = Math.round((H * wcm) / hcm);
+    const L = LAYOUT[form.dataset.akKapak] || LAYOUT.duz;
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
     try { await document.fonts.load('600 80px "Cormorant Garamond"'); } catch { /* yedek yazı tipi */ }
-    const isim = form.dataset.akIsim || ''; const tarih = form.dataset.akTarih || '';
-    let fs = H * 0.085;
-    g.font = `600 ${fs}px "Cormorant Garamond", Georgia, serif`;
-    while (g.measureText(isim).width > W * 0.8 && fs > 20) { fs -= 2; g.font = `600 ${fs}px "Cormorant Garamond", Georgia, serif`; }
-    const grad = g.createLinearGradient(0, H * 0.4, 0, H * 0.65);
-    grad.addColorStop(0, '#f4dc9c'); grad.addColorStop(0.5, '#c9a256'); grad.addColorStop(1, '#e9cf8a');
-    g.fillStyle = grad; g.textAlign = 'center'; g.textBaseline = 'middle';
-    const cy = tarih ? H * 0.47 : H * 0.5;
-    g.fillText(isim, W / 2, cy);
-    if (tarih) {
-      g.font = `500 ${H * 0.05}px "Cormorant Garamond", Georgia, serif`;
-      if ('letterSpacing' in g) g.letterSpacing = `${Math.round(H * 0.012)}px`;
-      g.fillText(tarih, W / 2, cy + H * 0.09);
+    const gold = (y0, y1) => { const gr = g.createLinearGradient(0, y0, 0, y1); gr.addColorStop(0, '#f4dc9c'); gr.addColorStop(0.5, '#c9a256'); gr.addColorStop(1, '#e9cf8a'); return gr; };
+
+    let foto = null;
+    if (L.foto) {
+      photoP = photoP || loadImg(form.dataset.akFoto);
+      const img = await photoP;
+      if (img) {
+        const PH = 768; const PW = Math.round((PH * W) / H); const k = PH / H;
+        const pc = document.createElement('canvas'); pc.width = PW; pc.height = PH;
+        const pg = pc.getContext('2d');
+        let x; let y; let w; let hh;
+        if (L.foto.c) { const r = L.foto.c[2] * Math.min(W, H); x = L.foto.c[0] * W - r; y = L.foto.c[1] * H - r; w = 2 * r; hh = 2 * r; }
+        else { [x, y, w, hh] = [L.foto.r[0] * W, L.foto.r[1] * H, L.foto.r[2] * W, L.foto.r[3] * H]; }
+        pg.save(); pg.beginPath();
+        if (L.foto.c) pg.arc((x + w / 2) * k, (y + hh / 2) * k, (w / 2) * k, 0, Math.PI * 2); else pg.rect(x * k, y * k, w * k, hh * k);
+        pg.clip();
+        const s = Math.max((w * k) / img.naturalWidth, (hh * k) / img.naturalHeight);
+        const dw = img.naturalWidth * s; const dh = img.naturalHeight * s;
+        pg.drawImage(img, x * k + (w * k - dw) / 2, y * k + (hh * k - dh) * 0.35, dw, dh);
+        pg.restore();
+        try { foto = pc.toDataURL('image/png'); } catch { foto = null; }
+        if (L.frame) { // ince yaldız çerçeve
+          g.strokeStyle = gold(y, y + hh); g.lineWidth = H * 0.007; const o = H * 0.012;
+          g.beginPath(); if (L.foto.c) g.arc(x + w / 2, y + hh / 2, w / 2 + o, 0, Math.PI * 2); else g.rect(x - o, y - o, w + 2 * o, hh + 2 * o); g.stroke();
+        }
+      }
     }
-    return cv.toDataURL('image/png');
+
+    const isim = form.dataset.akIsim || ''; const tarih = form.dataset.akTarih || '';
+    const cx = L.text[0] * W; let cy = L.text[1] * H;
+    let fs = H * (L.tw < 0.5 ? 0.07 : 0.085);
+    const setF = () => { g.font = `600 ${fs}px "Cormorant Garamond", Georgia, serif`; };
+    setF();
+    while (g.measureText(isim).width > W * L.tw && fs > 18) { fs -= 2; setF(); }
+    if (tarih) cy -= fs * 0.35;
+    g.fillStyle = gold(cy - fs, cy + fs * 1.6); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(isim, cx, cy);
+    if (tarih) {
+      g.font = `500 ${Math.min(H * 0.05, fs * 0.6)}px "Cormorant Garamond", Georgia, serif`;
+      if ('letterSpacing' in g) g.letterSpacing = `${Math.round(H * 0.01)}px`;
+      g.fillText(tarih, cx, cy + fs * 1.05);
+    }
+    return { yaldiz: cv.toDataURL('image/png'), foto };
   }
 
   // Kumaş dokusu: ışık farkını düzle ve kenarları birleştir (kapakta tekrar ederken kare kare görünmesin)
@@ -135,8 +177,8 @@
     btn.setAttribute('aria-disabled', 'true'); btn.classList.add('is-busy'); if (label) label.textContent = 'Hazırlanıyor…';
     try {
       const sw = form.querySelector('input[name="renk"]:checked + img');
-      const [yaldiz, kumas] = await Promise.all([decal(boy), fabric(sw ? sw.src : '')]);
-      const r = await fetch('/panel/albumum/ar', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ no: form.dataset.akForm, renk, boy, yaldiz, kumas }) });
+      const [{ yaldiz, foto }, kumas] = await Promise.all([decal(boy), fabric(sw ? sw.src : '')]);
+      const r = await fetch('/panel/albumum/ar', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify({ no: form.dataset.akForm, renk, boy, yaldiz, kumas, foto }) });
       if (!r.ok) throw new Error('hata');
       const u = await r.json();
       if (my !== seq) return;

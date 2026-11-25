@@ -32,6 +32,13 @@ function lockedFor(c) {
   const o = db.getOrder(c.id);
   return Boolean(o && ['onay', 'onaylandi'].includes(o.state));
 }
+// Kapak fotoğrafı için çiftin bir fotoğrafı: albüm kapağı → kapak fotoğrafı → ilk favori → ilk fotoğraf; yoksa portfolyodan
+function coverPhoto(c) {
+  const id = c.album_cover_id || c.cover_photo_id || db.firstCouplePhotoId(c.id);
+  if (id) return `/m/${id}/display`;
+  const p = db.listPortfolio()[0];
+  return p ? `/media/portfolio/${p.file_key}-display.jpg` : '';
+}
 const dateTr = (iso) => (/^\d{4}-\d{2}-\d{2}/.test(String(iso || '')) ? String(iso).slice(0, 10).split('-').reverse().join('.') : '');
 
 function register(router) {
@@ -67,7 +74,7 @@ function register(router) {
     if (!katalog.get(no)) throw new HttpError(404, 'Model bulunamadı');
     const islem = form.islem || 'kaydet';
     if (islem === 'kaydet') {
-      const m = katalog.save(no, { ad: form.ad, aktif: form.aktif === '1', fark: form.fark, not: form.not, renkler: form.renk || [], ebatlar: form.ebat || [] });
+      const m = katalog.save(no, { ad: form.ad, aktif: form.aktif === '1', fark: form.fark, not: form.not, kapak: form.kapak, renkler: form.renk || [], ebatlar: form.ebat || [] });
       const warn = m.aktif && (!m.foto || !m.renkler.some((r) => r.aktif) || !m.ebatlar.some((e) => e.aktif));
       setFlash(req, warn ? { message: 'Kaydedildi. Not: fotoğrafı, açık rengi ya da ebatı olmayan model çiftlere görünmez.', type: 'info' } : { message: 'Kaydedildi.', type: 'success' });
       return redirect(res, back(no));
@@ -119,22 +126,23 @@ function register(router) {
     const pick = { renk: query.get('renk') || (ch && ch.no === item.no ? ch.renk : ''), boy: query.get('boy') || (ch && ch.no === item.no ? ch.kod : '') };
     const names = (ch && ch.isim) || String(couple.name || '').replace(/\s+(ve|&|-)\s+/i, ' & ');
     const date = ch ? ch.tarih : dateTr(couple.event_date);
-    html(res, views.coupleDetail(getContent(), { couple, item, pick, names, date, locked: lockedFor(couple), csrf: req.session.csrf, flash: takeFlash(req) }));
+    html(res, views.coupleDetail(getContent(), { couple, item, pick, names, date, photo: coverPhoto(couple), locked: lockedFor(couple), csrf: req.session.csrf, flash: takeFlash(req) }));
   });
   // "Masamda gör": seçilen renk + boy + kapak yazısıyla 3D dosya (kapak yazısı PNG'sini tarayıcı çizer)
   router.post('/panel/albumum/ar', async (req, res) => {
     if (req.session?.kind !== 'couple') throw new HttpError(401, 'Oturum gerekli');
     checkCsrf(req);
     let b;
-    try { b = JSON.parse((await readBody(req, 2 * 1024 * 1024)).toString('utf8') || '{}'); } catch { throw new HttpError(400, 'Geçersiz istek.'); }
+    try { b = JSON.parse((await readBody(req, 6 * 1024 * 1024)).toString('utf8') || '{}'); } catch { throw new HttpError(400, 'Geçersiz istek.'); }
     const item = katalog.list().find((x) => x.no === Number(b.no));
     const renk = item && item.renkler.find((r) => r.ad === b.renk);
     const boy = item && item.ebatlar.find((e) => e.kod === b.boy);
     if (!renk || !boy) throw new HttpError(400, 'Seçim geçersiz.');
     const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.yaldiz || ''));
+    const f = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.foto || ''));
     try {
       const k = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.kumas || ''));
-      json(res, ar.build({ doku: renk.doku, kumas: k ? Buffer.from(k[1], 'base64') : null, boy: boy.ad, yaldiz: m ? Buffer.from(m[1], 'base64') : null }));
+      json(res, ar.build({ doku: renk.doku, kumas: k ? Buffer.from(k[1], 'base64') : null, boy: boy.ad, yaldiz: m ? Buffer.from(m[1], 'base64') : null, foto: f ? Buffer.from(f[1], 'base64') : null }));
     } catch (err) { throw new HttpError(400, err.message); }
   });
   router.get('/panel/albumum/:no/onay', (req, res, { params, query }) => {

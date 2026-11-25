@@ -77,6 +77,7 @@ function editPage(c, { item: m, known, csrf, flash: f, demoAdmin }) {
             <label class="field"><span class="field__label">Fiyat farkı (₺)</span><input class="input" type="text" inputmode="numeric" name="fark" value="${m.fark || ''}" placeholder="0"></label>
             <label class="field"><span class="field__label">Not (sadece siz görürsünüz)</span><input class="input" type="text" name="not" maxlength="300" value="${m.not}" placeholder="ör. stokta yok"></label>
           </div>
+          <label class="field"><span class="field__label">"Masamda gör" kapak düzeni</span><select class="input" name="kapak">${Object.entries(require('../katalog').KAPAKLAR).map(([k, v]) => h`<option value="${k}"${m.kapak === k ? raw(' selected') : ''}>${v}</option>`)}</select></label>
           ${m.renkler.map((r) => h`<input type="hidden" name="renk[]" value="${r.ad}" data-kt-on="r:${r.ad}"${r.aktif ? '' : raw(' disabled')}>`)}
           ${m.ebatlar.map((e) => h`<input type="hidden" name="ebat[]" value="${e.kod}" data-kt-on="e:${e.kod}"${e.aktif ? '' : raw(' disabled')}>`)}
         </form>
@@ -157,7 +158,7 @@ function coupleList(c, o) {
     </article>`)}</div>
     <p class="muted ak-empty" data-ak-empty hidden>Henüz favori yok.</p>`}
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=3']);
+  return shell(c, o, body, ['/js/albumum.js?v=4']);
 }
 
 function coupleDetail(c, o) {
@@ -168,7 +169,7 @@ function coupleDetail(c, o) {
     <p class="ed__kicker"><a href="/panel/albumum">Katalog</a></p>
     <div class="ak-detail__grid">
       <figure class="ak-detail__img"><img src="${m.foto}" alt="${m.ad}" width="800" height="800"></figure>
-      <form class="ak-detail__form" method="get" action="/panel/albumum/${m.no}/onay" data-ak-form="${m.no}" data-ak-isim="${o.names}" data-ak-tarih="${o.date || ''}" data-ak-model="${m.ad}">
+      <form class="ak-detail__form" method="get" action="/panel/albumum/${m.no}/onay" data-ak-form="${m.no}" data-ak-isim="${o.names}" data-ak-tarih="${o.date || ''}" data-ak-model="${m.ad}" data-ak-kapak="${m.kapak || 'duz'}" data-ak-foto="${o.photo || ''}">
         <h1 class="page-title">${m.ad}</h1>
         <p class="muted">${m.malzeme.join(' · ')}</p>
         <p class="kt-form__label">Renk · <span data-ak-renkad>${renk.ad}</span></p>
@@ -186,7 +187,7 @@ function coupleDetail(c, o) {
       </form>
     </div>
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=3']);
+  return shell(c, o, body, ['/js/albumum.js?v=4']);
 }
 
 function coupleConfirm(c, o) {
@@ -206,6 +207,6 @@ function coupleConfirm(c, o) {
       <button class="btn btn--primary btn--block" type="submit">${icon('check')}Onayla ve gönder</button>
     </form>
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=3']);
+  return shell(c, o, body, ['/js/albumum.js?v=4']);
 }
 module.exports = { listPage, editPage, coupleList, coupleDetail, coupleConfirm };

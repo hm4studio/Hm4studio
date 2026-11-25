@@ -713,6 +713,7 @@ module.exports = {
   resolveCheck: (id, state) => q("UPDATE checks SET state = ?, resolved_at = datetime('now') WHERE id = ?").run(state, id),
   snoozeCheck: (id, until) => q('UPDATE checks SET snooze_until = ? WHERE id = ?').run(until, id),
   // Albüm siparişi
+  firstCouplePhotoId: (coupleId) => (q(`SELECT p.id FROM photos p WHERE p.couple_id = ? ORDER BY EXISTS(SELECT 1 FROM favorites f WHERE f.photo_id = p.id) DESC, (p.kind = 'duzenli') DESC, p.id LIMIT 1`).get(coupleId) || {}).id || null,
   setAlbumChoice: (id, v) => q('UPDATE couples SET album_choice = ? WHERE id = ?').run(v, id),
   getOrder: (coupleId) => q('SELECT * FROM album_orders WHERE couple_id = ?').get(coupleId) || null,
   listOrders: () => q(`SELECT o.*, c.name AS couple_name, c.album_design_state, c.album_design_at, c.event_date FROM album_orders o JOIN couples c ON c.id = o.couple_id`).all(),

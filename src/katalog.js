@@ -11,6 +11,19 @@ const KEY = 'album_katalog_v2';
 const IMG = '/images/katalog/';
 const SIZE_RE = /^(\d{2})x(\d{2,3})$/;
 
+// "Masamda gör" kapak düzeni: fotoğrafın kapaktaki yeri (yazı yeri buna göre)
+const KAPAKLAR = {
+  duz: 'Fotoğrafsız (sadece yazı)',
+  orta: 'Ortada fotoğraf penceresi',
+  daire: 'Ortada yuvarlak fotoğraf',
+  sag: 'Sağda fotoğraf, solda yazı',
+  sol: 'Solda fotoğraf, sağda yazı',
+  ust: 'Üstte fotoğraf, altta yazı',
+  tam: 'Tamamı fotoğraf',
+};
+// Tedarikçi kataloğundaki modellerin kapak düzeni (katalog fotoğraflarına bakılarak)
+const KAPAK_ILK = { 1: 'sol', 2: 'orta', 3: 'daire', 4: 'sol', 5: 'duz', 6: 'orta', 7: 'ust', 8: 'sag', 9: 'sol', 10: 'orta', 11: 'orta', 12: 'ust', 13: 'sag', 14: 'ust', 15: 'orta', 16: 'orta', 17: 'sag', 18: 'sol', 19: 'sol', 20: 'sag', 21: 'sag', 22: 'sag', 23: 'ust', 24: 'duz', 25: 'sag', 26: 'tam', 27: 'daire', 28: 'ust', 29: 'ust', 30: 'orta', 31: 'sag', 32: 'sag', 33: 'ust', 34: 'sag', 35: 'sol', 36: 'sol', 37: 'sag', 38: 'sag', 39: 'sag', 40: 'duz', 41: 'duz', 42: 'sag', 43: 'duz', 44: 'duz', 45: 'orta', 46: 'sag', 47: 'duz', 48: 'sag', 49: 'daire', 50: 'orta', 51: 'ust', 52: 'ust', 53: 'orta', 54: 'duz', 55: 'tam' };
+
 // Katalogdaki ebatlar albümün açık hâlidir: 30x60 → 30×30 albüm
 const kapali = (e) => { const m = SIZE_RE.exec(String(e)); return m ? `${m[1]}×${Math.round(Number(m[2]) / 2)}` : String(e); };
 const clean = (s, n = 60) => String(s || '').replace(/\s+/g, ' ').trim().slice(0, n);
@@ -23,7 +36,7 @@ function seed() {
     const offR = new Set(o.kapaliRenk || []); const offE = new Set(o.kapaliEbat || []);
     return {
       no: m.no, ad: m.ad, malzeme: m.malzeme, foto: IMG + m.foto, kaynakNot: m.not || '', not: o.not || '',
-      aktif: o.aktif !== false, fark: Number(o.fark) || 0,
+      aktif: o.aktif !== false, fark: Number(o.fark) || 0, kapak: KAPAK_ILK[m.no] || 'duz',
       renkler: m.renkler.map((r) => ({ ad: r.ad, hex: r.hex, doku: IMG + r.doku, aktif: !offR.has(r.ad) })),
       ebatlar: m.ebatlar.map((e) => ({ kod: e, aktif: !offE.has(e) })),
     };
@@ -36,6 +49,12 @@ function all() {
   let list = null;
   try { list = JSON.parse(db.getSetting(KEY) || 'null'); } catch { list = null; }
   if (!Array.isArray(list)) { list = seed(); db.setSetting(KEY, JSON.stringify(list)); }
+  // Kapak düzeni sonradan eklendi: eksik olanlar katalogdaki düzenle tamamlanır
+  if (list.some((m) => !KAPAKLAR[m.kapak])) {
+    const kaynakAdi = new Map(SEED.modeller.map((x) => [x.no, x.ad]));
+    for (const m of list) if (!KAPAKLAR[m.kapak]) m.kapak = (kaynakAdi.has(m.no) && KAPAK_ILK[m.no]) || 'duz';
+    db.setSetting(KEY, JSON.stringify(list));
+  }
   cache = list;
   return list;
 }
@@ -66,13 +85,14 @@ function update(no, fn) {
   return m;
 }
 
-function save(no, { ad, aktif, fark, not, renkler = [], ebatlar = [] }) {
+function save(no, { ad, aktif, fark, not, kapak, renkler = [], ebatlar = [] }) {
   return update(no, (m) => {
     const name = clean(ad, 40);
     if (name) m.ad = name;
     m.aktif = Boolean(aktif);
     m.fark = Math.max(-1e6, Math.min(1e6, Math.round(Number(String(fark || '0').replace(/[^\d-]/g, '')) || 0)));
     m.not = clean(not, 300);
+    if (KAPAKLAR[kapak]) m.kapak = kapak;
     m.renkler.forEach((r) => { r.aktif = renkler.includes(r.ad); });
     m.ebatlar.forEach((e) => { e.aktif = ebatlar.includes(e.kod); });
   });
@@ -82,7 +102,7 @@ function setActive(no, aktif) { return update(no, (m) => { m.aktif = Boolean(akt
 function create(ad) {
   const lst = all().map((x) => ({ ...x }));
   const no = Math.max(0, ...lst.map((x) => x.no)) + 1;
-  const m = { no, ad: clean(ad, 40) || 'Yeni model', malzeme: ['Diğer'], foto: '', kaynakNot: '', not: '', aktif: false, fark: 0, renkler: [], ebatlar: [] };
+  const m = { no, ad: clean(ad, 40) || 'Yeni model', malzeme: ['Diğer'], foto: '', kaynakNot: '', not: '', aktif: false, fark: 0, kapak: 'orta', renkler: [], ebatlar: [] };
   lst.push(m);
   store(lst);
   return m;
@@ -156,4 +176,4 @@ const knownColors = () => {
   return [...map.values()].sort((a, b) => a.ad.localeCompare(b.ad, 'tr'));
 };
 
-module.exports = { list, get, forCouples, save, setActive, create, remove, addSize, removeSize, addColor, removeColor, setPhoto, malzemeler, knownColors, kapali, kaynak: SEED.kaynak };
+module.exports = { KAPAKLAR, list, get, forCouples, save, setActive, create, remove, addSize, removeSize, addColor, removeColor, setPhoto, malzemeler, knownColors, kapali, kaynak: SEED.kaynak };
