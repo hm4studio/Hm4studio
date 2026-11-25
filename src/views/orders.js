@@ -97,7 +97,6 @@ function formPage(c, { couple, order, pages, options, csrf, flash: f, demoAdmin 
       ${couple.album_design_state === 'onaylandi' ? h`<span class="otag otag--o">Tasarım onaylandı${couple.album_design_at ? ` · ${trDate(couple.album_design_at)}` : ''}</span>` : h`<span class="otag otag--n">Tasarım henüz onaylanmadı</span>`}
       ${pages ? h`<span class="otag otag--n">Tasarım ${pages} sayfa</span>` : ''}
     </div>
-    ${(() => { let ch = null; try { ch = JSON.parse(couple.album_choice || 'null'); } catch { ch = null; } return ch ? h`<section class="ak-chosen ak-chosen--admin"><p class="ak-eyebrow">Çiftin katalog seçimi</p><h2><a href="/admin/albumler/${ch.no}">${ch.model}</a></h2><p>${ch.renk} · ${ch.boy}${ch.fark ? ` · ${ch.fark > 0 ? '+' : ''}${Number(ch.fark).toLocaleString('tr-TR')} ₺` : ''}</p><p class="ak-cover-line">Kapak: <b>${ch.isim}</b>${ch.tarih ? ` · ${ch.tarih}` : ''}</p>${ch.not ? h`<p class="muted">Not: ${ch.not}</p>` : ''}</section>` : ''; })()}
     ${order.plan_note ? h`<p class="pre-note">${icon('calendar')}<span><b>Randevuda not alındı:</b> ${order.plan_note}</span></p>` : ''}
     ${order.state === 'degisiklik' && order.change_note ? h`<p class="pre-note pre-note--warn">${icon('alert')}<span><b>Çiftin isteği:</b> ${order.change_note}</span></p>` : ''}
     <div class="oform" data-order-form>
@@ -185,7 +184,7 @@ function doc(c, { couple, order, back }) {
 <html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Albüm siparişi ${orders.orderNo(order)} — ${couple.name}</title>
 <meta name="robots" content="noindex">
-<link rel="stylesheet" href="/css/style.css?v=116">
+<link rel="stylesheet" href="/css/style.css?v=113">
 </head><body class="doc-body">
 <div class="doc-tools">
   <a class="btn btn--text btn--sm" href="${back}">${icon('left')}Geri</a>

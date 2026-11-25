@@ -70,7 +70,6 @@ function editorPage(c, { jobs, stage, csrf, demoAdmin, tools }) {
     { href: '/admin/arw', icon: 'search', name: 'ARW Bulucu', sub: 'Eski listeler için de' },
     { href: '/admin/photoshop#lightroom', icon: 'camera', name: 'Lightroom', sub: tools.connected ? 'Bağlı · eklenti' : 'Kurulum' },
     { href: '/admin/photoshop', icon: 'sparkle', name: 'Photoshop rötuş', sub: tools.connected ? 'Bağlı · HM4 paneli' : 'Kurulum' },
-    { href: '/admin/albumler', icon: 'book', name: 'Albüm kataloğu', sub: 'Modeller, renkler, ebatlar' },
     { href: '/admin/album', icon: 'grid', name: 'Albüm tasarımı', sub: counts.album ? `${counts.album} albüm bekliyor` : 'Tasarımcı' },
     { href: '/admin/siparisler', icon: 'book', name: 'Baskı / sipariş', sub: counts.baski ? `${counts.baski} matbaada` : 'Albüm siparişleri' },
   ];
