@@ -44,6 +44,8 @@
   const ua = navigator.userAgent;
   const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const android = /Android/.test(ua);
+  const otherIos = ios && /CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(ua);
+  const standalone = navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   const btn = document.querySelector(`[data-ak-ar="${ios ? 'ios' : 'android'}"]`);
   if (!ios && !android) { const n = document.querySelector('[data-ak-arnote]'); if (n) n.hidden = false; return; }
   if (!btn) return;
@@ -223,7 +225,12 @@
       if (!r.ok) throw new Error('hata');
       const u = await r.json();
       if (my !== seq) return;
-      if (ios) btn.href = `${u.usdz}#allowsContentScaling=0`;
+      if (ios) {
+        btn.href = `${u.usdz}#allowsContentScaling=0`;
+        // Ana ekrana eklenmiş uygulamada (PWA) iOS, AR görünümünde kapatma düğmesi göstermiyor:
+        // orada dosyayı uygulama içi Safari penceresinde açıyoruz (kapatma düğmesi olan)
+        if (standalone || otherIos) { btn.removeAttribute('rel'); btn.target = '_blank'; btn.rel = 'noopener'; }
+      }
       else {
         const file = encodeURIComponent(location.origin + u.glb);
         const back = encodeURIComponent(location.href);

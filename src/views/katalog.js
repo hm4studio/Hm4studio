@@ -158,7 +158,7 @@ function coupleList(c, o) {
     </article>`)}</div>
     <p class="muted ak-empty" data-ak-empty hidden>Henüz favori yok.</p>`}
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=5']);
+  return shell(c, o, body, ['/js/albumum.js?v=6']);
 }
 
 function coupleDetail(c, o) {
@@ -187,7 +187,7 @@ function coupleDetail(c, o) {
       </form>
     </div>
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=5']);
+  return shell(c, o, body, ['/js/albumum.js?v=6']);
 }
 
 function coupleConfirm(c, o) {
@@ -207,6 +207,6 @@ function coupleConfirm(c, o) {
       <button class="btn btn--primary btn--block" type="submit">${icon('check')}Onayla ve gönder</button>
     </form>
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=5']);
+  return shell(c, o, body, ['/js/albumum.js?v=6']);
 }
 module.exports = { listPage, editPage, coupleList, coupleDetail, coupleConfirm };
