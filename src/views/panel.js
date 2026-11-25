@@ -222,7 +222,10 @@ const COUPLE_PAGES = [
 // Plan çekimler bitince, Video da video işi yoksa gizlenir (sayfalar adresle yine açılır).
 function pagesFor(couple) {
   const ct = { key: 'sozlesme', href: '/panel/sozlesme', label: 'Sözleşme', icon: 'check' };
-  const base = COUPLE_PAGES.filter((p) => (p.key !== 'plan' || couple.show_plan !== false) && (p.key !== 'video' || couple.show_video !== false) && (p.key !== 'album' || Boolean(couple.album_design_state)));
+  // Albüm: tasarım varsa tasarım sayfası, yoksa katalogdan model seçimi (katalogda çifte açık model varsa)
+  const pickAlbum = !couple.album_design_state && !couple.delivery_only && require('../katalog').forCouples().length > 0;
+  const base = COUPLE_PAGES.filter((p) => (p.key !== 'plan' || couple.show_plan !== false) && (p.key !== 'video' || couple.show_video !== false) && (p.key !== 'album' || Boolean(couple.album_design_state) || pickAlbum))
+    .map((p) => (p.key === 'album' && !couple.album_design_state ? { ...p, href: '/panel/albumum' } : p));
   if (couple.delivery_only) return base;
   if (couple.contract_state === 'bekliyor') return [base[0], ct, ...base.slice(1)];
   if (couple.contract_state === 'imzali') return [...base, ct];

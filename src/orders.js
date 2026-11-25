@@ -19,7 +19,14 @@ const DEFAULTS = {
 
 function options() {
   const o = getContent().albumOptions || {};
-  return Object.fromEntries(FIELDS.map(([k]) => [k, Array.isArray(o[k]) && o[k].length ? o[k] : DEFAULTS[k]]));
+  const base = Object.fromEntries(FIELDS.map(([k]) => [k, Array.isArray(o[k]) && o[k].length ? o[k] : DEFAULTS[k]]));
+  // Albüm kataloğundaki model, renk ve ebatlar da seçilebilir (çiftin katalogdan seçtiği değerler kaybolmasın)
+  const kt = require('./katalog').list();
+  const add = (k, vals) => { base[k] = [...new Set([...base[k], ...vals])]; };
+  add('model', kt.map((m) => m.ad));
+  add('renk', kt.flatMap((m) => m.renkler.map((r) => r.ad)));
+  add('boyut', kt.flatMap((m) => m.ebatlar.map((e) => e.ad)));
+  return base;
 }
 
 const clean = (v, n) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
