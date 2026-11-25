@@ -49,6 +49,7 @@
   if (!btn) return;
   btn.hidden = false;
   const hint = document.querySelector('[data-ak-arhint]'); if (hint) hint.hidden = false;
+  if (ios && /CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(ua)) { const sf = document.querySelector('[data-ak-arsafari]'); if (sf) sf.hidden = false; }
   const label = btn.querySelector('span');
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const val = (n) => (form.querySelector(`input[name="${n}"]:checked`) || {}).value || '';
@@ -86,11 +87,25 @@
         const N = 512; const cv = document.createElement('canvas'); cv.width = N; cv.height = N;
         const g = cv.getContext('2d'); g.drawImage(img, 0, 0, N, N);
         const a = g.getImageData(0, 0, N, N).data;
-        const sm = document.createElement('canvas'); sm.width = 6; sm.height = 6;
-        const sg = sm.getContext('2d'); sg.imageSmoothingQuality = 'high'; sg.drawImage(cv, 0, 0, 6, 6);
-        const bl = document.createElement('canvas'); bl.width = N; bl.height = N;
-        const bg = bl.getContext('2d'); bg.imageSmoothingQuality = 'high'; bg.filter = 'blur(40px)'; bg.drawImage(sm, -40, -40, N + 80, N + 80);
-        const lo = bg.getImageData(0, 0, N, N).data;
+        // Işık farkı: 16×16 bölgenin ortalaması, yumuşatılıp araya doğrusal dağıtılır (canvas filtresi Safari'de yok)
+        const G = 16; const C = N / G; const grid = new Float32Array(G * G * 3);
+        for (let y = 0; y < N; y += 1) for (let x = 0; x < N; x += 1) { const i = (y * N + x) * 4; const c = ((Math.floor(y / C) * G) + Math.floor(x / C)) * 3; for (let k = 0; k < 3; k += 1) grid[c + k] += a[i + k] / (C * C); }
+        for (let pass = 0; pass < 2; pass += 1) {
+          const t = grid.slice();
+          for (let gy = 0; gy < G; gy += 1) for (let gx = 0; gx < G; gx += 1) for (let k = 0; k < 3; k += 1) {
+            let sum = 0; for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) sum += t[((((gy + dy + G) % G) * G) + ((gx + dx + G) % G)) * 3 + k];
+            grid[(gy * G + gx) * 3 + k] = sum / 9;
+          }
+        }
+        const lo = new Float32Array(N * N * 4);
+        for (let y = 0; y < N; y += 1) {
+          const fy = y / C - 0.5; const y0 = Math.floor(fy); const ty = fy - y0;
+          for (let x = 0; x < N; x += 1) {
+            const fx = x / C - 0.5; const x0 = Math.floor(fx); const tx = fx - x0;
+            const at = (gx, gy, k) => grid[((((gy + G) % G) * G) + ((gx + G) % G)) * 3 + k];
+            for (let k = 0; k < 3; k += 1) lo[(y * N + x) * 4 + k] = (at(x0, y0, k) * (1 - tx) + at(x0 + 1, y0, k) * tx) * (1 - ty) + (at(x0, y0 + 1, k) * (1 - tx) + at(x0 + 1, y0 + 1, k) * tx) * ty;
+          }
+        }
         const mean = [0, 0, 0]; for (let i = 0; i < a.length; i += 4) for (let k = 0; k < 3; k += 1) mean[k] += a[i + k];
         for (let k = 0; k < 3; k += 1) mean[k] /= N * N;
         const f = new Float32Array(N * N * 3);

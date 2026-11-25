@@ -157,7 +157,7 @@ function coupleList(c, o) {
     </article>`)}</div>
     <p class="muted ak-empty" data-ak-empty hidden>Henüz favori yok.</p>`}
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=2']);
+  return shell(c, o, body, ['/js/albumum.js?v=3']);
 }
 
 function coupleDetail(c, o) {
@@ -181,11 +181,12 @@ function coupleDetail(c, o) {
           ${locked ? h`<p class="muted">Albümünüz tasarıma alındı; seçim kilitli.</p>` : h`<button class="btn btn--primary" type="submit">${icon('check')}Bunu seçiyorum</button>`}
         </div>
         <p class="muted ak-arnote" data-ak-arnote hidden>"Masamda gör" telefonda çalışır: bu sayfayı iPhone'da ya da Android'de açın.</p>
+        <p class="muted ak-arnote" data-ak-arsafari hidden>iPhone ve iPad'de "Masamda gör"ü Safari ile açın; diğer tarayıcılarda görüntüden çıkış düğmesi çıkmayabilir.</p>
         <p class="muted ak-arnote" data-ak-arhint hidden>Albüm seçtiğiniz renk ve boyda, kapağında isimlerinizle masanıza yerleşir.</p>
       </form>
     </div>
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=2']);
+  return shell(c, o, body, ['/js/albumum.js?v=3']);
 }
 
 function coupleConfirm(c, o) {
@@ -205,6 +206,6 @@ function coupleConfirm(c, o) {
       <button class="btn btn--primary btn--block" type="submit">${icon('check')}Onayla ve gönder</button>
     </form>
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=2']);
+  return shell(c, o, body, ['/js/albumum.js?v=3']);
 }
 module.exports = { listPage, editPage, coupleList, coupleDetail, coupleConfirm };
