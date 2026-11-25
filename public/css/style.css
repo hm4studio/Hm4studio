@@ -4010,3 +4010,6 @@ body.is-touring .install { display: none !important; }
   .ak-ctas .btn { flex: 1; justify-content: center; white-space: nowrap; padding-left: 12px; padding-right: 12px; }
   .kt-actions { flex-direction: column-reverse; align-items: stretch; }
 }
+.ak-ar { position: relative; }
+.ak-arimg { display: none; }
+.ak-arnote { font-size: .8rem; margin: 10px 0 0; }

@@ -118,7 +118,7 @@ function editPage(c, { item: m, known, csrf, flash: f, demoAdmin }) {
       </div>
     </div>
   </div>`;
-  return layout(c, m.ad, csrf, demoAdmin, body, ['/js/katalog.js?v=1']);
+  return layout(c, m.ad, csrf, demoAdmin, body, ['/js/katalog.js?v=2']);
 }
 
 // ───────── Çift tarafı ─────────
@@ -157,7 +157,7 @@ function coupleList(c, o) {
     </article>`)}</div>
     <p class="muted ak-empty" data-ak-empty hidden>Henüz favori yok.</p>`}
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=1']);
+  return shell(c, o, body, ['/js/albumum.js?v=2']);
 }
 
 function coupleDetail(c, o) {
@@ -168,7 +168,7 @@ function coupleDetail(c, o) {
     <p class="ed__kicker"><a href="/panel/albumum">Katalog</a></p>
     <div class="ak-detail__grid">
       <figure class="ak-detail__img"><img src="${m.foto}" alt="${m.ad}" width="800" height="800"></figure>
-      <form class="ak-detail__form" method="get" action="/panel/albumum/${m.no}/onay">
+      <form class="ak-detail__form" method="get" action="/panel/albumum/${m.no}/onay" data-ak-form="${m.no}" data-ak-isim="${o.names}" data-ak-tarih="${o.date || ''}" data-ak-model="${m.ad}">
         <h1 class="page-title">${m.ad}</h1>
         <p class="muted">${m.malzeme.join(' · ')}</p>
         <p class="kt-form__label">Renk · <span data-ak-renkad>${renk.ad}</span></p>
@@ -176,13 +176,16 @@ function coupleDetail(c, o) {
         <p class="kt-form__label">Boy</p>
         <div class="ak-sizes">${m.ebatlar.map((e) => h`<label class="ak-size"><input type="radio" name="boy" value="${e.kod}"${e === boy ? ' checked' : ''}><span>${e.ad}</span></label>`)}</div>
         <div class="ak-ctas">
-          <a class="btn btn--ghost" href="/ar/deneme.html">${icon('camera')}Masamda gör</a>
+          <a class="btn btn--ghost ak-ar" data-ak-ar="ios" rel="ar" href="#" hidden aria-disabled="true"><img class="ak-arimg" src="${m.foto}" alt="">${icon('camera')}<span>Masamda gör</span></a>
+          <a class="btn btn--ghost ak-ar" data-ak-ar="android" href="#" hidden aria-disabled="true">${icon('camera')}<span>Masamda gör</span></a>
           ${locked ? h`<p class="muted">Albümünüz tasarıma alındı; seçim kilitli.</p>` : h`<button class="btn btn--primary" type="submit">${icon('check')}Bunu seçiyorum</button>`}
         </div>
+        <p class="muted ak-arnote" data-ak-arnote hidden>"Masamda gör" telefonda çalışır: bu sayfayı iPhone'da ya da Android'de açın.</p>
+        <p class="muted ak-arnote" data-ak-arhint hidden>Albüm seçtiğiniz renk ve boyda, kapağında isimlerinizle masanıza yerleşir.</p>
       </form>
     </div>
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=1']);
+  return shell(c, o, body, ['/js/albumum.js?v=2']);
 }
 
 function coupleConfirm(c, o) {
@@ -194,7 +197,7 @@ function coupleConfirm(c, o) {
     <form method="post" action="/panel/albumum/onay" class="ak-form">
       <input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="no" value="${m.no}"><input type="hidden" name="renk" value="${renk.ad}"><input type="hidden" name="boy" value="${boy.kod}">
       <p class="kt-form__label">Kapak yazısı</p>
-      <div class="ak-cover" aria-hidden="true"><img src="${renk.doku}" alt="" width="384" height="384"><div class="ak-cover__txt"><span data-ak-pv="isim">${names}</span><small data-ak-pv="tarih">${date}</small></div></div>
+      <div class="ak-cover" aria-hidden="true"><img src="${renk.doku}" alt="" width="512" height="512"><div class="ak-cover__txt"><span data-ak-pv="isim">${names}</span><small data-ak-pv="tarih">${date}</small></div></div>
       <label class="field"><span class="field__label">İsimler</span><input class="input" type="text" name="isim" maxlength="40" value="${names}" data-ak-in="isim" required></label>
       <label class="field"><span class="field__label">Tarih</span><input class="input" type="text" name="tarih" maxlength="12" value="${date}" placeholder="gg.aa.yyyy" data-ak-in="tarih"></label>
       <label class="field"><span class="field__label">Not (isteğe bağlı)</span><textarea class="input" name="not" maxlength="300" rows="3" placeholder="ör. tarih yazmasın, sadece isimler">${note}</textarea></label>
@@ -202,6 +205,6 @@ function coupleConfirm(c, o) {
       <button class="btn btn--primary btn--block" type="submit">${icon('check')}Onayla ve gönder</button>
     </form>
   </div>`;
-  return shell(c, o, body, ['/js/albumum.js?v=1']);
+  return shell(c, o, body, ['/js/albumum.js?v=2']);
 }
 module.exports = { listPage, editPage, coupleList, coupleDetail, coupleConfirm };

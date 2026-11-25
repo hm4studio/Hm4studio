@@ -17,17 +17,17 @@
     f.addEventListener('submit', (e) => { if (!window.confirm(f.dataset.ktConfirm)) e.preventDefault(); });
   }
 
-  // Görseli tarayıcıda küçült: model fotoğrafı 1000px kenar, renk dokusu 384px kare
+  // Görseli tarayıcıda küçült: model fotoğrafı 1000px kenar, renk dokusu 512px kare
   function shrink(file, square) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
-        const max = square ? 384 : 1000;
+        const max = square ? 512 : 1000;
         let sx = 0; let sy = 0; let sw = img.naturalWidth; let sh = img.naturalHeight;
         if (square) { const s = Math.min(sw, sh); sx = (sw - s) / 2; sy = (sh - s) / 2; sw = s; sh = s; }
         const k = Math.min(1, max / Math.max(sw, sh));
         const cv = document.createElement('canvas');
-        cv.width = Math.round(sw * k); cv.height = Math.round(sh * k);
+        cv.width = square ? 512 : Math.round(sw * k); cv.height = square ? 512 : Math.round(sh * k);
         const ctx = cv.getContext('2d');
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
         const px = ctx.getImageData(0, 0, cv.width, cv.height).data;

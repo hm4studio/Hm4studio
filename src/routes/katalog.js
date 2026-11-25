@@ -8,6 +8,7 @@ const { getContent } = require('../content');
 const { html, json, redirect, readForm, readBody, HttpError } = require('../http');
 const { requireAdmin, requireCouple, checkCsrf, setFlash, takeFlash } = require('./guards');
 const views = require('../views/katalog');
+const ar = require('../ar');
 
 const back = (no, hash = '') => `/admin/albumler/${Number(no)}${hash}`;
 async function formGuard(req, res) {
@@ -116,7 +117,25 @@ function register(router) {
     if (!item) return redirect(res, '/panel/albumum');
     const ch = choiceOf(couple);
     const pick = { renk: query.get('renk') || (ch && ch.no === item.no ? ch.renk : ''), boy: query.get('boy') || (ch && ch.no === item.no ? ch.kod : '') };
-    html(res, views.coupleDetail(getContent(), { couple, item, pick, locked: lockedFor(couple), csrf: req.session.csrf, flash: takeFlash(req) }));
+    const names = (ch && ch.isim) || String(couple.name || '').replace(/\s+(ve|&|-)\s+/i, ' & ');
+    const date = ch ? ch.tarih : dateTr(couple.event_date);
+    html(res, views.coupleDetail(getContent(), { couple, item, pick, names, date, locked: lockedFor(couple), csrf: req.session.csrf, flash: takeFlash(req) }));
+  });
+  // "Masamda gör": seçilen renk + boy + kapak yazısıyla 3D dosya (kapak yazısı PNG'sini tarayıcı çizer)
+  router.post('/panel/albumum/ar', async (req, res) => {
+    if (req.session?.kind !== 'couple') throw new HttpError(401, 'Oturum gerekli');
+    checkCsrf(req);
+    let b;
+    try { b = JSON.parse((await readBody(req, 2 * 1024 * 1024)).toString('utf8') || '{}'); } catch { throw new HttpError(400, 'Geçersiz istek.'); }
+    const item = katalog.list().find((x) => x.no === Number(b.no));
+    const renk = item && item.renkler.find((r) => r.ad === b.renk);
+    const boy = item && item.ebatlar.find((e) => e.kod === b.boy);
+    if (!renk || !boy) throw new HttpError(400, 'Seçim geçersiz.');
+    const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.yaldiz || ''));
+    try {
+      const k = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.kumas || ''));
+      json(res, ar.build({ doku: renk.doku, kumas: k ? Buffer.from(k[1], 'base64') : null, boy: boy.ad, yaldiz: m ? Buffer.from(m[1], 'base64') : null }));
+    } catch (err) { throw new HttpError(400, err.message); }
   });
   router.get('/panel/albumum/:no/onay', (req, res, { params, query }) => {
     if (!requireCouple(req, res)) return;

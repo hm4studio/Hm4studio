@@ -90,6 +90,9 @@ function serveStatic(req, res, pathname) {
   if (rel.startsWith('/media/site/')) {
     return sendFile(req, res, path.join(config.publicMediaDir, 'site'), rel.slice('/media/site/'.length), { cache: 'public, max-age=2592000, immutable' });
   }
+  if (rel.startsWith('/media/ar/')) { // "Masamda gör" dosyaları (adları tahmin edilemez; Google'ın görüntüleyicisi oturumsuz indirir)
+    return sendFile(req, res, path.join(config.publicMediaDir, 'ar'), rel.slice('/media/ar/'.length), { cache: 'public, max-age=2592000, immutable' });
+  }
   if (rel.startsWith('/media/portfolio/')) {
     return sendFile(req, res, PORTFOLIO_DIR, rel.slice('/media/portfolio/'.length), { cache: 'public, max-age=2592000, immutable' });
   }
