@@ -1,0 +1,1782 @@
+{
+ "kaynak": "Tedarikçi kataloğu (Katalog_Yeni_30x30)",
+ "modeller": [
+  {
+   "no": 1,
+   "ad": "Victoria",
+   "malzeme": [
+    "Liva"
+   ],
+   "renkler": [
+    {
+     "ad": "Liva Beyaz",
+     "doku": "doku-liva-beyaz.jpg",
+     "hex": "#dcdcdc"
+    },
+    {
+     "ad": "Liva Siyah",
+     "doku": "doku-liva-siyah.jpg",
+     "hex": "#282828"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m01.jpg"
+  },
+  {
+   "no": 2,
+   "ad": "Rixos",
+   "malzeme": [
+    "Liva"
+   ],
+   "renkler": [
+    {
+     "ad": "Liva Gri",
+     "doku": "doku-liva-gri.jpg",
+     "hex": "#9998a0"
+    },
+    {
+     "ad": "Liva Siyah",
+     "doku": "doku-liva-siyah.jpg",
+     "hex": "#282828"
+    },
+    {
+     "ad": "Liva Beyaz",
+     "doku": "doku-liva-beyaz.jpg",
+     "hex": "#dcdcdc"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m02.jpg"
+  },
+  {
+   "no": 3,
+   "ad": "Milano",
+   "malzeme": [
+    "Liva"
+   ],
+   "renkler": [
+    {
+     "ad": "Liva Kahve",
+     "doku": "doku-liva-kahve.jpg",
+     "hex": "#645157"
+    },
+    {
+     "ad": "Liva Siyah",
+     "doku": "doku-liva-siyah.jpg",
+     "hex": "#282828"
+    },
+    {
+     "ad": "Liva Beyaz",
+     "doku": "doku-liva-beyaz.jpg",
+     "hex": "#dcdcdc"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m03.jpg"
+  },
+  {
+   "no": 4,
+   "ad": "Lumix",
+   "malzeme": [
+    "Monaco"
+   ],
+   "renkler": [
+    {
+     "ad": "Monaco Gri",
+     "doku": "doku-monaco-gri.jpg",
+     "hex": "#999490"
+    },
+    {
+     "ad": "Monaco Kahve",
+     "doku": "doku-monaco-kahve.jpg",
+     "hex": "#ad937f"
+    },
+    {
+     "ad": "Monaco Krem",
+     "doku": "doku-monaco-krem.jpg",
+     "hex": "#d4d0c9"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m04.jpg"
+  },
+  {
+   "no": 5,
+   "ad": "Viyana",
+   "malzeme": [
+    "Monaco"
+   ],
+   "renkler": [
+    {
+     "ad": "Monaco Kahve",
+     "doku": "doku-monaco-kahve.jpg",
+     "hex": "#ad937f"
+    },
+    {
+     "ad": "Monaco Gri",
+     "doku": "doku-monaco-gri.jpg",
+     "hex": "#999490"
+    },
+    {
+     "ad": "Monaco Krem",
+     "doku": "doku-monaco-krem.jpg",
+     "hex": "#d4d0c9"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m05.jpg"
+  },
+  {
+   "no": 6,
+   "ad": "Label",
+   "malzeme": [
+    "Monaco"
+   ],
+   "renkler": [
+    {
+     "ad": "Monaco Kahve",
+     "doku": "doku-monaco-kahve.jpg",
+     "hex": "#ad937f"
+    },
+    {
+     "ad": "Monaco Gri",
+     "doku": "doku-monaco-gri.jpg",
+     "hex": "#999490"
+    },
+    {
+     "ad": "Monaco Krem",
+     "doku": "doku-monaco-krem.jpg",
+     "hex": "#d4d0c9"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m06.jpg"
+  },
+  {
+   "no": 7,
+   "ad": "Dream",
+   "malzeme": [
+    "Mobus"
+   ],
+   "renkler": [
+    {
+     "ad": "Mobus Krem",
+     "doku": "doku-mobus-krem.jpg",
+     "hex": "#e3d9bc"
+    },
+    {
+     "ad": "Mobus Kahve",
+     "doku": "doku-mobus-kahve.jpg",
+     "hex": "#9e8477"
+    },
+    {
+     "ad": "Mobus Siyah",
+     "doku": "doku-mobus-siyah.jpg",
+     "hex": "#3a3a3a"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m07.jpg"
+  },
+  {
+   "no": 8,
+   "ad": "Story",
+   "malzeme": [
+    "Mobus"
+   ],
+   "renkler": [
+    {
+     "ad": "Mobus Krem",
+     "doku": "doku-mobus-krem.jpg",
+     "hex": "#e3d9bc"
+    },
+    {
+     "ad": "Mobus Kahve",
+     "doku": "doku-mobus-kahve.jpg",
+     "hex": "#9e8477"
+    },
+    {
+     "ad": "Mobus Siyah",
+     "doku": "doku-mobus-siyah.jpg",
+     "hex": "#3a3a3a"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m08.jpg"
+  },
+  {
+   "no": 9,
+   "ad": "Toscana",
+   "malzeme": [
+    "Vip Kadife"
+   ],
+   "renkler": [
+    {
+     "ad": "Vip Kadife Kahve",
+     "doku": "doku-vip-kadife-kahve.jpg",
+     "hex": "#ba9c91"
+    },
+    {
+     "ad": "Vip Kadife Krem",
+     "doku": "doku-vip-kadife-krem.jpg",
+     "hex": "#d5c9bb"
+    },
+    {
+     "ad": "Vip Kadife Beyaz",
+     "doku": "doku-vip-kadife-beyaz.jpg",
+     "hex": "#dedad7"
+    },
+    {
+     "ad": "Vip Kadife Antrasit Gri",
+     "doku": "doku-vip-kadife-antrasit-gri.jpg",
+     "hex": "#4e5661"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m09.jpg",
+   "not": "Katalogda renk listesi (Ada/Keten) ile malzeme fotoğrafları (Vip Kadife) farklı; tedarikçiye sorun."
+  },
+  {
+   "no": 10,
+   "ad": "Glass",
+   "malzeme": [
+    "Kadife"
+   ],
+   "renkler": [
+    {
+     "ad": "Kadife Kahve",
+     "doku": "doku-kadife-kahve.jpg",
+     "hex": "#9d6346"
+    },
+    {
+     "ad": "Kadife Krem",
+     "doku": "doku-kadife-krem.jpg",
+     "hex": "#e7dddb"
+    },
+    {
+     "ad": "Kadife Siyah",
+     "doku": "doku-kadife-siyah.jpg",
+     "hex": "#303030"
+    },
+    {
+     "ad": "Kadife Gri",
+     "doku": "doku-kadife-gri.jpg",
+     "hex": "#606060"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m10.jpg"
+  },
+  {
+   "no": 11,
+   "ad": "Carmen",
+   "malzeme": [
+    "Monaco"
+   ],
+   "renkler": [
+    {
+     "ad": "Monaco Gri",
+     "doku": "doku-monaco-gri.jpg",
+     "hex": "#999490"
+    },
+    {
+     "ad": "Monaco Kahve",
+     "doku": "doku-monaco-kahve.jpg",
+     "hex": "#ad937f"
+    },
+    {
+     "ad": "Monaco Krem",
+     "doku": "doku-monaco-krem.jpg",
+     "hex": "#d4d0c9"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m11.jpg"
+  },
+  {
+   "no": 12,
+   "ad": "Diamora",
+   "malzeme": [
+    "Liva"
+   ],
+   "renkler": [
+    {
+     "ad": "Liva Siyah",
+     "doku": "doku-liva-siyah.jpg",
+     "hex": "#282828"
+    },
+    {
+     "ad": "Liva Beyaz",
+     "doku": "doku-liva-beyaz.jpg",
+     "hex": "#dcdcdc"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m12.jpg"
+  },
+  {
+   "no": 13,
+   "ad": "Elite",
+   "malzeme": [
+    "Mobus"
+   ],
+   "renkler": [
+    {
+     "ad": "Mobus Kahve",
+     "doku": "doku-mobus-kahve.jpg",
+     "hex": "#9e8477"
+    },
+    {
+     "ad": "Mobus Krem",
+     "doku": "doku-mobus-krem.jpg",
+     "hex": "#e3d9bc"
+    },
+    {
+     "ad": "Mobus Siyah",
+     "doku": "doku-mobus-siyah.jpg",
+     "hex": "#3a3a3a"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m13.jpg"
+  },
+  {
+   "no": 14,
+   "ad": "Still",
+   "malzeme": [
+    "Mobus"
+   ],
+   "renkler": [
+    {
+     "ad": "Mobus Kahve",
+     "doku": "doku-mobus-kahve.jpg",
+     "hex": "#9e8477"
+    },
+    {
+     "ad": "Mobus Krem",
+     "doku": "doku-mobus-krem.jpg",
+     "hex": "#e3d9bc"
+    },
+    {
+     "ad": "Mobus Siyah",
+     "doku": "doku-mobus-siyah.jpg",
+     "hex": "#3a3a3a"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m14.jpg"
+  },
+  {
+   "no": 15,
+   "ad": "Nora",
+   "malzeme": [
+    "Mobus"
+   ],
+   "renkler": [
+    {
+     "ad": "Mobus Siyah",
+     "doku": "doku-mobus-siyah.jpg",
+     "hex": "#3a3a3a"
+    },
+    {
+     "ad": "Mobus Krem",
+     "doku": "doku-mobus-krem.jpg",
+     "hex": "#e3d9bc"
+    },
+    {
+     "ad": "Mobus Kahve",
+     "doku": "doku-mobus-kahve.jpg",
+     "hex": "#9e8477"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m15.jpg"
+  },
+  {
+   "no": 16,
+   "ad": "Kervan",
+   "malzeme": [
+    "Monaco"
+   ],
+   "renkler": [
+    {
+     "ad": "Monaco Krem",
+     "doku": "doku-monaco-krem.jpg",
+     "hex": "#d4d0c9"
+    },
+    {
+     "ad": "Monaco Kahve",
+     "doku": "doku-monaco-kahve.jpg",
+     "hex": "#ad937f"
+    },
+    {
+     "ad": "Monaco Gri",
+     "doku": "doku-monaco-gri.jpg",
+     "hex": "#999490"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m16.jpg"
+  },
+  {
+   "no": 17,
+   "ad": "Veloria",
+   "malzeme": [
+    "Liva"
+   ],
+   "renkler": [
+    {
+     "ad": "Liva Beyaz",
+     "doku": "doku-liva-beyaz.jpg",
+     "hex": "#dcdcdc"
+    },
+    {
+     "ad": "Liva Siyah",
+     "doku": "doku-liva-siyah.jpg",
+     "hex": "#282828"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m17.jpg"
+  },
+  {
+   "no": 18,
+   "ad": "Vista",
+   "malzeme": [
+    "Keten"
+   ],
+   "renkler": [
+    {
+     "ad": "Keten Krem",
+     "doku": "doku-keten-krem.jpg",
+     "hex": "#e6dfce"
+    },
+    {
+     "ad": "Keten Siyah",
+     "doku": "doku-keten-siyah.jpg",
+     "hex": "#323232"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m18.jpg"
+  },
+  {
+   "no": 19,
+   "ad": "Stella",
+   "malzeme": [
+    "Venedik"
+   ],
+   "renkler": [
+    {
+     "ad": "Venedik Krem",
+     "doku": "doku-venedik-krem.jpg",
+     "hex": "#d3cdca"
+    },
+    {
+     "ad": "Venedik Mocca",
+     "doku": "doku-venedik-mocca.jpg",
+     "hex": "#bbb2ae"
+    },
+    {
+     "ad": "Venedik Kahve",
+     "doku": "doku-venedik-kahve.jpg",
+     "hex": "#625550"
+    },
+    {
+     "ad": "Venedik Siyah",
+     "doku": "doku-venedik-siyah.jpg",
+     "hex": "#303030"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m19.jpg"
+  },
+  {
+   "no": 20,
+   "ad": "Liona",
+   "malzeme": [
+    "Kadife"
+   ],
+   "renkler": [
+    {
+     "ad": "Kadife Krem",
+     "doku": "doku-kadife-krem.jpg",
+     "hex": "#e7dddb"
+    },
+    {
+     "ad": "Kadife Gül Kurusu",
+     "doku": "doku-kadife-gul-kurusu.jpg",
+     "hex": "#d78f8b"
+    },
+    {
+     "ad": "Kadife Bakır",
+     "doku": "doku-kadife-bakir.jpg",
+     "hex": "#d35b28"
+    },
+    {
+     "ad": "Kadife Gri",
+     "doku": "doku-kadife-gri.jpg",
+     "hex": "#606060"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m20.jpg"
+  },
+  {
+   "no": 21,
+   "ad": "Nirvana",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Siyah",
+     "doku": "doku-ada-siyah.jpg",
+     "hex": "#303030"
+    },
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m21.jpg"
+  },
+  {
+   "no": 22,
+   "ad": "Everest",
+   "malzeme": [
+    "Keten"
+   ],
+   "renkler": [
+    {
+     "ad": "Keten Krem",
+     "doku": "doku-keten-krem.jpg",
+     "hex": "#e6dfce"
+    },
+    {
+     "ad": "Keten Siyah",
+     "doku": "doku-keten-siyah.jpg",
+     "hex": "#323232"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m22.jpg"
+  },
+  {
+   "no": 23,
+   "ad": "Lotus",
+   "malzeme": [
+    "Keten"
+   ],
+   "renkler": [
+    {
+     "ad": "Keten Krem",
+     "doku": "doku-keten-krem.jpg",
+     "hex": "#e6dfce"
+    },
+    {
+     "ad": "Keten Siyah",
+     "doku": "doku-keten-siyah.jpg",
+     "hex": "#323232"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m23.jpg"
+  },
+  {
+   "no": 24,
+   "ad": "Royal",
+   "malzeme": [
+    "Keten"
+   ],
+   "renkler": [
+    {
+     "ad": "Keten Krem",
+     "doku": "doku-keten-krem.jpg",
+     "hex": "#e6dfce"
+    },
+    {
+     "ad": "Keten Siyah",
+     "doku": "doku-keten-siyah.jpg",
+     "hex": "#323232"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m24.jpg"
+  },
+  {
+   "no": 25,
+   "ad": "Bistro",
+   "malzeme": [
+    "Kadife"
+   ],
+   "renkler": [
+    {
+     "ad": "Kadife Kahve",
+     "doku": "doku-kadife-kahve.jpg",
+     "hex": "#9d6346"
+    },
+    {
+     "ad": "Kadife Gri",
+     "doku": "doku-kadife-gri.jpg",
+     "hex": "#606060"
+    },
+    {
+     "ad": "Kadife Bakır",
+     "doku": "doku-kadife-bakir.jpg",
+     "hex": "#d35b28"
+    },
+    {
+     "ad": "Kadife Gül Kurusu",
+     "doku": "doku-kadife-gul-kurusu.jpg",
+     "hex": "#d78f8b"
+    },
+    {
+     "ad": "Kadife Krem",
+     "doku": "doku-kadife-krem.jpg",
+     "hex": "#e7dddb"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m25.jpg"
+  },
+  {
+   "no": 26,
+   "ad": "Leon",
+   "malzeme": [
+    "Venedik"
+   ],
+   "renkler": [
+    {
+     "ad": "Venedik Siyah",
+     "doku": "doku-venedik-siyah.jpg",
+     "hex": "#303030"
+    },
+    {
+     "ad": "Venedik Mocca",
+     "doku": "doku-venedik-mocca.jpg",
+     "hex": "#bbb2ae"
+    },
+    {
+     "ad": "Venedik Krem",
+     "doku": "doku-venedik-krem.jpg",
+     "hex": "#d3cdca"
+    },
+    {
+     "ad": "Venedik Kahve",
+     "doku": "doku-venedik-kahve.jpg",
+     "hex": "#625550"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m26.jpg"
+  },
+  {
+   "no": 27,
+   "ad": "Jolise",
+   "malzeme": [
+    "Monaco"
+   ],
+   "renkler": [
+    {
+     "ad": "Monaco Kahve",
+     "doku": "doku-monaco-kahve.jpg",
+     "hex": "#ad937f"
+    },
+    {
+     "ad": "Monaco Gri",
+     "doku": "doku-monaco-gri.jpg",
+     "hex": "#999490"
+    },
+    {
+     "ad": "Monaco Krem",
+     "doku": "doku-monaco-krem.jpg",
+     "hex": "#d4d0c9"
+    }
+   ],
+   "ebatlar": [
+    "30x80",
+    "30x60",
+    "25x70"
+   ],
+   "foto": "m27.jpg"
+  },
+  {
+   "no": 28,
+   "ad": "Divan",
+   "malzeme": [
+    "Kadife"
+   ],
+   "renkler": [
+    {
+     "ad": "Kadife Kahve",
+     "doku": "doku-kadife-kahve.jpg",
+     "hex": "#9d6346"
+    },
+    {
+     "ad": "Kadife Gri",
+     "doku": "doku-kadife-gri.jpg",
+     "hex": "#606060"
+    },
+    {
+     "ad": "Kadife Bakır",
+     "doku": "doku-kadife-bakir.jpg",
+     "hex": "#d35b28"
+    },
+    {
+     "ad": "Kadife Gül Kurusu",
+     "doku": "doku-kadife-gul-kurusu.jpg",
+     "hex": "#d78f8b"
+    },
+    {
+     "ad": "Kadife Krem",
+     "doku": "doku-kadife-krem.jpg",
+     "hex": "#e7dddb"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m28.jpg"
+  },
+  {
+   "no": 29,
+   "ad": "Alvin",
+   "malzeme": [
+    "Venedik"
+   ],
+   "renkler": [
+    {
+     "ad": "Venedik Kahve",
+     "doku": "doku-venedik-kahve.jpg",
+     "hex": "#625550"
+    },
+    {
+     "ad": "Venedik Mocca",
+     "doku": "doku-venedik-mocca.jpg",
+     "hex": "#bbb2ae"
+    },
+    {
+     "ad": "Venedik Krem",
+     "doku": "doku-venedik-krem.jpg",
+     "hex": "#d3cdca"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m29.jpg"
+  },
+  {
+   "no": 30,
+   "ad": "Dolce",
+   "malzeme": [
+    "Venedik"
+   ],
+   "renkler": [
+    {
+     "ad": "Venedik Krem",
+     "doku": "doku-venedik-krem.jpg",
+     "hex": "#d3cdca"
+    },
+    {
+     "ad": "Venedik Mocca",
+     "doku": "doku-venedik-mocca.jpg",
+     "hex": "#bbb2ae"
+    },
+    {
+     "ad": "Venedik Kahve",
+     "doku": "doku-venedik-kahve.jpg",
+     "hex": "#625550"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m30.jpg"
+  },
+  {
+   "no": 31,
+   "ad": "Elegant",
+   "malzeme": [
+    "Venedik"
+   ],
+   "renkler": [
+    {
+     "ad": "Venedik Kahve",
+     "doku": "doku-venedik-kahve.jpg",
+     "hex": "#625550"
+    },
+    {
+     "ad": "Venedik Mocca",
+     "doku": "doku-venedik-mocca.jpg",
+     "hex": "#bbb2ae"
+    },
+    {
+     "ad": "Venedik Krem",
+     "doku": "doku-venedik-krem.jpg",
+     "hex": "#d3cdca"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m31.jpg"
+  },
+  {
+   "no": 32,
+   "ad": "Zen",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Siyah",
+     "doku": "doku-ada-siyah.jpg",
+     "hex": "#303030"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m32.jpg"
+  },
+  {
+   "no": 33,
+   "ad": "Vera",
+   "malzeme": [
+    "Venedik"
+   ],
+   "renkler": [
+    {
+     "ad": "Venedik Mocca",
+     "doku": "doku-venedik-mocca.jpg",
+     "hex": "#bbb2ae"
+    },
+    {
+     "ad": "Venedik Kahve",
+     "doku": "doku-venedik-kahve.jpg",
+     "hex": "#625550"
+    },
+    {
+     "ad": "Venedik Krem",
+     "doku": "doku-venedik-krem.jpg",
+     "hex": "#d3cdca"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m33.jpg"
+  },
+  {
+   "no": 34,
+   "ad": "Vigo",
+   "malzeme": [
+    "Cotton"
+   ],
+   "renkler": [
+    {
+     "ad": "Cotton Kahve",
+     "doku": "doku-cotton-kahve.jpg",
+     "hex": "#bc9374"
+    },
+    {
+     "ad": "Cotton Siyah",
+     "doku": "doku-cotton-siyah.jpg",
+     "hex": "#41413f"
+    },
+    {
+     "ad": "Cotton Beyaz",
+     "doku": "doku-cotton-beyaz.jpg",
+     "hex": "#dcdcdc"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m34.jpg"
+  },
+  {
+   "no": 35,
+   "ad": "Velvet",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Ada Gri",
+     "doku": "doku-ada-gri.jpg",
+     "hex": "#5b5b5b"
+    },
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Siyah",
+     "doku": "doku-ada-siyah.jpg",
+     "hex": "#303030"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m35.jpg"
+  },
+  {
+   "no": 36,
+   "ad": "Hayat",
+   "malzeme": [
+    "Kadife"
+   ],
+   "renkler": [
+    {
+     "ad": "Kadife Gri",
+     "doku": "doku-kadife-gri.jpg",
+     "hex": "#606060"
+    },
+    {
+     "ad": "Kadife Kahve",
+     "doku": "doku-kadife-kahve.jpg",
+     "hex": "#9d6346"
+    },
+    {
+     "ad": "Kadife Bakır",
+     "doku": "doku-kadife-bakir.jpg",
+     "hex": "#d35b28"
+    },
+    {
+     "ad": "Kadife Krem",
+     "doku": "doku-kadife-krem.jpg",
+     "hex": "#e7dddb"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m36.jpg"
+  },
+  {
+   "no": 37,
+   "ad": "Gala",
+   "malzeme": [
+    "Venedik"
+   ],
+   "renkler": [
+    {
+     "ad": "Venedik Kahve",
+     "doku": "doku-venedik-kahve.jpg",
+     "hex": "#625550"
+    },
+    {
+     "ad": "Venedik Mocca",
+     "doku": "doku-venedik-mocca.jpg",
+     "hex": "#bbb2ae"
+    },
+    {
+     "ad": "Venedik Krem",
+     "doku": "doku-venedik-krem.jpg",
+     "hex": "#d3cdca"
+    },
+    {
+     "ad": "Venedik Siyah",
+     "doku": "doku-venedik-siyah.jpg",
+     "hex": "#303030"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m37.jpg"
+  },
+  {
+   "no": 38,
+   "ad": "Elena",
+   "malzeme": [
+    "Venedik"
+   ],
+   "renkler": [
+    {
+     "ad": "Venedik Kahve",
+     "doku": "doku-venedik-kahve.jpg",
+     "hex": "#625550"
+    },
+    {
+     "ad": "Venedik Mocca",
+     "doku": "doku-venedik-mocca.jpg",
+     "hex": "#bbb2ae"
+    },
+    {
+     "ad": "Venedik Krem",
+     "doku": "doku-venedik-krem.jpg",
+     "hex": "#d3cdca"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m38.jpg"
+  },
+  {
+   "no": 39,
+   "ad": "Lara",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Gri",
+     "doku": "doku-ada-gri.jpg",
+     "hex": "#5b5b5b"
+    },
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Ada Siyah",
+     "doku": "doku-ada-siyah.jpg",
+     "hex": "#303030"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m39.jpg"
+  },
+  {
+   "no": 40,
+   "ad": "Angel",
+   "malzeme": [
+    "Kadife"
+   ],
+   "renkler": [
+    {
+     "ad": "Kadife Gül Kurusu",
+     "doku": "doku-kadife-gul-kurusu.jpg",
+     "hex": "#d78f8b"
+    },
+    {
+     "ad": "Kadife Gri",
+     "doku": "doku-kadife-gri.jpg",
+     "hex": "#606060"
+    },
+    {
+     "ad": "Kadife Bakır",
+     "doku": "doku-kadife-bakir.jpg",
+     "hex": "#d35b28"
+    },
+    {
+     "ad": "Kadife Krem",
+     "doku": "doku-kadife-krem.jpg",
+     "hex": "#e7dddb"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m40.jpg"
+  },
+  {
+   "no": 41,
+   "ad": "Zarif",
+   "malzeme": [
+    "Keten"
+   ],
+   "renkler": [
+    {
+     "ad": "Keten Krem",
+     "doku": "doku-keten-krem.jpg",
+     "hex": "#e6dfce"
+    },
+    {
+     "ad": "Keten Siyah",
+     "doku": "doku-keten-siyah.jpg",
+     "hex": "#323232"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m41.jpg"
+  },
+  {
+   "no": 42,
+   "ad": "Aris",
+   "malzeme": [
+    "Ada",
+    "Keten"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Keten Siyah",
+     "doku": "doku-keten-siyah.jpg",
+     "hex": "#323232"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m42.jpg"
+  },
+  {
+   "no": 43,
+   "ad": "Neo",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m43.jpg"
+  },
+  {
+   "no": 44,
+   "ad": "Naturel",
+   "malzeme": [
+    "Keten"
+   ],
+   "renkler": [
+    {
+     "ad": "Keten Krem",
+     "doku": "doku-keten-krem.jpg",
+     "hex": "#e6dfce"
+    },
+    {
+     "ad": "Keten Siyah",
+     "doku": "doku-keten-siyah.jpg",
+     "hex": "#323232"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m44.jpg"
+  },
+  {
+   "no": 45,
+   "ad": "Frame",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m45.jpg"
+  },
+  {
+   "no": 46,
+   "ad": "Sofia",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Siyah",
+     "doku": "doku-ada-siyah.jpg",
+     "hex": "#303030"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m46.jpg"
+  },
+  {
+   "no": 47,
+   "ad": "Andora",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    }
+   ],
+   "ebatlar": [
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x50"
+   ],
+   "foto": "m47.jpg"
+  },
+  {
+   "no": 48,
+   "ad": "Tokyo",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    }
+   ],
+   "ebatlar": [
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60",
+    "25x50"
+   ],
+   "foto": "m48.jpg"
+  },
+  {
+   "no": 49,
+   "ad": "Rio",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m49.jpg"
+  },
+  {
+   "no": 50,
+   "ad": "Roma",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m50.jpg"
+  },
+  {
+   "no": 51,
+   "ad": "Doha",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    }
+   ],
+   "ebatlar": [
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60",
+    "25x50"
+   ],
+   "foto": "m51.jpg"
+  },
+  {
+   "no": 52,
+   "ad": "Somel",
+   "malzeme": [
+    "Ada"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Pudra",
+     "doku": "doku-ada-pudra.jpg",
+     "hex": "#cfa9a7"
+    },
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m52.jpg"
+  },
+  {
+   "no": 53,
+   "ad": "Jasmin",
+   "malzeme": [
+    "Kadife"
+   ],
+   "renkler": [
+    {
+     "ad": "Kadife Bakır",
+     "doku": "doku-kadife-bakir.jpg",
+     "hex": "#d35b28"
+    },
+    {
+     "ad": "Kadife Kahve",
+     "doku": "doku-kadife-kahve.jpg",
+     "hex": "#9d6346"
+    },
+    {
+     "ad": "Kadife Gri",
+     "doku": "doku-kadife-gri.jpg",
+     "hex": "#606060"
+    },
+    {
+     "ad": "Kadife Krem",
+     "doku": "doku-kadife-krem.jpg",
+     "hex": "#e7dddb"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m53.jpg"
+  },
+  {
+   "no": 54,
+   "ad": "Julia",
+   "malzeme": [
+    "Ada",
+    "Kadife"
+   ],
+   "renkler": [
+    {
+     "ad": "Ada Krem",
+     "doku": "doku-ada-krem.jpg",
+     "hex": "#d6c8b9"
+    },
+    {
+     "ad": "Ada Gri",
+     "doku": "doku-ada-gri.jpg",
+     "hex": "#5b5b5b"
+    },
+    {
+     "ad": "Ada Siyah",
+     "doku": "doku-ada-siyah.jpg",
+     "hex": "#303030"
+    },
+    {
+     "ad": "Ada Kahve",
+     "doku": "doku-ada-kahve.jpg",
+     "hex": "#baa094"
+    },
+    {
+     "ad": "Kadife Gri",
+     "doku": "doku-kadife-gri.jpg",
+     "hex": "#606060"
+    }
+   ],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m54.jpg"
+  },
+  {
+   "no": 55,
+   "ad": "Nova",
+   "malzeme": [
+    "Fotoğraf kapak"
+   ],
+   "renkler": [],
+   "ebatlar": [
+    "30x76",
+    "30x60",
+    "30x50",
+    "25x70",
+    "25x60"
+   ],
+   "foto": "m55.jpg",
+   "not": "Tasarımlı fotoğraf kapak; kadife laminasyonlu soft touch."
+  }
+ ]
+}
