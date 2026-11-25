@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const db = require('./db');
 const media = require('./media');
 const SEED = require('./data/album-katalog.json');
+const TASARIM = require('./data/kapak-tasarim.json');
 
 const KEY = 'album_katalog_v2';
 const IMG = '/images/katalog/';
@@ -13,6 +14,7 @@ const SIZE_RE = /^(\d{2})x(\d{2,3})$/;
 
 // "Masamda gör" kapak düzeni: fotoğrafın kapaktaki yeri (yazı yeri buna göre)
 const KAPAKLAR = {
+  ozel: 'Katalogdaki tasarım',
   duz: 'Fotoğrafsız (sadece yazı)',
   orta: 'Ortada fotoğraf penceresi',
   daire: 'Ortada yuvarlak fotoğraf',
@@ -36,7 +38,7 @@ function seed() {
     const offR = new Set(o.kapaliRenk || []); const offE = new Set(o.kapaliEbat || []);
     return {
       no: m.no, ad: m.ad, malzeme: m.malzeme, foto: IMG + m.foto, kaynakNot: m.not || '', not: o.not || '',
-      aktif: o.aktif !== false, fark: Number(o.fark) || 0, kapak: KAPAK_ILK[m.no] || 'duz',
+      aktif: o.aktif !== false, fark: Number(o.fark) || 0, kapak: TASARIM[m.no] ? 'ozel' : (KAPAK_ILK[m.no] || 'duz'), kapakV: 2,
       renkler: m.renkler.map((r) => ({ ad: r.ad, hex: r.hex, doku: IMG + r.doku, aktif: !offR.has(r.ad) })),
       ebatlar: m.ebatlar.map((e) => ({ kod: e, aktif: !offE.has(e) })),
     };
@@ -49,10 +51,12 @@ function all() {
   let list = null;
   try { list = JSON.parse(db.getSetting(KEY) || 'null'); } catch { list = null; }
   if (!Array.isArray(list)) { list = seed(); db.setSetting(KEY, JSON.stringify(list)); }
-  // Kapak düzeni sonradan eklendi: eksik olanlar katalogdaki düzenle tamamlanır
-  if (list.some((m) => !KAPAKLAR[m.kapak])) {
-    const kaynakAdi = new Map(SEED.modeller.map((x) => [x.no, x.ad]));
-    for (const m of list) if (!KAPAKLAR[m.kapak]) m.kapak = (kaynakAdi.has(m.no) && KAPAK_ILK[m.no]) || 'duz';
+  // Kapak düzeni sonradan eklendi: katalog modelleri katalogdaki tasarımla, diğerleri düz başlar
+  if (list.some((m) => !m.kapakV)) {
+    const seeded = new Set(SEED.modeller.map((x) => x.no));
+    for (const m of list) {
+      if (!m.kapakV) { m.kapak = seeded.has(m.no) && TASARIM[m.no] ? 'ozel' : (KAPAKLAR[m.kapak] && m.kapak !== 'ozel' ? m.kapak : 'duz'); m.kapakV = 2; }
+    }
     db.setSetting(KEY, JSON.stringify(list));
   }
   cache = list;
@@ -60,7 +64,19 @@ function all() {
 }
 function store(list) { cache = list; db.setSetting(KEY, JSON.stringify(list)); }
 
-const view = (m) => ({ ...m, ebatlar: m.ebatlar.map((e) => ({ ...e, ad: kapali(e.kod) })) });
+// Kapağın öğeleri (tarayıcı çizer): katalog tasarımı ya da seçilen hazır düzen
+const YAZI = (p, w, m = 'altin') => ({ t: 'yazi', p, f: 'serif', m, s: 0.075, w });
+const HAZIR = {
+  duz: [YAZI([0.5, 0.5], 0.7)],
+  orta: [{ t: 'foto', r: [0.2, 0.12, 0.6, 0.56], kenar: { m: 'altin', w: 0.006 } }, YAZI([0.5, 0.82], 0.7)],
+  daire: [{ t: 'foto', c: [0.5, 0.42, 0.3] }, { t: 'cerceve', c: [0.5, 0.42, 0.32], m: 'altin', w: 0.006 }, YAZI([0.5, 0.84], 0.7)],
+  sag: [{ t: 'foto', r: [0.42, 0, 0.58, 1] }, YAZI([0.21, 0.5], 0.34)],
+  sol: [{ t: 'foto', r: [0, 0, 0.58, 1] }, YAZI([0.79, 0.5], 0.34)],
+  ust: [{ t: 'foto', r: [0, 0, 1, 0.7] }, YAZI([0.5, 0.85], 0.8)],
+  tam: [{ t: 'foto', r: [0, 0, 1, 1] }, YAZI([0.5, 0.86], 0.8)],
+};
+const tasarim = (m) => (m.kapak === 'ozel' && TASARIM[m.no]) || HAZIR[m.kapak] || HAZIR.duz;
+const view = (m) => ({ ...m, tasarim: tasarim(m), ozelVar: Boolean(TASARIM[m.no]), ebatlar: m.ebatlar.map((e) => ({ ...e, ad: kapali(e.kod) })) });
 const list = () => all().map(view);
 const get = (no) => { const m = all().find((x) => x.no === Number(no)); return m ? view(m) : null; };
 /** Çiftlerin gördüğü: aktif modeller, yalnızca aktif renk ve ebatlarıyla */
@@ -92,7 +108,7 @@ function save(no, { ad, aktif, fark, not, kapak, renkler = [], ebatlar = [] }) {
     m.aktif = Boolean(aktif);
     m.fark = Math.max(-1e6, Math.min(1e6, Math.round(Number(String(fark || '0').replace(/[^\d-]/g, '')) || 0)));
     m.not = clean(not, 300);
-    if (KAPAKLAR[kapak]) m.kapak = kapak;
+    if (KAPAKLAR[kapak] && (kapak !== 'ozel' || TASARIM[m.no])) m.kapak = kapak;
     m.renkler.forEach((r) => { r.aktif = renkler.includes(r.ad); });
     m.ebatlar.forEach((e) => { e.aktif = ebatlar.includes(e.kod); });
   });
@@ -102,7 +118,7 @@ function setActive(no, aktif) { return update(no, (m) => { m.aktif = Boolean(akt
 function create(ad) {
   const lst = all().map((x) => ({ ...x }));
   const no = Math.max(0, ...lst.map((x) => x.no)) + 1;
-  const m = { no, ad: clean(ad, 40) || 'Yeni model', malzeme: ['Diğer'], foto: '', kaynakNot: '', not: '', aktif: false, fark: 0, kapak: 'orta', renkler: [], ebatlar: [] };
+  const m = { no, ad: clean(ad, 40) || 'Yeni model', malzeme: ['Diğer'], foto: '', kaynakNot: '', not: '', aktif: false, fark: 0, kapak: 'orta', kapakV: 2, renkler: [], ebatlar: [] };
   lst.push(m);
   store(lst);
   return m;
